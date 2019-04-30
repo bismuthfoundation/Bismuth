@@ -182,7 +182,7 @@ def db_to_drive(node, db_handler, is_testnet=False):
         #db_handler.execute_many(db_handler.h, "INSERT INTO misc VALUES (?,?)", result2)
 
 
-        if not is_testnet  # we want to save to hyper.db from RAM
+        if not is_testnet:  # we want to save to hyper.db from RAM
             for x in result2:
                 db_handler.execute_param(db_handler.h2, "INSERT INTO misc VALUES (?,?)", (x[0], x[1]))
             db_handler.commit(db_handler.hdd2)
