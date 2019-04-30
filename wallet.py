@@ -15,6 +15,7 @@ from decimal import *
 # from operator import itemgetter
 from tkinter import *
 from tkinter import filedialog, messagebox, ttk
+import ast
 
 import socks
 from Cryptodome.Cipher import AES, PKCS1_OAEP
