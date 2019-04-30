@@ -38,7 +38,7 @@ class DbHandler:
         self.c = self.conn.cursor()
 
     def pubkeyget(self, address):
-        self.execute_param(self.c, "SELECT public_key FROM transactions WHERE address = ? and reward = 0 LIMIT 1", address,)
+        self.execute_param(self.c, "SELECT public_key FROM transactions WHERE address = ? and reward = 0 LIMIT 1", (address,))
         result = self.c.fetchone()[0]
         return result
 
