@@ -453,7 +453,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
         finally:
             if node.ram:
-                db_to_drive(node, db_handler)
+                db_to_drive(node, db_handler, node.is_testnet)
 
             node.db_lock.release()
             node.logger.app_log.warning(f"Database lock released")
