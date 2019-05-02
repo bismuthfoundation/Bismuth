@@ -140,7 +140,7 @@ def ledger_balance3(address, cache, db_handler):
     cache[address] = quantize_eight(credit_ledger - debit_ledger)
     return cache[address]
 
-def db_to_drive(node, db_handler, is_testnet=False):
+def db_to_drive(node, db_handler):
     try:
         db_handler.execute(db_handler.c, "SELECT max(block_height) FROM transactions")
         node.last_block = db_handler.c.fetchone()[0]
@@ -162,7 +162,7 @@ def db_to_drive(node, db_handler, is_testnet=False):
 
 
 
-        if not is_testnet:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
+        if not node.is_testnet and node.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
             for x in result1:
                 db_handler.execute_param(db_handler.h2, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                            (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
@@ -182,7 +182,7 @@ def db_to_drive(node, db_handler, is_testnet=False):
         #db_handler.execute_many(db_handler.h, "INSERT INTO misc VALUES (?,?)", result2)
 
 
-        if not is_testnet:  # we want to save to hyper.db from RAM
+        if not node.is_testnet and node.ram:  # we want to save to hyper.db from RAM
             for x in result2:
                 db_handler.execute_param(db_handler.h2, "INSERT INTO misc VALUES (?,?)", (x[0], x[1]))
             db_handler.commit(db_handler.hdd2)
