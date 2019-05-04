@@ -651,6 +651,6 @@ class Mempool:
                 # TODO: Here maybe commit() on c to release the write lock?
             except Exception as e:
                 self.app_log.warning("Mempool: Error processing: {} {}".format(data, e))
-                if self.config.debug == 1:
+                if self.config.debug:
                     raise
         return mempool_result

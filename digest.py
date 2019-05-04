@@ -116,14 +116,14 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 tx_presence_check = db_handler.h.fetchone()
                 if tx_presence_check:
                     # print(node.last_block)
-                    raise ValueError(f"That transaction {entry_signature[:10]} is already in our ram ledger, block_height {tx_presence_check[0]}")
+                    raise ValueError(f"That transaction {entry_signature[:10]} is already in our ledger, block_height {tx_presence_check[0]}")
 
                 db_handler.execute_param(db_handler.c, "SELECT block_height FROM transactions WHERE signature = ?;",
                                          (entry_signature,))
                 tx_presence_check = db_handler.c.fetchone()
                 if tx_presence_check:
                     # print(node.last_block)
-                    raise ValueError(f"That transaction {entry_signature[:10]} is already in our ledger, block_height {tx_presence_check[0]}")
+                    raise ValueError(f"That transaction {entry_signature[:10]} is already in our RAM ledger, block_height {tx_presence_check[0]}")
             else:
                 raise ValueError(f"Empty signature from {peer_ip}")
 
@@ -453,7 +453,8 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
         finally:
 
-            db_to_drive(node, db_handler)
+            if node.ram:
+                db_to_drive(node, db_handler)
 
             node.db_lock.release()
             node.logger.app_log.warning(f"Database lock released")

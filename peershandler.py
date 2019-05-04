@@ -9,6 +9,7 @@ import re
 import sys
 import threading
 import time
+import shutil
 
 import socks
 
@@ -27,7 +28,7 @@ class Peers:
     __slots__ = ('app_log','config','logstats','node','peersync_lock','startup_time','reset_time','warning_list','stats',
                  'connection_pool','peer_opinion_dict','consensus_percentage','consensus',
                  'tried','peer_dict','peerfile','suggested_peerfile','banlist','whitelist','ban_threshold',
-                 'ip_to_mainnet', 'peers', 'first_run', 'accept_peers')
+                 'ip_to_mainnet', 'peers', 'first_run', 'accept_peers', 'peerlist_updated')
 
     def __init__(self, app_log, config=None, logstats=True, node=None):
         self.app_log = app_log
@@ -56,6 +57,7 @@ class Peers:
         self.peerfile = "peers.txt"
         self.suggested_peerfile = "suggested_peers.txt"
         self.first_run = True
+        self.peerlist_updated = False
 
         self.node = node
 
@@ -118,6 +120,7 @@ class Peers:
     def peers_dump(self, file, peerdict):
         """Validates then adds a peer to the peer list on disk"""
         # called by Sync, should not be an issue, but check if needs to be thread safe or not.
+        self.peerlist_updated = False
 
         with open(file, "r") as peer_file:
             peers_pairs = json.load(peer_file)
@@ -130,7 +133,7 @@ class Peers:
                 if peer_ip not in peers_pairs:
                     self.app_log.warning(f"Testing connectivity to: {peer_ip}")
                     peer_test = socks.socksocket()
-                    if self.config.tor == 1:
+                    if self.config.tor:
                         peer_test.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
                     peer_test.connect((str(peer_ip), int(self.config.port)))  # double parentheses mean tuple
                     self.app_log.info("Inbound: Distant peer connectible")
@@ -141,16 +144,21 @@ class Peers:
 
                     peers_pairs[ip] = peer_port
 
-                    with open(file, "w") as peer_file:
-                        json.dump(peers_pairs, peer_file)
-
                     self.app_log.info(f"Inbound: Peer {peer_ip}:{peer_port} saved to peer list")
+                    self.peerlist_updated = True
 
                 else:
                     self.app_log.info("Distant peer already in peer list")
+
             except:
                 self.app_log.info("Inbound: Distant peer not connectible")
                 pass
+
+        if self.peerlist_updated:
+            self.app_log.warning("Peerlist updated")
+            with open(f"{file}.tmp", "w") as peer_file:
+                json.dump(peers_pairs, peer_file)
+            shutil.move(f"{file}.tmp",file)
 
     def append_client(self, client):
         """
@@ -267,14 +275,14 @@ class Peers:
                     try:
                         s = socks.socksocket()
                         s.settimeout(0.6)
-                        if self.config.tor == 1:
+                        if self.config.tor:
                             s.settimeout(5)
                             s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
                         s.connect((host, port))
                         s.close()
                         self.app_log.info(f"Connection to {host} {port} successful, keeping the peer")
                     except:
-                        if self.config.purge == 1 and not self.is_testnet:
+                        if self.config.purge and not self.is_testnet:
                             # remove from peerfile if not connectible
 
                             peers_remove[key] = value
@@ -312,7 +320,7 @@ class Peers:
                         self.app_log.info(f"Outbound: {pair} is a new peer, saving if connectible")
                         try:
                             s_purge = socks.socksocket()
-                            if self.config.tor == 1:
+                            if self.config.tor:
                                 s_purge.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
 
                             s_purge.connect((pair[0], int(pair[1])))  # save a new peer file with only active nodes
@@ -347,7 +355,7 @@ class Peers:
                         self.app_log.info(f"Outbound: {ip}:{port} is a new peer, saving if connectible")
                         try:
                             s_purge = socks.socksocket()
-                            if self.config.tor == 1:
+                            if self.config.tor:
                                 s_purge.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
                             s_purge.connect((ip, int(port)))  # save a new peer file with only active nodes
                             s_purge.close()

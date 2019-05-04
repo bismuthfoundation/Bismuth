@@ -50,8 +50,8 @@ c = conn.cursor()
 
 s = socks.socksocket()
 s.settimeout(10)
-#s.connect(("bismuth.live", 5658))
-s.connect(("127.0.0.1", 5658))
+s.connect(("bismuth.live", 5658))
+#s.connect(("127.0.0.1", 5658))
 
 connections.send (s, "balanceget", 10)
 connections.send (s, address, 10)  # change address here to view other people's transactions

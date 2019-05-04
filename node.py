@@ -1741,8 +1741,8 @@ def ram_init(database):
                 query = "".join(line for line in source_db.iterdump())
                 database.to_ram.executescript(query)
                 source_db.close()
-
-            node.logger.app_log.warning("Status: Moved database to RAM")
+                
+            node.logger.app_log.warning("Status: Hyperblock ledger moved to RAM")
 
             #source = sqlite3.connect('existing_db.db')
             #dest = sqlite3.connect(':memory:')
