@@ -71,7 +71,7 @@ getcontext().rounding = ROUND_HALF_EVEN
 POW_FORK, FORK_AHEAD, FORK_DIFF = fork()
 
 
-from appdirs import *
+#from appdirs import *
 
 appname = "Bismuth"
 appauthor = "Bismuth Foundation"
