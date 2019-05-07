@@ -36,7 +36,8 @@ class Get:
         "terminal_output": ["bool"],
         "gui_scaling": ["str"],
         "mempool_ram": ["bool"],
-        "egress": ["bool"]
+        "egress": ["bool"],
+        "trace_db_calls": ["bool"]
     }
 
     # Optional default values so we don't bug if they are not in the config.
