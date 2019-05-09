@@ -69,9 +69,9 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
 
     def transaction_validate():
-         """Validates all transaction elements. Raise a ValueError exception on error."""
+        """Validates all transaction elements. Raise a ValueError exception on error."""
          
-         # Begin with costless checks first, so we can early exit. Time of tx
+        # Begin with costless checks first, so we can early exit. Time of tx
         if tx.start_time_tx < tx.q_received_timestamp:
             raise ValueError(f"Future transaction not allowed, timestamp {quantize_two((tx.q_received_timestamp - tx.start_time_tx) / 60)} minutes in the future")
         if previous_block.q_timestamp_last - 86400 > tx.q_received_timestamp:
