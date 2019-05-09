@@ -155,7 +155,7 @@ def command(sdef, data, blockhash, node, db_handler):
         node.logger.app_log.warning(exc_type, fname, exc_tb.tb_lineno)
 
 
-def init(app_log):
+def init(app_log, trace_db_calls=False):
     # Empty peers
     with open(REGNET_PEERS, 'w') as f:
         f.write("{}")
@@ -167,11 +167,15 @@ def init(app_log):
             os.remove(remove_me)
     # create empty index db
     with sqlite3.connect(REGNET_DB) as source_db:
+        if trace_db_calls:
+            upgrade.set_trace_callback(functools.partial(sql_trace_callback,app_log,"REGNET-INIT"))
         for request in SQL_LEDGER:
             source_db.execute(request)
         source_db.commit()
     # create empty reg db
     with sqlite3.connect(REGNET_INDEX) as source_db:
+        if trace_db_calls:
+            upgrade.set_trace_callback(functools.partial(sql_trace_callback,app_log,"REGNET-INIT-INDEX"))
         for request in SQL_INDEX:
             source_db.execute(request)
         source_db.commit()

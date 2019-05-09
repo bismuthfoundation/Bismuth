@@ -16,15 +16,24 @@ def blake2bhash_generate(data):
     return blake2bhash
     # new hash
 
-def tokens_update(file, ledger, mode, app_log, plugin_manager=None):
+import functools
+def sql_trace_callback(log, id, statement):
+    line = f"SQL[{id}] {statement}"
+    log.warning(line) 
+
+def tokens_update(file, ledger, mode, app_log, plugin_manager=None, trace_db_calls = False):
     if mode not in ("normal", "reindex"):
         raise ValueError("Wrong value for tokens_update function")
 
     conn = sqlite3.connect(ledger)
+    if trace_db_calls:
+        conn.set_trace_callback(functools.partial(sql_trace_callback,app_log,"TOKENS-UPDATE-LEDGER"))
     conn.text_factory = str
     c = conn.cursor()
 
     tok = sqlite3.connect(file)
+    if trace_db_calls:
+        tok.set_trace_callback(functools.partial(sql_trace_callback,app_log,"TOKENS-UPDATE-FILE"))
     tok.text_factory = str
     t = tok.cursor()
     t.execute("CREATE TABLE IF NOT EXISTS tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)")
