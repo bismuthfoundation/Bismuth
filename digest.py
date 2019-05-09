@@ -86,12 +86,12 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             raise ValueError("Not a valid recipient address")
             
         # Now we can process cpu heavier checks, decode and check sig itself
-        # Extract the signature verifier.
+        # Check the sig format first
+        essentials.validate_pem(tx.received_public_key_hashed)
+        # Now extract the signature verifier.
         received_public_key = RSA.importKey(base64.b64decode(tx.received_public_key_hashed))
         received_signature_dec = base64.b64decode(tx.received_signature_enc)
         verifier = PKCS1_v1_5.new(received_public_key)
-        # And check its format
-        essentials.validate_pem(tx.received_public_key_hashed)
         # Build the buffer to be verified
         sha_hash = SHA.new(str((tx.received_timestamp, tx.received_address, tx.received_recipient, tx.received_amount,
                                 tx.received_operation, tx.received_openfield)).encode("utf-8"))
