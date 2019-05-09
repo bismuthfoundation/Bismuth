@@ -69,35 +69,42 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
 
     def transaction_validate():
-        received_public_key = RSA.importKey(base64.b64decode(tx.received_public_key_hashed))
-        received_signature_dec = base64.b64decode(tx.received_signature_enc)
-        verifier = PKCS1_v1_5.new(received_public_key)
-
-        essentials.validate_pem(tx.received_public_key_hashed)
-
-        sha_hash = SHA.new(str((tx.received_timestamp, tx.received_address, tx.received_recipient, tx.received_amount,
-                                tx.received_operation, tx.received_openfield)).encode("utf-8"))
-
-        if not verifier.verify(sha_hash, received_signature_dec):
-            raise ValueError(f"Invalid signature from {tx.received_address}")
-        else:
-            node.logger.app_log.info(f"Valid signature from {tx.received_address} to {tx.received_recipient} amount {tx.received_amount}")
-        if float(tx.received_amount) < 0:
-            raise ValueError("Negative balance spend attempt")
-
-        if tx.received_address != hashlib.sha224(base64.b64decode(tx.received_public_key_hashed)).hexdigest():
-            raise ValueError("Attempt to spend from a wrong address")
-
-        if not essentials.address_validate(tx.received_address):
-            raise ValueError("Not a valid sender address")
-
-        if not essentials.address_validate(tx.received_recipient):
-            raise ValueError("Not a valid recipient address")
-
+         """Validates all transaction elements. Raise a ValueError exception on error."""
+         
+         # Begin with costless checks first, so we can early exit. Time of tx
         if tx.start_time_tx < tx.q_received_timestamp:
             raise ValueError(f"Future transaction not allowed, timestamp {quantize_two((tx.q_received_timestamp - tx.start_time_tx) / 60)} minutes in the future")
         if previous_block.q_timestamp_last - 86400 > tx.q_received_timestamp:
             raise ValueError("Transaction older than 24h not allowed.")
+        # Amount
+        if float(tx.received_amount) < 0:
+            raise ValueError("Negative balance spend attempt")
+        # Addresses validity
+        if not essentials.address_validate(tx.received_address):
+            raise ValueError("Not a valid sender address")
+        if not essentials.address_validate(tx.received_recipient):
+            raise ValueError("Not a valid recipient address")
+            
+        # Now we can process cpu heavier checks, decode and check sig itself
+        # Extract the signature verifier.
+        received_public_key = RSA.importKey(base64.b64decode(tx.received_public_key_hashed))
+        received_signature_dec = base64.b64decode(tx.received_signature_enc)
+        verifier = PKCS1_v1_5.new(received_public_key)
+        # And check its format
+        essentials.validate_pem(tx.received_public_key_hashed)
+        # Build the buffer to be verified
+        sha_hash = SHA.new(str((tx.received_timestamp, tx.received_address, tx.received_recipient, tx.received_amount,
+                                tx.received_operation, tx.received_openfield)).encode("utf-8"))
+        # Real sig check takes place here
+        if not verifier.verify(sha_hash, received_signature_dec):
+            raise ValueError(f"Invalid signature from {tx.received_address}")
+        else:
+            node.logger.app_log.info(f"Valid signature from {tx.received_address} to {tx.received_recipient} amount {tx.received_amount}")
+        # Reconstruct address from pubkey to make sure it matches
+        if tx.received_address != hashlib.sha224(base64.b64decode(tx.received_public_key_hashed)).hexdigest():
+            raise ValueError("Attempt to spend from a wrong address")
+
+
 
     def dev_reward():
         if int(block_array.block_height_new) % 10 == 0:  # every 10 blocks
