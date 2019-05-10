@@ -17,7 +17,7 @@ from essentials import checkpoint_set #rework
 from essentials import ledger_balance3 #rework
 
 from difficulty import *
-from fork import Fork
+from fork import Fork, Fork2
 
 from Cryptodome.Hash import SHA
 from Cryptodome.PublicKey import RSA
@@ -28,6 +28,7 @@ from Cryptodome.Signature import PKCS1_v1_5
 def digest_block(node, data, sdef, peer_ip, db_handler):
     """node param for imports"""
     fork = Fork()
+    fork2 = Fork2()
 
     class Transaction():
         def __init__(self):
