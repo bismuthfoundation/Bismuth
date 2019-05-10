@@ -1,12 +1,17 @@
 import sqlite3
 import re
 import log
+import functools
 
 def replace_regex(string,replace):
     replaced_string = re.sub(r'^{}'.format(replace), "", string)
     return replaced_string
 
-def aliases_update(f, ledger ,mode, app_log):
+def sql_trace_callback(log, id, statement):
+    line = f"SQL[{id}] {statement}"
+    log.warning(line)
+
+def aliases_update(f, ledger ,mode, app_log, trace_db_calls=False):
     """Where f is the aliases database file"""
     # index aliases
     if mode not in ("normal", "reindex"):
@@ -14,12 +19,16 @@ def aliases_update(f, ledger ,mode, app_log):
     
     # removed `conn.text_factory = str` because sqlites default `text_factory` is `str`
     with sqlite3.connect(ledger) as conn:
+        if trace_db_calls:
+            conn.set_trace_callback(functools.partial(sql_trace_callback,app_log,"ALIASES-LEDGER"))
         try:
             c = conn.cursor()
         except:
             app_log.error('Failed to create cursor for ledger')
 
         with sqlite3.connect(f) as ali:
+            if trace_db_calls:
+                ali.set_trace_callback(functools.partial(sql_trace_callback,app_log,"ALIASES-F"))
             try:
                 a = ali.cursor()
             except:

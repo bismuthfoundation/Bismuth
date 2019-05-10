@@ -79,7 +79,10 @@ appauthor = "Bismuth Foundation"
 
 
 # load config
-
+import functools
+def sql_trace_callback(log, id, statement):
+    line = f"SQL[{id}] {statement}"
+    log.warning(line)
 
 def bootstrap():
     try:
@@ -103,6 +106,9 @@ def bootstrap():
 def check_integrity(database):
     # check ledger integrity
     with sqlite3.connect(database) as ledger_check:
+        if node.trace_db_calls:
+            ledger_check.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"CHECK_INTEGRITY"))
+
         ledger_check.text_factory = str
         l = ledger_check.cursor()
 
@@ -150,7 +156,8 @@ def recompress_ledger(node, rebuild=False, depth=15000):
     else:
         shutil.copy(node.hyper_path, node.ledger_path + '.temp')
         hyper = sqlite3.connect(node.ledger_path + '.temp')
-
+    if node.trace_db_calls:
+       hyper.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"HYPER"))
     hyper.text_factory = str
     hyp = hyper.cursor()
 
@@ -455,6 +462,8 @@ def sequencing_check(db_handler):
 
     for chain in chains_to_check:
         conn = sqlite3.connect(chain)
+        if node.trace_db_calls:
+            conn.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN"))
         c = conn.cursor()
 
         # perform test on transaction table
@@ -472,6 +481,8 @@ def sequencing_check(db_handler):
 
                 for chain2 in chains_to_check:
                     conn2 = sqlite3.connect(chain2)
+                    if node.trace_db_calls:
+                        conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2"))
                     c2 = conn2.cursor()
                     node.logger.app_log.warning(f"Status: Chain {chain} transaction sequencing error at: {row[0]}. {row[0]} instead of {y}")
                     c2.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (row[0], -row[0],))
@@ -507,6 +518,8 @@ def sequencing_check(db_handler):
                 # print(row[0], y)
                 for chain2 in chains_to_check:
                     conn2 = sqlite3.connect(chain2)
+                    if node.trace_db_calls:
+                        conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2B"))
                     c2 = conn2.cursor()
                     node.logger.app_log.warning(
                         f"Status: Chain {chain} difficulty sequencing error at: {row[0]} {row[0]} instead of {y}")
@@ -582,7 +595,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         timer_operation = time.time()  # start counting
 
         if not client_instance.banned and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
-            db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger)
+            db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
 
         while not client_instance.banned and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
             try:
@@ -1268,7 +1281,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "aliasget":  # all for a single address, no protection against overlapping
                     if node.peers.is_allowed(peer_ip, data):
-                        aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log)
+                        aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log, trace_db_calls = node.trace_db_calls)
 
                         alias_address = receive(self.request)
                         result = db_handler_instance.aliasget(alias_address)
@@ -1279,7 +1292,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "aliasesget":  # only gets the first one, for multiple addresses
                     if node.peers.is_allowed(peer_ip, data):
-                        aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log)
+                        aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log, trace_db_calls = node.trace_db_calls)
                         aliases_request = receive(self.request)
                         results = db_handler_instance.aliasesget(aliases_request)
                         send(self.request, results)
@@ -1290,12 +1303,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "tokensupdate":
                     if node.peers.is_allowed(peer_ip, data):
                         tokens.tokens_update(node.index_db, node.ledger_path, "normal", node.logger.app_log,
-                                             node.plugin_manager)
+                                             node.plugin_manager, trace_db_calls = node.trace_db_calls)
                 #
                 elif data == "tokensget":
                     if node.peers.is_allowed(peer_ip, data):
                         tokens.tokens_update(node.index_db, node.ledger_path, "normal", node.logger.app_log,
-                                             node.plugin_manager)
+                                             node.plugin_manager, trace_db_calls = node.trace_db_calls)
                         tokens_address = receive(self.request)
 
                         tokens_user = db_handler_instance.tokens_user(tokens_address)
@@ -1326,7 +1339,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "addfromalias":
                     if node.peers.is_allowed(peer_ip, data):
 
-                        aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log)
+                        aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log, trace_db_calls = node.trace_db_calls)
                         alias_address = receive(self.request)
                         address_fetch = db_handler_instance.addfromalias(alias_address)
                         node.logger.app_log.warning(f"Fetched the following alias address: {address_fetch}")
@@ -1727,13 +1740,22 @@ def ram_init(database):
 
             if node.py_version >= 370:
                 temp_target = sqlite3.connect(node.ledger_ram_file, uri=True, isolation_level=None, timeout=1)
+                if node.trace_db_calls:
+                    temp_target.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"TEMP-TARGET"))
+
                 temp_source = sqlite3.connect(node.hyper_path, uri=True, isolation_level=None, timeout=1)
+                if node.trace_db_calls:
+                    temp_source.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"TEMP-SOURCE"))
                 temp_source.backup(temp_target)
                 temp_source.close()
 
             else:
                 source_db = sqlite3.connect(node.hyper_path, timeout=1)
+                if node.trace_db_calls:
+                    source_db.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SOURCE-DB"))
                 database.to_ram = sqlite3.connect(node.ledger_ram_file, uri=True, timeout=1, isolation_level=None)
+                if node.trace_db_calls:
+                    database.to_ram.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"DATABASE-TO-RAM"))
                 database.to_ram.text_factory = str
                 database.tr = database.to_ram.cursor()
 
@@ -1763,6 +1785,8 @@ def initial_db_check():
     # UPDATE mainnet DB if required
     if node.is_mainnet:
         upgrade = sqlite3.connect(node.ledger_path)
+        if node.trace_db_calls:
+            upgrade.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"INITIAL_DB_CHECK"))
         u = upgrade.cursor()
         try:
             u.execute("PRAGMA table_info(transactions);")
@@ -1777,9 +1801,9 @@ def initial_db_check():
             bootstrap()
 
     node.logger.app_log.warning(f"Status: Indexing tokens from ledger {node.ledger_path}")
-    tokens.tokens_update(node.index_db, node.ledger_path, "normal", node.logger.app_log, node.plugin_manager)
+    tokens.tokens_update(node.index_db, node.ledger_path, "normal", node.logger.app_log, node.plugin_manager, trace_db_calls = node.trace_db_calls)
     node.logger.app_log.warning("Status: Indexing aliases")
-    aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log)
+    aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log, trace_db_calls = node.trace_db_calls)
 
 
 
@@ -1920,6 +1944,7 @@ if __name__ == "__main__":
     node.genesis = config.genesis
     node.accept_peers = config.accept_peers
     node.full_ledger = config.full_ledger
+    node.trace_db_calls = config.trace_db_calls
 
     node.logger.app_log = log.log("node.log", node.debug_level, node.terminal_output)
     node.logger.app_log.warning("Configuration settings loaded")
@@ -1960,7 +1985,7 @@ if __name__ == "__main__":
             # sys.exit()
 
             node.apihandler = apihandler.ApiHandler(node.logger.app_log, config)
-            mp.MEMPOOL = mp.Mempool(node.logger.app_log, config, node.db_lock, node.is_testnet)
+            mp.MEMPOOL = mp.Mempool(node.logger.app_log, config, node.db_lock, node.is_testnet, trace_db_calls=node.trace_db_calls)
 
             check_integrity(node.hyper_path)
             #PLACEHOLDER FOR FRESH HYPERBLOCK BUILDER
@@ -1971,7 +1996,7 @@ if __name__ == "__main__":
             # db_manager = db_looper.DbManager(node.logger.app_log)
             # db_manager.start()
 
-            db_handler_initial = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger)
+            db_handler_initial = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
             ledger_check_heights(node, db_handler_initial)
             ram_init(db_handler_initial)
             node_block_init(db_handler_initial)

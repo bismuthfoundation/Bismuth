@@ -9,6 +9,7 @@ import sqlite3
 import sys
 import threading
 import time
+import functools
 
 # from decimal import *
 from Cryptodome.Hash import SHA
@@ -80,10 +81,14 @@ SQL_SELECT_TX_TO_SEND_SINCE = 'SELECT * FROM transactions where mergedts > ? ORD
 
 SQL_MEMPOOL_GET = "SELECT amount, openfield, operation FROM transactions WHERE address = ?;"
 
+def sql_trace_callback(log, id, statement):
+    line = f"SQL[{id}] {statement}"
+    log.warning(line) 
+
 class Mempool:
     """The mempool manager. Thread safe"""
 
-    def __init__(self, app_log, config=None, db_lock=None, testnet=False):
+    def __init__(self, app_log, config=None, db_lock=None, testnet=False, trace_db_calls=True):
         try:
             self.app_log = app_log
             self.config = config
@@ -99,6 +104,7 @@ class Mempool:
             self.peers_sent = dict()
             self.db = None
             self.cursor = None
+            self.trace_db_calls = trace_db_calls
 
             self.testnet = testnet
             if not self.testnet:
@@ -131,6 +137,8 @@ class Mempool:
                 self.db = sqlite3.connect(self.mempool_ram_file,
                                           uri=True, timeout=1, isolation_level=None,
                                           check_same_thread=False)
+                if self.trace_db_calls:
+                    self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log,"MEMPOOL-RAM"))
                 self.db.execute('PRAGMA journal_mode = WAL;')
                 self.db.execute("PRAGMA page_size = 4096;")
                 self.db.text_factory = str
@@ -141,6 +149,8 @@ class Mempool:
             else:
                 self.db = sqlite3.connect('mempool.db', timeout=1,
                                           check_same_thread=False)
+                if self.trace_db_calls:
+                    self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log,"MEMPOOL"))
                 self.db.text_factory = str
                 self.cursor = self.db.cursor()
 
@@ -153,6 +163,8 @@ class Mempool:
                     os.remove("mempool.db")
                     self.db = sqlite3.connect('mempool.db', timeout=1,
                                               check_same_thread=False)
+                    if self.trace_db_calls:
+                        self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log,"MEMPOOL"))
                     self.db.text_factory = str
                     self.cursor = self.db.cursor()
                     self.execute(SQL_CREATE)

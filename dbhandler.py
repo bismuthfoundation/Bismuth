@@ -6,9 +6,14 @@ import time
 import sqlite3
 import essentials
 from quantizer import *
+import functools
 
-class DbHandler:
-    def __init__(self, index_db, ledger_path, hyper_path, ram, ledger_ram_file, logger):
+def sql_trace_callback(log, id, statement):
+    line = f"SQL[{id}] {statement}"
+    log.warning(line) 
+
+class DbHandler:  
+    def __init__(self, index_db, ledger_path, hyper_path, ram, ledger_ram_file, logger, trace_db_calls=False):
         self.ram = ram
         self.ledger_ram_file = ledger_ram_file
         self.hyper_path = hyper_path
@@ -16,14 +21,20 @@ class DbHandler:
         self.logger = logger
 
         self.index = sqlite3.connect(index_db, timeout=1)
+        if trace_db_calls:
+            self.index.set_trace_callback(functools.partial(sql_trace_callback,logger.app_log,"INDEX"))
         self.index.text_factory = str
         self.index_cursor = self.index.cursor()
 
         self.hdd = sqlite3.connect(ledger_path, timeout=1)
+        if trace_db_calls:
+            self.hdd.set_trace_callback(functools.partial(sql_trace_callback,logger.app_log,"HDD"))
         self.hdd.text_factory = str
         self.h = self.hdd.cursor()
 
         self.hdd2 = sqlite3.connect(hyper_path, timeout=1)
+        if trace_db_calls:
+            self.hdd2.set_trace_callback(functools.partial(sql_trace_callback,logger.app_log,"HDD2"))
         self.hdd2.text_factory = str
         self.h2 = self.hdd2.cursor()
 
@@ -33,6 +44,8 @@ class DbHandler:
         else:
             self.conn = sqlite3.connect(self.hyper_path, uri=True, timeout=1)
 
+        if trace_db_calls:
+            self.conn.set_trace_callback(functools.partial(sql_trace_callback,logger.app_log,"CONN"))
         self.conn.execute('PRAGMA journal_mode = WAL;')
         self.conn.text_factory = str
         self.c = self.conn.cursor()
