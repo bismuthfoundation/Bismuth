@@ -60,7 +60,7 @@ from essentials import fee_calculate, checkpoint_set, replace_regex, download_fi
 from quantizer import *
 import connectionmanager
 from difficulty import *
-from fork import *
+from fork import Fork
 from digest import *
 
 # load config
@@ -68,8 +68,7 @@ from digest import *
 
 
 getcontext().rounding = ROUND_HALF_EVEN
-POW_FORK, FORK_AHEAD, FORK_DIFF = fork()
-
+fork = Fork()
 
 #from appdirs import *
 
@@ -1718,8 +1717,8 @@ def node_block_init(database):
     node.last_block = node.hdd_block  # ram equals drive at this point
     checkpoint_set(node, node.hdd_block)
 
-    if node.is_mainnet and (node.hdd_block >= POW_FORK - FORK_AHEAD):
-        limit_version(node)
+    if node.is_mainnet and (node.hdd_block >= fork.POW_FORK - fork.FORK_AHEAD):
+        fork.limit_version(node)
 
 def ram_init(database):
     try:

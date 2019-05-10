@@ -7,7 +7,6 @@ import base64
 import essentials
 import hashlib
 import staking
-from fork import *
 import mining
 import mining_heavy3
 import regnet
@@ -18,7 +17,7 @@ from essentials import checkpoint_set #rework
 from essentials import ledger_balance3 #rework
 
 from difficulty import *
-POW_FORK, FORK_AHEAD, FORK_DIFF = fork()
+from fork import Fork
 
 from Cryptodome.Hash import SHA
 from Cryptodome.PublicKey import RSA
@@ -28,6 +27,7 @@ from Cryptodome.Signature import PKCS1_v1_5
    
 def digest_block(node, data, sdef, peer_ip, db_handler):
     """node param for imports"""
+    fork = Fork()
 
     class Transaction():
         def __init__(self):
@@ -255,27 +255,50 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                             format(block_array.block_hash[:10], peer_ip, dummy[0]))
 
                 if node.is_mainnet:
-                    if block_array.block_height_new < POW_FORK:
-                        diff_save = mining.check_block(block_array.block_height_new, miner_tx.miner_address, miner_tx.nonce, previous_block.block_hash, diff[0],
-                                                       tx.received_timestamp, tx.q_received_timestamp, previous_block.q_timestamp_last,
-                                                       peer_ip=peer_ip, app_log=node.logger.app_log)
+                    if block_array.block_height_new < fork.POW_FORK:
+                        diff_save = mining.check_block(block_array.block_height_new,
+                                                       miner_tx.miner_address,
+                                                       miner_tx.nonce,
+                                                       previous_block.block_hash,
+                                                       diff[0],
+                                                       tx.received_timestamp,
+                                                       tx.q_received_timestamp,
+                                                       previous_block.q_timestamp_last,
+                                                       peer_ip=peer_ip,
+                                                       app_log=node.logger.app_log)
                     else:
-                        diff_save = mining_heavy3.check_block(block_array.block_height_new, miner_tx.miner_address, miner_tx.nonce, previous_block.block_hash,
+                        diff_save = mining_heavy3.check_block(block_array.block_height_new,
+                                                              miner_tx.miner_address,
+                                                              miner_tx.nonce,
+                                                              previous_block.block_hash,
                                                               diff[0],
-                                                              tx.received_timestamp, tx.q_received_timestamp,
+                                                              tx.received_timestamp,
+                                                              tx.q_received_timestamp,
                                                               previous_block.q_timestamp_last,
-                                                              peer_ip=peer_ip, app_log=node.logger.app_log)
+                                                              peer_ip=peer_ip,
+                                                              app_log=node.logger.app_log)
                 elif node.is_testnet:
-                    diff_save = mining_heavy3.check_block(block_array.block_height_new, miner_tx.miner_address, miner_tx.nonce, previous_block.block_hash,
+                    diff_save = mining_heavy3.check_block(block_array.block_height_new,
+                                                          miner_tx.miner_address, miner_tx.nonce,
+                                                          previous_block.block_hash,
                                                           diff[0],
-                                                          tx.received_timestamp, tx.q_received_timestamp, previous_block.q_timestamp_last,
-                                                          peer_ip=peer_ip, app_log=node.logger.app_log)
+                                                          tx.received_timestamp,
+                                                          tx.q_received_timestamp,
+                                                          previous_block.q_timestamp_last,
+                                                          peer_ip=peer_ip,
+                                                          app_log=node.logger.app_log)
                 else:
                     # it's regnet then, will use a specific fake method here.
-                    diff_save = mining_heavy3.check_block(block_array.block_height_new, miner_tx.miner_address, miner_tx.nonce, previous_block.block_hash,
+                    diff_save = mining_heavy3.check_block(block_array.block_height_new,
+                                                          miner_tx.miner_address,
+                                                          miner_tx.nonce,
+                                                          previous_block.block_hash,
                                                           regnet.REGNET_DIFF,
-                                                          tx.received_timestamp, tx.q_received_timestamp, previous_block.q_timestamp_last,
-                                                          peer_ip=peer_ip, app_log=node.logger.app_log)
+                                                          tx.received_timestamp,
+                                                          tx.q_received_timestamp,
+                                                          previous_block.q_timestamp_last,
+                                                          peer_ip=peer_ip,
+                                                          app_log=node.logger.app_log)
 
                 fees_block = []
                 mining_reward = 0  # avoid warning

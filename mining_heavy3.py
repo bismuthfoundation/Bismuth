@@ -16,15 +16,13 @@ from quantizer import *
 
 import regnet
 
+from fork import Fork
+fork = Fork()
+
 __version__ = '0.1.3'
 
 
 print("Mining_Heavy3 v{}".format(__version__))
-
-
-POW_FORK = 854660
-FORK_DIFF = 108.9
-
 
 RND_LEN = 0
 
@@ -96,10 +94,10 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
     :param app_log:
     :return:
     """
-    if block_height_new == POW_FORK - 1 :
-        diff0 = FORK_DIFF
-    if block_height_new == POW_FORK:
-        diff0 = FORK_DIFF
+    if block_height_new == fork.POW_FORK - 1 :
+        diff0 = fork.FORK_DIFF
+    if block_height_new == fork.POW_FORK:
+        diff0 = fork.FORK_DIFF
     if is_regnet:
         diff0 = regnet.REGNET_DIFF - 8
 
