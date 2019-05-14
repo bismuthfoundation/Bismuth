@@ -94,10 +94,7 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
     :param app_log:
     :return:
     """
-    if block_height_new == fork.POW_FORK - 1 :
-        diff0 = fork.FORK_DIFF
-    if block_height_new == fork.POW_FORK:
-        diff0 = fork.FORK_DIFF
+
     if is_regnet:
         diff0 = regnet.REGNET_DIFF - 8
 

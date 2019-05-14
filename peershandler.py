@@ -447,7 +447,7 @@ class Peers:
         :param port:
         :return:
         """
-        host_port = host + ":" + str(port)
+        host_port = f"{host}:{port}"
         try:
             tries, timeout = self.tried[host_port]
         except:
@@ -476,7 +476,7 @@ class Peers:
         """
         try:
             if port:
-                host_port = host + ":" + str(port)
+                host_port = f"{host}:{port}"
             else:
                 host_port = host
             if host_port in self.tried:

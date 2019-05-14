@@ -7,12 +7,15 @@ import sqlite3
 import essentials
 from quantizer import *
 import functools
+from fork import Fork
+
 
 def sql_trace_callback(log, id, statement):
     line = f"SQL[{id}] {statement}"
-    log.warning(line) 
+    log.warning(line)
 
-class DbHandler:  
+
+class DbHandler:
     def __init__(self, index_db, ledger_path, hyper_path, ram, ledger_ram_file, logger, trace_db_calls=False):
         self.ram = ram
         self.ledger_ram_file = ledger_ram_file
@@ -37,7 +40,6 @@ class DbHandler:
             self.hdd2.set_trace_callback(functools.partial(sql_trace_callback,logger.app_log,"HDD2"))
         self.hdd2.text_factory = str
         self.h2 = self.hdd2.cursor()
-
 
         if self.ram:
             self.conn = sqlite3.connect(self.ledger_ram_file, uri=True, isolation_level=None, timeout=1)
@@ -142,10 +144,7 @@ class DbHandler:
 
         self.execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,))
         self.commit(self.conn)
-
         return backup_data
-
-
 
     def rollback_to(self, block_height):
         self.h.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height,))
@@ -220,12 +219,19 @@ class DbHandler:
                                   str(mining_reward), "0", "0", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
 
-        self.execute_param(self.c, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                                 (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Hypernode Payouts",
-                                  "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16",
-                                  "8", "0", "0", mirror_hash, "0", "0", "0", "0"))
-        self.commit(self.conn)
+    def hn_reward(self,node,block_array,miner_tx,mirror_hash):
+        fork = Fork()
 
+        if node.last_block >= fork.POW_FORK or (node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET):
+            self.reward_sum = "24"
+        else:
+            self.reward_sum = "8"
+
+        self.execute_param(self.c, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                           (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Hypernode Payouts",
+                            "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16",
+                            self.reward_sum, "0", "0", mirror_hash, "0", "0", "0", "0"))
+        self.commit(self.conn)
 
     def commit(self, connection):
         """Secure commit for slow nodes"""

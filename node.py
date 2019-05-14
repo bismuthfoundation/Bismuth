@@ -11,78 +11,54 @@
 # issues with db? perhaps you missed a commit() or two
 
 
+VERSION = "4.3.0.0"
 
-VERSION = "4.2.9.3"
-
-import base64
+import functools
 import glob
-import hashlib
-import math
-import os
-import queue
-import re
+import platform
 import shutil
 import socketserver
 import sqlite3
-import sys
 import tarfile
 import threading
-import time
-from hashlib import blake2b
-import platform
-import requests
-import socks
-from Cryptodome.Hash import SHA
-from Cryptodome.PublicKey import RSA
-from Cryptodome.Signature import PKCS1_v1_5
 
 import aliases
 # Bis specific modules
 import apihandler
-from libs import node, logger, keys, client
-
-from connections import send, receive
-
+import connectionmanager
 import dbhandler
-import essentials
-import wallet_keys
 import log
-import mempool as mp
-import mining
-import mining_heavy3
 import options
 import peershandler
 import plugins
-import regnet
-import staking
 import tokensv2 as tokens
-from essentials import fee_calculate, checkpoint_set, replace_regex, download_file, most_common
-from quantizer import *
-import connectionmanager
-from difficulty import *
-from fork import Fork
+import wallet_keys
+from connections import send, receive
 from digest import *
+from essentials import fee_calculate, download_file
+from libs import node, logger, keys, client
+from fork import Fork
 
-# load config
-
-
+#todo: migrate this to polysign\signer_crw.py
+from Cryptodome.Hash import SHA
+from Cryptodome.PublicKey import RSA
+from Cryptodome.Signature import PKCS1_v1_5
+import base64
+#/todo
 
 getcontext().rounding = ROUND_HALF_EVEN
-fork = Fork()
 
-#from appdirs import *
+fork = Fork()
 
 appname = "Bismuth"
 appauthor = "Bismuth Foundation"
 
 # nodes_ban_reset=config.nodes_ban_reset
 
-
-# load config
-import functools
 def sql_trace_callback(log, id, statement):
     line = f"SQL[{id}] {statement}"
     log.warning(line)
+
 
 def bootstrap():
     try:
@@ -125,6 +101,7 @@ def check_integrity(database):
 
     if redownload and node.is_mainnet:
         bootstrap()
+
 
 def rollback(node, db_handler, block_height):
     node.logger.app_log.warning(f"Status: Rolling back below: {block_height}")
@@ -225,7 +202,6 @@ def ledger_check_heights(node, db_handler):
 
     if os.path.exists(node.hyper_path):
 
-
         # cross-integrity check
         hdd_block_max = db_handler.block_height_max()
         hdd_block_max_diff = db_handler.block_height_max_diff()
@@ -237,6 +213,8 @@ def ledger_check_heights(node, db_handler):
         if hdd_block_max == hdd2_block_last == hdd2_block_last_misc == hdd_block_max_diff and node.hyper_recompress:  # cross-integrity check
             node.logger.app_log.warning("Status: Recompressing hyperblocks (keeping full ledger)")
             recompress = True
+
+            #print (hdd_block_max,hdd2_block_last,node.hyper_recompress)
         elif hdd_block_max == hdd2_block_last and not node.hyper_recompress:
             node.logger.app_log.warning("Status: Hyperblock recompression skipped")
             recompress = False
@@ -252,7 +230,6 @@ def ledger_check_heights(node, db_handler):
 
             recompress = True
 
-
     else:
         node.logger.app_log.warning("Status: Compressing ledger to Hyperblocks")
         recompress = True
@@ -263,8 +240,6 @@ def ledger_check_heights(node, db_handler):
 
 def bin_convert(string):
     return ''.join(format(ord(x), '8b').replace(' ', '0') for x in string)
-
-
 
 
 def balanceget(balance_address, db_handler):
@@ -347,6 +322,7 @@ def balanceget(balance_address, db_handler):
     balance_no_mempool = float(credit_ledger) - float(debit_ledger) - float(fees) + float(rewards)
     # node.logger.app_log.info("Mempool: Projected transction address balance: " + str(balance))
     return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
+
 
 def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
     node.logger.app_log.info(f"Rollback operation on {block_hash_delete} initiated by {peer_ip}")
@@ -445,6 +421,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
         rollback = {"timestamp": my_time, "ip": peer_ip, "skipped": True, "reason": reason}
         node.plugin_manager.execute_action_hook('rollback', rollback)
         node.logger.app_log.info(reason)
+
 
 def sequencing_check(db_handler):
     try:
@@ -1581,7 +1558,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             extra = True
                             callback(data, self.request)
 
-                    if not extra:                        
+                    if not extra:
                         raise ValueError("Unexpected error, received: " + str(data)[:32] + ' ...')
 
                 if not time.time() <= timer_operation + timeout_operation:
@@ -1608,21 +1585,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             node.logger.app_log.warning(f"Inbound: Closing connection to old {peer_ip} node: {node.peers.ip_to_mainnet['peer_ip']}")
         return
 
-
-def ensure_good_peer_version(peer_ip):
-    """
-    cleanup after HF, kepts here for future use.
-    """
-    """
-    # If we are post fork, but we don't know the version, then it was an old connection, close.
-    if is_mainnet and (node.last_block >= POW_FORK) :
-        if peer_ip not in node.peers.ip_to_mainnet:
-            raise ValueError("Outbound: disconnecting old node {}".format(peer_ip));
-        elif node.peers.ip_to_mainnet[peer_ip] not in node.version_allow:
-            raise ValueError("Outbound: disconnecting old node {} - {}".format(peer_ip, node.peers.ip_to_mainnet[peer_ip]));
-    """
-
-
 # client thread
 # if you "return" from the function, the exception code will node be executed and client thread will hang
 
@@ -1647,6 +1609,7 @@ def setup_net_type():
     if "testnet" in node.version or node.is_testnet:
         node.is_testnet = True
         node.is_mainnet = False
+        node.version_allow = "testnet"
 
     if "regnet" in node.version or node.is_regnet:
         node.is_regnet = True
@@ -1681,12 +1644,12 @@ def setup_net_type():
                 node.logger.app_log.error("Too low allowed version, check config.txt")
                 sys.exit()
 
-    if node.is_testnet:
+    if "testnet" in node.version or node.is_testnet:
         node.port = 2829
         node.hyper_path = "static/test.db"
         node.ledger_path = "static/test.db"  # for tokens
         node.ledger_ram_file = "file:ledger_testnet?mode=memory&cache=shared"
-        node.hyper_recompress = False
+        #node.hyper_recompress = False
         node.peerfile = "peers_test.txt"
         node.index_db = "static/index_test.db"
         if not 'testnet' in node.version:
@@ -1705,7 +1668,7 @@ def setup_net_type():
         else:
             print("Not redownloading test db")
 
-    if node.is_regnet:
+    if "regnet" in node.version or node.is_regnet:
         node.port = regnet.REGNET_PORT
         node.hyper_path = regnet.REGNET_DB
         node.ledger_path = regnet.REGNET_DB
@@ -1729,9 +1692,7 @@ def node_block_init(database):
     node.hdd_block = database.block_height_max()
     node.last_block = node.hdd_block  # ram equals drive at this point
     checkpoint_set(node, node.hdd_block)
-
-    if node.is_mainnet and (node.hdd_block >= fork.POW_FORK - fork.FORK_AHEAD):
-        fork.limit_version(node)
+    node.difficulty = difficulty(node, db_handler_initial)  # check diff for miner
 
 def ram_init(database):
     try:
@@ -1762,7 +1723,7 @@ def ram_init(database):
                 query = "".join(line for line in source_db.iterdump())
                 database.to_ram.executescript(query)
                 source_db.close()
-                
+
             node.logger.app_log.warning("Status: Hyperblock ledger moved to RAM")
 
             #source = sqlite3.connect('existing_db.db')
@@ -1970,7 +1931,7 @@ if __name__ == "__main__":
         # get the potential extra command prefixes from plugin
         extra_commands = {}  # global var, used by the server part.
         extra_commands = node.plugin_manager.execute_filter_hook('extra_commands_prefixes', extra_commands)
-        print("Extra prefixes: ", ",".join(extra_commands.keys()))                                        
+        print("Extra prefixes: ", ",".join(extra_commands.keys()))
 
         setup_net_type()
         load_keys()
@@ -1997,6 +1958,7 @@ if __name__ == "__main__":
             # db_manager.start()
 
             db_handler_initial = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
+
             ledger_check_heights(node, db_handler_initial)
             ram_init(db_handler_initial)
             node_block_init(db_handler_initial)

@@ -323,7 +323,7 @@ def txsend(socket, arg1, arg2, arg3, arg4, arg5):
     connections.send(s, "txsend")
 
     remote_tx_timestamp = '%.2f' % time.time()
-    remote_tx_privkey = arg1 #node will dump pubkey+address from this
+    remote_tx_privkey = arg1  # node will dump pubkey+address from this
     remote_tx_recipient = arg2
     remote_tx_amount = arg3
     remote_tx_operation = arg4

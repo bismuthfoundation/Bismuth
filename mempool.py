@@ -11,18 +11,18 @@ import threading
 import time
 import functools
 
-# from decimal import *
 from Cryptodome.Hash import SHA
-from Cryptodome.PublicKey import RSA
-from Cryptodome.Signature import PKCS1_v1_5
+#from Cryptodome.PublicKey import RSA
+#from Cryptodome.Signature import PKCS1_v1_5
 
 import essentials
 from quantizer import *
-# import json
+from polysign.signerfactory import SignerFactory
 
-__version__ = "0.0.5e"
+__version__ = "0.0.5f"
 
 """
+0.0.5f - Using polysign
 0.0.5e - add mergedts timestamp to tx for better handling of late txs
          quicker unfreeze
          less strict freezing
@@ -83,7 +83,7 @@ SQL_MEMPOOL_GET = "SELECT amount, openfield, operation FROM transactions WHERE a
 
 def sql_trace_callback(log, id, statement):
     line = f"SQL[{id}] {statement}"
-    log.warning(line) 
+    log.warning(line)
 
 class Mempool:
     """The mempool manager. Thread safe"""
@@ -526,31 +526,12 @@ class Mempool:
                             continue
 
                         # Then more cpu heavy tests
-                        hashed_address = hashlib.sha224(base64.b64decode(mempool_public_key_hashed)).hexdigest()
-                        if mempool_address != hashed_address:
-                            mempool_result.append("Mempool: Attempt to spend from a wrong address {} instead of {}"
-                                                  .format(mempool_address, hashed_address))
-                            continue
-                        # Crypto tests - more cpu hungry
-                        try:
-                            essentials.validate_pem(mempool_public_key_hashed)
-                        except ValueError as e:
-                            mempool_result.append("Mempool: Public key does not validate: {}".format(e))
-                        # recheck sig
-                        try:
-                            mempool_public_key = RSA.importKey(base64.b64decode(mempool_public_key_hashed))
-                            mempool_signature_dec = base64.b64decode(mempool_signature_enc)
-                            verifier = PKCS1_v1_5.new(mempool_public_key)
-                            tx_signed = (mempool_timestamp, mempool_address, mempool_recipient, mempool_amount,
-                                         mempool_operation, mempool_openfield)
-                            my_hash = SHA.new(str(tx_signed).encode("utf-8"))
-                            if not verifier.verify(my_hash, mempool_signature_dec):
-                                mempool_result.append("Mempool: Wrong signature ({}) for data {} in mempool insert attempt".
-                                                      format(mempool_signature_enc, tx_signed))
-                                continue
-                        except Exception as e:
-                            mempool_result.append("Mempool: Unexpected error checking sig: {}".format(e))
-                            continue
+                        buffer = str((mempool_timestamp, mempool_address, mempool_recipient, mempool_amount,
+                                      mempool_operation, mempool_openfield)).encode("utf-8")
+                        #  Will raise if error
+                        SignerFactory.verify_bis_signature(mempool_signature_enc, mempool_public_key_hashed,
+                                                           buffer,
+                                                           mempool_address)
 
                         # Only now, process the tests requiring db access
                         mempool_in = self.sig_check(mempool_signature_enc)
@@ -636,6 +617,8 @@ class Mempool:
                         balance_pre = quantize_eight(credit - debit_ledger - fees + rewards)
 
                         fee = essentials.fee_calculate(mempool_openfield, mempool_operation, last_block)
+
+                        #print("Balance", balance, fee)
 
                         if quantize_eight(mempool_amount) > quantize_eight(balance_pre): #mp amount is already included in "balance" var! also, that tx might already be in the mempool
                             mempool_result.append("Mempool: Sending more than owned")

@@ -1,8 +1,12 @@
 import threading
 import queue
 import sys
+import platform
 
 class Node():
+    def platform(self):
+        if "Linux" in platform.system():
+            return True
 
     def __init__(self):
         self.logger = None
@@ -54,9 +58,11 @@ class Node():
         self.last_block_ago = None
         self.last_block_timestamp = 0
         self.accept_peers = True
-        self.difficulty = [0,0,0,0,0,0,0,0]
+        self.difficulty = None
         self.ledger_temp = None
         self.hyper_temp = None
         self.q = queue.Queue()
         self.py_version= int(str(sys.version_info.major) + str(sys.version_info.minor) + str(sys.version_info.micro))
+
         self.keys = None
+        self.linux = self.platform()

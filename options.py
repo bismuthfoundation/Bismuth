@@ -87,3 +87,8 @@ class Get:
         # then override with optional custom config
         if path.exists("config_custom.txt"):
             self.load_file("config_custom.txt")
+        """
+        if "regnet" in self.version:
+            print("Regnet, forcing ram = False")
+            self.ram = False
+        """

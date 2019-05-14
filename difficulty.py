@@ -2,12 +2,14 @@ from decimal import *
 import regnet
 import math
 import time
-from fork import Fork
+from fork import *
 from quantizer import *
+from fork import Fork
 
 def difficulty(node, db_handler):
     try:
         fork = Fork()
+
         db_handler.execute(db_handler.c, "SELECT * FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 2")
         result = db_handler.c.fetchone()
 
@@ -60,16 +62,11 @@ def difficulty(node, db_handler):
         difficulty_new_adjusted = quantize_ten(diff_block_previous + diff_adjustment)
         difficulty = difficulty_new_adjusted
 
+        #fork handling
         if node.is_mainnet:
             if block_height == fork.POW_FORK - fork.FORK_AHEAD:
                 fork.limit_version(node)
-            if block_height == fork.POW_FORK - 1:
-                difficulty = fork.FORK_DIFF
-            if block_height == fork.POW_FORK:
-                difficulty = fork.FORK_DIFF
-                # Remove mainnet0018 from allowed
-                fork.limit_version(node)
-                # disconnect our outgoing connections
+        #fork handling
 
         diff_drop_time = Decimal(180)
 

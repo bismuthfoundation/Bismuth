@@ -8,6 +8,7 @@ import sqlite3
 from decimal import *
 from quantizer import *
 import process_search
+from essentials import address_validate
 
 class Tar():
     def __init__(self):
@@ -18,11 +19,11 @@ class Tar():
         self.hdd2 = sqlite3.connect("hyper.db", timeout=1)
         self.hdd2.text_factory = str
         self.h2 = self.hdd2.cursor()
-        
+
         self.errors = 0
         self.h_name = "ledger"
         self.h2_name = "hyperblocks"
-        
+
 tar_obj = Tar()
 
 def vacuum(cursor, name):
@@ -88,8 +89,9 @@ def balance_from_cursor(cursor, address):
 
     return quantize_eight(credit-debit)
 
+
 def balance_differences():
-    
+
     print ("Selecting all addresses from full ledger for errors")
     tar_obj.h.execute ("SELECT distinct(recipient) FROM transactions group by recipient;")
     addresses = tar_obj.h.fetchall ()
@@ -104,7 +106,11 @@ def balance_differences():
             check = '> Ko'
             tar_obj.errors += 1
 
+        """
         if address.lower() != address or len(address) != 56 and (balance1 or balance2) != 0:
+            print (f"{address} > wrong recipient")
+        """
+        if not address_validate(address) and (balance1 or balance2) != 0:
             print (f"{address} > wrong recipient")
 
 
@@ -129,7 +135,7 @@ if tar_obj.errors > 0:
     print("There were errors, cannot continue")
     tar_obj.hdd.close()
     tar_obj.hdd2.close()
-    
+
 else:
     vacuum(tar_obj.h, tar_obj.h_name)
     vacuum(tar_obj.h2, tar_obj.h2_name)

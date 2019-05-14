@@ -3,7 +3,7 @@
 
 from Cryptodome.Signature import PKCS1_v1_5
 from Cryptodome.Hash import SHA
-from essentials import fee_calculate
+from essentials import fee_calculate, address_validate
 
 import base64
 import time
@@ -31,17 +31,20 @@ print('Argument List: %s' % ', '.join(sys.argv))
 
 # get balance
 
-# include mempool fees
-mempool = sqlite3.connect('mempool.db')
-mempool.text_factory = str
-m = mempool.cursor()
-m.execute("SELECT count(amount), sum(amount) FROM transactions WHERE address = ?;", (address,))
-result = m.fetchall()[0]
-if result[1] != None:
-    debit_mempool = float('%.8f' % (float(result[1]) + float(result[1]) * 0.001 + int(result[0]) * 0.01))
-else:
+if 'regnet' in config.version:
     debit_mempool = 0
-# include mempool fees
+else:
+    # include mempool fees
+    mempool = sqlite3.connect('mempool.db')
+    mempool.text_factory = str
+    m = mempool.cursor()
+    m.execute("SELECT count(amount), sum(amount) FROM transactions WHERE address = ?;", (address,))
+    result = m.fetchall()[0]
+    if result[1] != None:
+        debit_mempool = float('%.8f' % (float(result[1]) + float(result[1]) * 0.001 + int(result[0]) * 0.01))
+    else:
+        debit_mempool = 0
+    # include mempool fees
 
 
 conn = sqlite3.connect(ledger_path)
@@ -50,8 +53,11 @@ c = conn.cursor()
 
 s = socks.socksocket()
 s.settimeout(10)
-s.connect(("bismuth.live", 5658))
-#s.connect(("127.0.0.1", 5658))
+# s.connect(("bismuth.live", 5658))
+if 'regnet' in config.version:
+    s.connect(("127.0.0.1", 3030))
+else:
+    s.connect(("127.0.0.1", 5658))
 
 connections.send (s, "balanceget", 10)
 connections.send (s, address, 10)  # change address here to view other people's transactions
@@ -63,15 +69,8 @@ balance = stats_account[0]
 #rewards = stats_account[4]
 
 
-print("Transction address: %s" % address)
-print("Transction address balance: %s" % balance)
-
-# get balance
-def address_validate(address):
-    if re.match ('[abcdef0123456789]{56}', address):
-        return True
-    else:
-        return False
+print("Transaction address: %s" % address)
+print("Transaction address balance: %s" % balance)
 
 try:
     amount_input = sys.argv[1]
@@ -84,7 +83,7 @@ except IndexError:
     recipient_input = input("Recipient: ")
 
 if not address_validate(recipient_input):
-    print("Wrong address format")
+    print("Wrong recipient address format")
     exit(1)
 
 try:
@@ -116,41 +115,37 @@ except ValueError:
     is_float = 0
     exit(1)
 
-if len(str(recipient_input)) != 56:
-    print("Wrong address length")
-else:
-    timestamp = '%.2f' % time.time()
-    transaction = (str(timestamp), str(address), str(recipient_input), '%.8f' % float(amount_input), str(operation_input), str(openfield_input))  # this is signed
-    # print transaction
 
-    h = SHA.new(str(transaction).encode("utf-8"))
-    signer = PKCS1_v1_5.new(key)
-    signature = signer.sign(h)
-    signature_enc = base64.b64encode(signature)
-    txid = signature_enc[:56]
+timestamp = '%.2f' % time.time()
+transaction = (str(timestamp), str(address), str(recipient_input), '%.8f' % float(amount_input), str(operation_input), str(openfield_input))  # this is signed
+print(transaction)
 
-    print("Encoded Signature: %s" % signature_enc.decode("utf-8"))
-    print("Transaction ID: %s" % txid.decode("utf-8"))
+h = SHA.new(str(transaction).encode("utf-8"))
+signer = PKCS1_v1_5.new(key)
+signature = signer.sign(h)
+signature_enc = base64.b64encode(signature)
+txid = signature_enc[:56]
 
-    verifier = PKCS1_v1_5.new(key)
+print("Encoded Signature: %s" % signature_enc.decode("utf-8"))
+print("Transaction ID: %s" % txid.decode("utf-8"))
 
-    if verifier.verify(h, signature):
-        if float(amount_input) < 0:
-            print("Signature OK, but cannot use negative amounts")
+verifier = PKCS1_v1_5.new(key)
 
-        elif float(amount_input) + float(fee) > float(balance):
-            print("Mempool: Sending more than owned")
+if verifier.verify(h, signature):
+    if float(amount_input) < 0:
+        print("Signature OK, but cannot use negative amounts")
 
-        else:
-            tx_submit = (str (timestamp), str (address), str (recipient_input), '%.8f' % float (amount_input), str (signature_enc.decode ("utf-8")), str (public_key_hashed.decode("utf-8")), str (operation_input), str (openfield_input))
-            while True:
-                connections.send (s, "mpinsert", 10)
-                connections.send (s, tx_submit, 10)
-                reply = connections.receive (s, 10)
-                print ("Client: {}".format (reply))
-                break
+    elif float(amount_input) + float(fee) > float(balance):
+        print("Mempool: Sending more than owned")
+
     else:
-        print("Invalid signature")
-        # enter transaction end
+        tx_submit = (str (timestamp), str (address), str (recipient_input), '%.8f' % float (amount_input), str (signature_enc.decode ("utf-8")), str (public_key_hashed.decode("utf-8")), str (operation_input), str (openfield_input))
+        connections.send (s, "mpinsert", 10)
+        connections.send (s, tx_submit, 10)
+        reply = connections.receive (s, 10)
+        print ("Client: {}".format (reply))
+else:
+    print("Invalid signature")
+    # enter transaction end
 
 s.close()

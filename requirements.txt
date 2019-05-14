@@ -10,6 +10,9 @@ pycryptodomex
 pillow
 pyqrcode
 matplotlib
+ed25519
+base58
+coincurve
 
 # request may be needed by helper scripts
 requests

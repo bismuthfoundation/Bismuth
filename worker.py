@@ -85,10 +85,6 @@ def worker(host, port, node):
         else:
             raise ValueError(f"Outbound: Node protocol version of {this_client} mismatch")
 
-        # If we are post pow fork, then the peer has getversion command
-        # if node.last_block >= POW_FORK - FORK_AHEAD:
-        # Peers that are not up to date will disconnect since they don't know that command.
-        # That is precisely what we need :D
         send(s, "getversion")
         peer_version = receive(s)
         if peer_version not in node.version_allow:
@@ -102,7 +98,6 @@ def worker(host, port, node):
         node.logger.app_log.info(f"Could not connect to {this_client}: {e}")
         return  # can return here, because no lists are affected yet
 
-    # if node.last_block >= POW_FORK - FORK_AHEAD:
     node.peers.store_mainnet(host, peer_version)
     try:
         peer_ip = s.getpeername()[0]

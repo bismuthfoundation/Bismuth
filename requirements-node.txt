@@ -8,3 +8,6 @@
 PySocks
 pycryptodomex
 requests
+ed25519
+base58
+coincurve

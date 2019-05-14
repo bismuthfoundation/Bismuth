@@ -11,8 +11,14 @@ workspace/
 *.log
 privkey.der
 pubkey.der
+wallet.der
 address.txt
 mempool.db
 ledger.db
+static/regmode.
+static/regmode.*
+static/index_reg.*
 peers.txt
+heavy3a.bin
 /theme
+config_custom.txt

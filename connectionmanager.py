@@ -48,11 +48,17 @@ class ConnectionManager (threading.Thread):
 			# status Hook
 			uptime = int(time.time() - self.node.startup_time)
 
-			status = {"protocolversion": self.node.version, "walletversion": self.node.app_version, "testnet": self.node.is_testnet,
+			status = {"protocolversion": self.node.version,
+					  "walletversion": self.node.app_version,
+					  "testnet": self.node.is_testnet,
 					  # config data
-					  "blocks": self.node.last_block, "timeoffset": 0, "connections": self.node.peers.consensus_size,
+					  "blocks": self.node.last_block,
+					  "timeoffset": 0,
+					  "connections": self.node.peers.consensus_size,
 					  "difficulty": self.node.difficulty[0],  # live status, bitcoind format
-					  "threads": threading.active_count(), "uptime": uptime, "consensus": self.node.peers.consensus,
+					  "threads": threading.active_count(),
+					  "uptime": uptime,
+					  "consensus": self.node.peers.consensus,
 					  "consensus_percent": self.node.peers.consensus_percentage,
 					  "last_block_ago": self.node.last_block_ago}  # extra data
 			if self.node.is_regnet:
