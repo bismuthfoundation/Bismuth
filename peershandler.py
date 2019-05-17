@@ -497,7 +497,7 @@ class Peers:
         for client in remove:
             del self.tried[client]
 
-    def client_loop(self, node, target):
+    def client_loop(self, node, this_target):
         """Manager loop called every 30 sec. Handles maintenance"""
         try:
             for key, value in self.peer_dict.items():
@@ -509,7 +509,7 @@ class Peers:
                 if threading.active_count() / 3 < self.config.thread_limit and self.can_connect_to(host, port):
                     self.app_log.info(f"Will attempt to connect to {host}:{port}")
                     self.add_try(host, port)
-                    t = threading.Thread(target=target, args=(host, port, node), name=f"out_{host}_{port}")  # threaded connectivity to nodes here
+                    t = threading.Thread(target=this_target, args=(host, port, node), name=f"out_{host}_{port}")  # threaded connectivity to nodes here
                     self.app_log.info(f"---Starting a client thread {threading.currentThread()} ---")
                     t.daemon = True
                     t.start()

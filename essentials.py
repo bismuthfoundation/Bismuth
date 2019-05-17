@@ -129,54 +129,6 @@ def ledger_balance3(address, cache, db_handler):
     return cache[address]
 
 
-def db_to_drive(node, db_handler):
-    try:
-        db_handler.execute(db_handler.c, "SELECT max(block_height) FROM transactions")
-        node.last_block = db_handler.c.fetchone()[0]
-
-        node.logger.app_log.warning(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
-
-        db_handler.execute_param(db_handler.c, "SELECT * FROM transactions WHERE block_height > ? "
-                                               "OR block_height < ? ORDER BY block_height ASC",
-                                 (node.hdd_block, -node.hdd_block))
-
-        result1 = db_handler.c.fetchall()
-
-        for x in result1:  # we want to save to ledger.db
-            db_handler.execute_param(db_handler.h, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                                     (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
-        db_handler.commit(db_handler.hdd)
-
-        if node.is_mainnet and node.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
-            for x in result1:
-                db_handler.execute_param(db_handler.h2, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                                         (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
-            db_handler.commit(db_handler.hdd2)
-
-        db_handler.execute_param(db_handler.c, "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
-                                 (node.hdd_block,))
-        result2 = db_handler.c.fetchall()
-
-        for x in result2:  # we want to save to ledger.db from RAM/hyper.db depending on ram conf
-            db_handler.execute_param(db_handler.h, "INSERT INTO misc VALUES (?,?)", (x[0], x[1]))
-        db_handler.commit(db_handler.hdd)
-
-        # db_handler.execute_many(db_handler.h, "INSERT INTO misc VALUES (?,?)", result2)
-
-        if not node.is_testnet and node.ram:  # we want to save to hyper.db from RAM
-            for x in result2:
-                db_handler.execute_param(db_handler.h2, "INSERT INTO misc VALUES (?,?)", (x[0], x[1]))
-            db_handler.commit(db_handler.hdd2)
-
-        db_handler.execute(db_handler.h, "SELECT max(block_height) FROM transactions")
-        node.hdd_block = db_handler.h.fetchone()[0]
-
-        node.logger.app_log.warning(f"Chain: {len(result1)} txs moved to HDD")
-    except Exception as e:
-        node.logger.app_log.warning(f"Chain: Exception Moving new data to HDD: {e}")
-        # app_log.warning("Ledger digestion ended")  # dup with more informative digest_block notice.
-
-
 def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, public_key_hashed) -> Union[bool, tuple]:
     if not key:
         raise BaseException("The wallet is locked, you need to provide a decrypted key")
@@ -310,6 +262,7 @@ def keys_load_new(keyfile="wallet.der"):
 
 
 # Dup code, not pretty, but would need address module to avoid dup - Belongs to polysign module.
+
 def address_validate(address:str) -> bool:
     if RE_RSA_ADDRESS.match(address):
         return True  # RSA

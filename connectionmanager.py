@@ -11,6 +11,7 @@ class ConnectionManager (threading.Thread):
 		self.mp = mp
 
 	def run(self):
+
 		self.connection_manager()
 
 	def connection_manager(self):
@@ -31,7 +32,7 @@ class ConnectionManager (threading.Thread):
 			
 			if not self.node.is_regnet:
 				# regnet never tries to connect
-				self.node.peers.client_loop(self.node, target = worker)
+				self.node.peers.client_loop(self.node, this_target = worker)
 
 			self.logger.app_log.warning(f"Status: Threads at {threading.active_count()} / {self.node.thread_limit}")
 			self.logger.app_log.info(f"Status: Syncing nodes: {self.node.syncing}")

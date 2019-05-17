@@ -8,7 +8,7 @@ import mining
 import mining_heavy3
 import staking
 from difficulty import *
-from essentials import address_is_rsa, checkpoint_set, db_to_drive, ledger_balance3
+from essentials import address_is_rsa, checkpoint_set, ledger_balance3
 from polysign.signerfactory import SignerFactory
 from fork import Fork
 
@@ -53,6 +53,21 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             self.failed_cause = ''
             self.block_count = 0
 
+    def fork_reward_check():
+        # fork handling
+        if node.is_testnet:
+            if node.last_block > fork.POW_FORK_TESTNET:
+                if not fork.check_postfork_reward_testnet(db_handler):
+                    db_handler.rollback_to(fork.POW_FORK_TESTNET - 1)
+                    raise ValueError("Rolling back chain due to old fork data")
+        else:
+            if node.last_block > fork.POW_FORK:
+                if not fork.check_postfork_reward(db_handler):
+                    print("Rolling back")
+                    db_handler.rollback_to(fork.POW_FORK - 1)
+                    raise ValueError("Rolling back chain due to old fork data")
+        # fork handling
+
     def transaction_validate():
         """Validates all transaction elements. Raise a ValueError exception on error."""
 
@@ -79,9 +94,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                            tx.received_address)
         node.logger.app_log.info(f"Valid signature from {tx.received_address} "
                                  f"to {tx.received_recipient} amount {tx.received_amount}")
-
-
-
 
     def rewards():
         if int(block_array.block_height_new) % 10 == 0:  # every 10 blocks
@@ -114,14 +126,13 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             else:
                 raise ValueError(f"Empty signature from {peer_ip}")
 
-    block_array = BlockArray()
-
     if node.peers.is_banned(peer_ip):
         # no need to loose any time with banned peers
         raise ValueError("Cannot accept blocks from a banned peer")
         # since we raise, it will also drop the connection, it's fine since he's banned.
 
     if not node.db_lock.locked():
+        block_array = BlockArray()
         node.db_lock.acquire()
         node.logger.app_log.warning(f"Database lock acquired")
 
@@ -143,6 +154,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             block_transactions = []
 
             for block in block_array_data:
+
                 block_array.block_count += 1
                 # Reworked process: we exit as soon as we find an error, no need to process further tests.
                 # Then the exception handler takes place.
@@ -166,6 +178,8 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
                 start_time_block = quantize_two(time.time())
                 transaction_list_converted = []  # makes sure all the data are properly converted
+
+                fork_reward_check()
 
                 for tx_index, transaction in enumerate(block):
                     tx = Transaction()
@@ -459,7 +473,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
         finally:
 
             if node.ram:
-                db_to_drive(node, db_handler)
+                db_handler.db_to_drive(node)
 
             node.db_lock.release()
             node.logger.app_log.warning(f"Database lock released")

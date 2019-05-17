@@ -534,6 +534,9 @@ def sequencing_check(db_handler):
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
+        #this is a single thread
+
+        db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
 
         client_instance = client.Client()
 
@@ -571,11 +574,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         timeout_operation = 120  # timeout
         timer_operation = time.time()  # start counting
 
-        if not client_instance.banned and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
-            db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
-
-        while not client_instance.banned and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
-            try:
+        try:
+            while not client_instance.banned and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
 
                 # Failsafe
                 if self.request == -1:
@@ -897,6 +897,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                 mined['reason'] = reason
                                 node.plugin_manager.execute_action_hook('mined', mined)
                                 node.logger.app_log.warning(reason)
+
                         else:
                             digest_block(node, segments, self.request, peer_ip, db_handler_instance)
 
@@ -1566,20 +1567,20 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 # time.sleep(float(node.pause))  # prevent cpu overload
                 node.logger.app_log.info(f"Server loop finished for {peer_ip}")
 
+        except Exception as e:
 
-            except Exception as e:
-                node.logger.app_log.info(f"Inbound: Lost connection to {peer_ip}")
-                node.logger.app_log.info(f"Inbound: {e}")
+            node.logger.app_log.info(f"Inbound: Lost connection to {peer_ip}")
+            node.logger.app_log.info(f"Inbound: {e}")
 
-                # remove from consensus (connection from them)
-                node.peers.consensus_remove(peer_ip)
-                # remove from consensus (connection from them)
-                self.request.close()
+            # remove from consensus (connection from them)
+            node.peers.consensus_remove(peer_ip)
+            # remove from consensus (connection from them)
+            self.request.close()
 
-                if node.debug:
-                    raise  # major debug client
-                else:
-                    return
+            if node.debug:
+                raise  # major debug client
+            else:
+                return
 
         if not node.peers.version_allowed(peer_ip, node.version_allow):
             node.logger.app_log.warning(f"Inbound: Closing connection to old {peer_ip} node: {node.peers.ip_to_mainnet['peer_ip']}")
@@ -1971,7 +1972,7 @@ if __name__ == "__main__":
             if node.verify:
                 verify(db_handler_initial)
 
-            #db_handler_initial.close_all()
+            #db_handler_initial.close()
 
             if not node.tor:
                 # Port 0 means to select an arbitrary unused port

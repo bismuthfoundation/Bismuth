@@ -114,8 +114,9 @@ def worker(host, port, node):
     if not client_instance_worker.banned and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
         db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, logger)
 
-    while not client_instance_worker.banned and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
-        try:
+    try:
+        while not client_instance_worker.banned and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
+
             #ensure_good_peer_version(host)
 
             data = receive(s)  # receive data, one and the only root point
@@ -351,33 +352,38 @@ def worker(host, port, node):
                     raise ValueError("Broken pipe")
                 raise ValueError(f"Unexpected error, received: {str(data)[:32]}")
 
-        except Exception as e:
-            """
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
-            """
+    except Exception as e:
+        """
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
+        """
 
-            # remove from active pool
-            node.peers.remove_client(this_client)
-            node.logger.app_log.warning(f"Outbound: Disconnected from {this_client}: {e}")
-            # remove from active pool
+        db_handler_instance.close()
 
-            # remove from consensus 2
-            node.peers.consensus_remove(peer_ip)
-            # remove from consensus 2
+        # remove from active pool
+        node.peers.remove_client(this_client)
+        node.logger.app_log.warning(f"Outbound: Disconnected from {this_client}: {e}")
+        # remove from active pool
 
-            node.logger.app_log.info(f"Connection to {this_client} terminated due to {e}")
-            node.logger.app_log.info(f"---thread {threading.currentThread()} ended---")
+        # remove from consensus 2
+        node.peers.consensus_remove(peer_ip)
+        # remove from consensus 2
 
-            # properly end the connection
-            s.close()
-            # properly end the connection
-            if node.debug:
-                raise  # major debug client
-            else:
-                node.logger.app_log.info(f"Ending thread, because {e}")
-                return
+        node.logger.app_log.info(f"Connection to {this_client} terminated due to {e}")
+        node.logger.app_log.info(f"---thread {threading.currentThread()} ended---")
+
+        # properly end the connection
+        s.close()
+        # properly end the connection
+        if node.debug:
+            raise  # major debug client
+        else:
+            node.logger.app_log.info(f"Ending thread, because {e}")
+            return
+
+
+
 
 
     if not node.peers.version_allowed(host, node.version_allow):
