@@ -573,7 +573,6 @@ def send_confirm(amount_input, recipient_input, operation_input, openfield_input
 
     # Exchange check
     exchange_addresses = {
-        "edf2d63cdf0b6275ead22c9e6d66aa8ea31dc0ccb367fad2e7c08a25": "Cryptopia",
         "f6c0363ca1c5aa28cc584252e65a63998493ff0a5ec1bb16beda9bac": "qTrade",
     }
     if recipient_input in exchange_addresses and len(openfield_input) < 16:
