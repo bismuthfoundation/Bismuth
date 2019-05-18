@@ -118,6 +118,7 @@ def rollback(node, db_handler, block_height):
 
 
 def recompress_ledger(node, rebuild=False, depth=15000):
+    node.logger.app_log.warning(f"Status: Recompressing, please be patient")
 
     files_remove = [node.ledger_path + '.temp',node.ledger_path + '.temp-shm',node.ledger_path + '.temp-wal']
     for file in files_remove:
@@ -228,7 +229,7 @@ def ledger_check_heights(node, db_handler):
 
             rollback(node,db_handler_initial,lowest_block) #rollback to the lowest value
 
-            recompress = True
+            recompress = False
 
     else:
         node.logger.app_log.warning("Status: Compressing ledger to Hyperblocks")
