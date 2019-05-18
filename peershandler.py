@@ -10,9 +10,7 @@ import sys
 import threading
 import time
 import shutil
-
 import socks
-
 import regnet
 
 from essentials import most_common, most_common_dict, percentage_in
