@@ -10,7 +10,9 @@ import sys
 import threading
 import time
 import shutil
+
 import socks
+
 import regnet
 
 from essentials import most_common, most_common_dict, percentage_in
@@ -38,7 +40,6 @@ class Peers:
         self.reset_time = self.startup_time
         self.warning_list = []
         self.stats = []
-        self.connection_pool = []
         self.peer_opinion_dict = {}
         self.consensus_percentage = 0
         self.consensus = None
@@ -137,6 +138,7 @@ class Peers:
                     self.app_log.info("Inbound: Distant peer connectible")
 
                     # properly end the connection
+
                     peer_test.close()
                     # properly end the connection
 
