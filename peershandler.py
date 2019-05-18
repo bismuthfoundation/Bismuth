@@ -3,6 +3,7 @@ Peers handler module for Bismuth nodes
 @EggPoolNet
 """
 
+import connections
 import json
 import os
 import re
@@ -135,9 +136,14 @@ class Peers:
                     if self.config.tor:
                         peer_test.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
                     peer_test.connect((str(peer_ip), int(self.config.port)))  # double parentheses mean tuple
-                    self.app_log.info("Inbound: Distant peer connectible")
-
                     # properly end the connection
+
+                    try:
+                        connections.send(peer_test,"getversion")
+                        versiongot = connections.receive(peer_test, timeout=1)
+                        self.app_log.info(f"Inbound: Distant peer responding: {versiongot}")
+                    except Exception as e:
+                        self.app_log.info(f"Inbound: Distant peer not responding: {e}")
 
                     peer_test.close()
                     # properly end the connection
