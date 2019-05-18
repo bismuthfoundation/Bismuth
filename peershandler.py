@@ -129,7 +129,7 @@ class Peers:
 
             try:
                 if ip not in peers_pairs:
-                    self.app_log.warning(f"Testing connectivity to: {ip}:{port}")
+                    self.app_log.info(f"Testing connectivity to: {ip}:{port}")
                     s = socks.socksocket()
                     if self.config.tor:
                         s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
@@ -139,7 +139,7 @@ class Peers:
                     versiongot = connections.receive(s, timeout=1)
                     if versiongot == "*":
                         raise ValueError("Peer busy")
-                    self.app_log.warning(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
+                    self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
 
                     try:
                         connections.send(s,"getversion")
@@ -291,14 +291,14 @@ class Peers:
                         versiongot = connections.receive(s, timeout=1)
                         if versiongot == "*":
                             raise ValueError ("Peer busy")
-                        self.app_log.warning(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
+                        self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
                         s.close()
 
                         self.app_log.warning(f"Connection to {ip}:{port} successful, keeping the peer")
                     except Exception as e:
                         if self.config.purge and not self.is_testnet:
                             # remove from peerfile if not connectible
-                            self.app_log.warning(f"Inbound: Distant peer {ip}:{port} not responding: {e}")
+                            self.app_log.info(f"Inbound: Distant peer {ip}:{port} not responding: {e}")
 
                             peers_remove[key] = value
                         pass
