@@ -19,6 +19,7 @@ class ConnectionManager (threading.Thread):
 		until_purge = 0
 
 		while not self.node.IS_STOPPING or self.db_lock.locked():
+		    try:
 			# dict_keys = peer_dict.keys()
 			# random.shuffle(peer_dict.items())
 			if until_purge == 0:
@@ -82,3 +83,6 @@ class ConnectionManager (threading.Thread):
 				if not node.IS_STOPPING:
 					time.sleep(1)
 			"""
+		    except Exception as e:	
+			self.logger.app_log.warning(f"Error in connection manger ({e})")
+							    
