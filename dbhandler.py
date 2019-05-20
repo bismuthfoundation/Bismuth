@@ -237,6 +237,22 @@ class DbHandler:
                             self.reward_sum, "0", "0", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
 
+    def to_db(self, block_array, diff_save, block_transactions):
+        self.execute_param(self.c, "INSERT INTO misc VALUES (?, ?)",
+                                 (block_array.block_height_new, diff_save))
+        self.commit(self.conn)
+
+        # db_handler.execute_many(db_handler.c, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", block_transactions)
+
+        for transaction2 in block_transactions:
+            self.execute_param(self.c, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                                     (str(transaction2[0]), str(transaction2[1]), str(transaction2[2]),
+                                      str(transaction2[3]), str(transaction2[4]), str(transaction2[5]),
+                                      str(transaction2[6]), str(transaction2[7]), str(transaction2[8]),
+                                      str(transaction2[9]), str(transaction2[10]), str(transaction2[11])))
+            # secure commit for slow nodes
+            self.commit(self.conn)
+
     def db_to_drive(self, node):
         try:
             self.execute(self.c, "SELECT max(block_height) FROM transactions")
