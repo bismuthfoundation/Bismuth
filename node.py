@@ -118,6 +118,7 @@ def rollback(node, db_handler, block_height):
 
 
 def recompress_ledger(node, rebuild=False, depth=15000):
+    node.logger.app_log.warning(f"Status: Recompressing, please be patient")
 
     files_remove = [node.ledger_path + '.temp',node.ledger_path + '.temp-shm',node.ledger_path + '.temp-wal']
     for file in files_remove:
@@ -228,7 +229,7 @@ def ledger_check_heights(node, db_handler):
 
             rollback(node,db_handler_initial,lowest_block) #rollback to the lowest value
 
-            recompress = True
+            recompress = False
 
     else:
         node.logger.app_log.warning("Status: Compressing ledger to Hyperblocks")
@@ -574,8 +575,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         timeout_operation = 120  # timeout
         timer_operation = time.time()  # start counting
 
-        try:
-            while not client_instance.banned and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
+        while not client_instance.banned and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
+            try:
+
 
                 # Failsafe
                 if self.request == -1:
@@ -1567,20 +1569,20 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 # time.sleep(float(node.pause))  # prevent cpu overload
                 node.logger.app_log.info(f"Server loop finished for {peer_ip}")
 
-        except Exception as e:
+            except Exception as e:
 
-            node.logger.app_log.info(f"Inbound: Lost connection to {peer_ip}")
-            node.logger.app_log.info(f"Inbound: {e}")
+                node.logger.app_log.info(f"Inbound: Lost connection to {peer_ip}")
+                node.logger.app_log.info(f"Inbound: {e}")
 
-            # remove from consensus (connection from them)
-            node.peers.consensus_remove(peer_ip)
-            # remove from consensus (connection from them)
-            self.request.close()
+                # remove from consensus (connection from them)
+                node.peers.consensus_remove(peer_ip)
+                # remove from consensus (connection from them)
+                self.request.close()
 
-            if node.debug:
-                raise  # major debug client
-            else:
-                return
+                if node.debug:
+                    raise  # major debug client
+                else:
+                    return
 
         if not node.peers.version_allowed(peer_ip, node.version_allow):
             node.logger.app_log.warning(f"Inbound: Closing connection to old {peer_ip} node: {node.peers.ip_to_mainnet['peer_ip']}")

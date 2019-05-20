@@ -3,6 +3,7 @@ Peers handler module for Bismuth nodes
 @EggPoolNet
 """
 
+import connections
 import json
 import os
 import re
@@ -40,7 +41,6 @@ class Peers:
         self.reset_time = self.startup_time
         self.warning_list = []
         self.stats = []
-        self.connection_pool = []
         self.peer_opinion_dict = {}
         self.consensus_percentage = 0
         self.consensus = None
@@ -113,7 +113,7 @@ class Peers:
         """saves single peer to drive"""
         with open(file, "r") as peer_file:
             peers_pairs = json.load(peer_file)
-            peers_pairs[peer] = self.config.port
+            peers_pairs[peer] = self.config.port #make this dynamic once
         with open(file, "w") as peer_file:
             json.dump(peers_pairs, peer_file)
 
@@ -125,26 +125,35 @@ class Peers:
         with open(file, "r") as peer_file:
             peers_pairs = json.load(peer_file)
 
-        for ip in peerdict:
-            peer_ip = ip
-            peer_port = self.config.port
+        for ip, port in peerdict.items():
 
             try:
-                if peer_ip not in peers_pairs:
-                    self.app_log.warning(f"Testing connectivity to: {peer_ip}")
-                    peer_test = socks.socksocket()
+                if ip not in peers_pairs:
+                    self.app_log.info(f"Testing connectivity to: {ip}:{port}")
+                    s = socks.socksocket()
                     if self.config.tor:
-                        peer_test.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
-                    peer_test.connect((str(peer_ip), int(self.config.port)))  # double parentheses mean tuple
-                    self.app_log.info("Inbound: Distant peer connectible")
+                        s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
 
+                    s.connect((ip, port))
+                    connections.send(s, "getversion")
+                    versiongot = connections.receive(s, timeout=1)
+                    if versiongot == "*":
+                        raise ValueError("Peer busy")
+                    self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
+
+                    try:
+                        connections.send(s,"getversion")
+                        versiongot = connections.receive(s, timeout=1)
+                        self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
+                    except Exception as e:
+                        self.app_log.info(f"Inbound: Distant peer {ip}:{port} not responding: {e}")
+
+                    s.close()
                     # properly end the connection
-                    peer_test.close()
-                    # properly end the connection
 
-                    peers_pairs[ip] = peer_port
+                    #peers_pairs[ip] = port
 
-                    self.app_log.info(f"Inbound: Peer {peer_ip}:{peer_port} saved to peer list")
+                    self.app_log.info(f"Inbound: Peer {ip}:{port} saved to peer list")
                     self.peerlist_updated = True
 
                 else:
@@ -271,19 +280,25 @@ class Peers:
                 peers_remove = {}
 
                 for key, value in peer_dict.items():
-                    host, port = key, int(value)
+                    ip, port = key, int(value)
                     try:
                         s = socks.socksocket()
-                        s.settimeout(0.6)
                         if self.config.tor:
-                            s.settimeout(5)
                             s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
-                        s.connect((host, port))
+
+                        s.connect((ip, port))
+                        connections.send(s, "getversion")
+                        versiongot = connections.receive(s, timeout=1)
+                        if versiongot == "*":
+                            raise ValueError ("Peer busy")
+                        self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
                         s.close()
-                        self.app_log.info(f"Connection to {host} {port} successful, keeping the peer")
-                    except:
+
+                        self.app_log.warning(f"Connection to {ip}:{port} successful, keeping the peer")
+                    except Exception as e:
                         if self.config.purge and not self.is_testnet:
                             # remove from peerfile if not connectible
+                            self.app_log.info(f"Inbound: Distant peer {ip}:{port} not responding: {e}")
 
                             peers_remove[key] = value
                         pass
@@ -514,7 +529,7 @@ class Peers:
                     t.daemon = True
                     t.start()
 
-            if len(self.peer_dict) < 3 and int(time.time() - self.startup_time) > 120:
+            if len(self.peer_dict) < 3 and int(time.time() - self.startup_time) > 60:
                 # join in random peers after x seconds
                 self.app_log.warning("Not enough peers in consensus, joining in peers suggested by other nodes")
                 self.peer_dict.update(self.peers_get(self.suggested_peerfile))
@@ -542,7 +557,7 @@ class Peers:
                 self.reset_tried()
                 self.reset_time = time.time()
 
-            if self.first_run and int(time.time() - self.startup_time) > 180:
+            if self.first_run and int(time.time() - self.startup_time) > 60:
                 self.app_log.warning("Status: Testing peers")
                 self.peers_test(self.peerfile)
                 self.peers_test(self.suggested_peerfile)
