@@ -78,13 +78,6 @@ class Wallet():
         self.ip = None
         self.port = None
 
-        self.tx_tree = None
-
-        self.balance = None
-        self.block_height_old = None
-        self.mempool_total = None
-        self.stats_timestamp = None
-
 
 def mempool_clear(s):
     connections.send(s, "mpclear", 10)
@@ -677,7 +670,7 @@ def send(amount_input, recipient_input, operation_input, openfield_input):
         app_log.warning("Recipient: {}".format(recipient_input))
         app_log.warning("Data: {}".format(openfield_input))
 
-        tx_timestamp = '%.2f' % (float(wallet.stats_timestamp) - abs(float(wallet.stats_timestamp) - time.time()))  # randomize timestamp for unique signatures
+        tx_timestamp = '%.2f' % (float(stats_timestamp) - abs(float(stats_timestamp) - time.time()))  # randomize timestamp for unique signatures
         transaction = (str(tx_timestamp), str(keyring.myaddress), str(recipient_input), '%.8f' % float(amount_input), str(operation_input), str(openfield_input))  # this is signed, float kept for compatibility
 
         h = SHA.new(str(transaction).encode("utf-8"))
@@ -1185,35 +1178,36 @@ def tokens():
 
 
 def tx_tree_define():
+    global tx_tree
 
-
-    wallet.tx_tree = ttk.Treeview(tab_transactions, selectmode="extended", columns=('sender', 'recipient', 'amount', 'type'), height=20)
-    wallet.tx_tree.grid(row=1, column=0)
+    tx_tree = ttk.Treeview(tab_transactions, selectmode="extended", columns=('sender', 'recipient', 'amount', 'type'), height=20)
+    tx_tree.grid(row=1, column=0)
 
     # table
-    wallet.tx_tree.heading("#0", text='time')
-    wallet.tx_tree.column("#0", anchor='center', width=100)
+    tx_tree.heading("#0", text='time')
+    tx_tree.column("#0", anchor='center', width=100)
 
-    wallet.tx_tree.heading("#1", text='sender')
-    wallet.tx_tree.column("#1", anchor='center', width=347)
+    tx_tree.heading("#1", text='sender')
+    tx_tree.column("#1", anchor='center', width=347)
 
-    wallet.tx_tree.heading("#2", text='recipient')
-    wallet.tx_tree.column("#2", anchor='center', width=347)
+    tx_tree.heading("#2", text='recipient')
+    tx_tree.column("#2", anchor='center', width=347)
 
-    wallet.tx_tree.heading("#3", text='amount')
-    wallet.tx_tree.column("#3", anchor='center', width=35)
+    tx_tree.heading("#3", text='amount')
+    tx_tree.column("#3", anchor='center', width=35)
 
-    wallet.tx_tree.heading("#4", text='type')
-    wallet.tx_tree.column("#4", anchor='center', width=40)
+    tx_tree.heading("#4", text='type')
+    tx_tree.column("#4", anchor='center', width=40)
 
-    wallet.tx_tree.grid(sticky=N + S + W + E)
+    tx_tree.grid(sticky=N + S + W + E)
 
 
 def table(address, addlist_20, mempool_total):
+    global tx_tree
     # transaction table
     # data
     try:
-        wallet.tx_tree.destroy()
+        tx_tree.destroy()
     except:
         pass
     tx_tree_define()
@@ -1222,7 +1216,7 @@ def table(address, addlist_20, mempool_total):
         tag = "mempool"
 
         if tx[1] == address:
-            wallet.tx_tree.insert('', 'end', text=datetime.fromtimestamp(float(tx[0])).strftime('%y-%m-%d %H:%M'), values=(tx[1], tx[2], tx[3], "?"), tags=tag)
+            tx_tree.insert('', 'end', text=datetime.fromtimestamp(float(tx[0])).strftime('%y-%m-%d %H:%M'), values=(tx[1], tx[2], tx[3], "?"), tags=tag)
 
     # aliases
     addlist_addressess = []
@@ -1275,10 +1269,10 @@ def table(address, addlist_20, mempool_total):
         else:
             symbol = "TX"
 
-        wallet.tx_tree.insert('', 'end', text=datetime.fromtimestamp(float(tx[1])).strftime('%y-%m-%d %H:%M'), values=(tx[2], tx[3], tx[4], symbol), tags=tag)
+        tx_tree.insert('', 'end', text=datetime.fromtimestamp(float(tx[1])).strftime('%y-%m-%d %H:%M'), values=(tx[2], tx[3], tx[4], symbol), tags=tag)
 
-        wallet.tx_tree.tag_configure("received", background='palegreen1')
-        wallet.tx_tree.tag_configure("sent", background='chocolate1')
+        tx_tree.tag_configure("received", background='palegreen1')
+        tx_tree.tag_configure("sent", background='chocolate1')
 
     # table
 
@@ -1286,15 +1280,19 @@ def table(address, addlist_20, mempool_total):
 def refresh(address, s):
 
 
-
+    global balance
+    global statusget
+    global block_height_old
+    global mempool_total
+    global stats_timestamp
 
     # print "refresh triggered"
     try:
         connections.send(s, "statusget", 10)
-        wallet.statusget = connections.receive(s, 10)
-        wallet.status_version = wallet.statusget[7]
-        wallet.stats_timestamp = wallet.statusget[9]
-        server_timestamp_var.set("GMT: {}".format(time.strftime("%H:%M:%S", time.gmtime(int(float(wallet.stats_timestamp))))))
+        statusget = connections.receive(s, 10)
+        status_version = statusget[7]
+        stats_timestamp = statusget[9]
+        server_timestamp_var.set("GMT: {}".format(time.strftime("%H:%M:%S", time.gmtime(int(float(stats_timestamp))))))
 
         # data for charts
 
@@ -1387,7 +1385,7 @@ def refresh(address, s):
 
         connections.send(s, "annverget", 10)
         annverget = connections.receive(s, 10)
-        version_var.set("Node: {}/{}".format(wallet.status_version, annverget))
+        version_var.set("Node: {}/{}".format(status_version, annverget))
 
         # if status_version != annverget:
         #    version_color = "red"
@@ -1518,8 +1516,8 @@ def support_collection(sync_msg_var, version_var):
     collection_box = Text(sup_col, width=100)
     collection_box.grid(row=0, pady=0)
 
-    version = wallet.statusget[7]
-    stats_timestamp = wallet.statusget[9]
+    version = statusget[7]
+    stats_timestamp = statusget[9]
     connections.send(wallet.s, "blocklast", 10)
     block_get = connections.receive(wallet.s, 10)
     bl_height = block_get[0]

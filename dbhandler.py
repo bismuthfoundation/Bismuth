@@ -142,15 +142,15 @@ class DbHandler:
         self.execute_param(self.c, "SELECT * FROM transactions WHERE block_height >= ?;", (block_height,))
         backup_data = self.c.fetchall()
 
-        self.execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height)) #this belongs to rollback_to
-        self.commit(self.conn) #this belongs to rollback_to
-
-        self.execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,)) #this belongs to rollback_to
-        self.commit(self.conn)  #this belongs to rollback_to
+        self.execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height))
+        self.commit(self.conn)
 
         return backup_data
 
     def rollback_to(self, block_height):
+        self.execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,))
+        self.commit(self.conn)
+
         self.h.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height,))
         self.commit(self.hdd)
 
@@ -338,4 +338,4 @@ class DbHandler:
         self.index.close()
         self.hdd.close()
         self.hdd2.close()
-        #self.conn.close() disabled for troubleshooting
+        self.conn.close()
