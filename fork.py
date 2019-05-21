@@ -38,11 +38,11 @@ class Fork():
     def check_postfork_reward_testnet(self, db_handler):
         #ram
         try:
-            db_handler.execute_param(db_handler.c, "SELECT reward FROM transactions WHERE block_height = ?", (self.POW_FORK_TESTNET + 1,))
+            db_handler.execute_param(db_handler.c, "SELECT reward FROM transactions WHERE block_height = ? AND reward != 0", (self.POW_FORK_TESTNET + 1,))
             self.FORK_REWARD_TESTNET = db_handler.c.fetchone()[0]
         except:
             #hdd in case we have not saved yet
-            db_handler.execute_param(db_handler.h, "SELECT reward FROM transactions WHERE block_height = ?", (self.POW_FORK_TESTNET + 1,))
+            db_handler.execute_param(db_handler.h, "SELECT reward FROM transactions WHERE block_height = ? AND reward != 0", (self.POW_FORK_TESTNET + 1,))
             self.FORK_REWARD_TESTNET = db_handler.h.fetchone()[0]
 
         print(type(self.FORK_REWARD_TESTNET))
