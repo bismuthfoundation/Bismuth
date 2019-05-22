@@ -294,7 +294,9 @@ class DbHandler:
 
             result1 = self.c.fetchall()
 
-            transactions_to_h(result1)
+            if node.is_mainnet or node.ram: #testnet does not use hyperblocks, change this in the future
+                transactions_to_h(result1)
+
             if node.is_mainnet and node.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
                 transactions_to_h2(result1)
 
