@@ -1643,7 +1643,7 @@ def setup_net_type():
             sys.exit()
         for allowed in node.version_allow:
             num_ver = just_int_from(allowed)
-            if num_ver < 19:
+            if num_ver < 18:
                 node.logger.app_log.error("Too low allowed version, check config.txt")
                 sys.exit()
 
