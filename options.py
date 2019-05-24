@@ -53,6 +53,7 @@ class Get:
 
     def load_file(self,filename):
         #print("Loading",filename)
+        self.mempool_ram = self.mempool_ram_conf = defaults["mempool_ram"]
         for line in open(filename):
             if '=' in line:
                 left,right = map(str.strip,line.rstrip("\n").split("="))
