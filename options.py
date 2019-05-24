@@ -1,5 +1,5 @@
 import os.path as path
-
+from sys import exit
 
 class Get:
 
@@ -36,15 +36,19 @@ class Get:
         "terminal_output": ["bool"],
         "gui_scaling": ["str"],
         "mempool_ram": ["bool"],
+        "mempool_ram_conf": ["bool"],        # needed for compat
         "egress": ["bool"],
-        "trace_db_calls": ["bool"]
+        "trace_db_calls": ["bool"],
     }
 
     # Optional default values so we don't bug if they are not in the config.
     # For compatibility
     defaults = {
         "testnet": False,
-        "regnet": False
+        "regnet": False,
+        "trace_db_calls": False,
+        "mempool_ram": True,
+        "mempool_ram_conf": True,
     }
 
     def load_file(self,filename):
@@ -75,6 +79,9 @@ class Get:
                 setattr(self,left,right)
         # Default genesis to keep compatibility
         self.genesis = "4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed"
+        if self.mempool_ram != self.mempool_ram_conf:
+            print("Inconsistent config, param is now mempool_ram in config.txt")
+            exit()
         for key, default in self.defaults.items():
             if key not in self.__dict__:
                 setattr(self, key, default)
