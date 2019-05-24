@@ -1,7 +1,7 @@
 port=5658
 verify=False
 version=mainnet0020
-version_allow=mainnet0019,mainnet0020,mainnet0021
+version_allow=mainnet0018,mainnet0019,mainnet0020,mainnet0021
 thread_limit=64
 rebuild_db=True
 debug=False
