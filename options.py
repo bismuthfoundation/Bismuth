@@ -51,9 +51,9 @@ class Get:
         "mempool_ram_conf": True,
     }
 
-    def load_file(self,filename):
+    def load_file(self, filename):
         #print("Loading",filename)
-        self.mempool_ram = self.mempool_ram_conf = defaults["mempool_ram"]
+        self.mempool_ram = self.mempool_ram_conf = self.defaults["mempool_ram"]
         for line in open(filename):
             if '=' in line:
                 left,right = map(str.strip,line.rstrip("\n").split("="))
@@ -74,10 +74,10 @@ class Get:
                 else:
                     # treat as "str"
                     pass
-                if len(params)>1:
+                if len(params) > 1:
                     # deal with properties that do not match the config name.
                     left = params[1]
-                setattr(self,left,right)
+                setattr(self, left, right)
         # Default genesis to keep compatibility
         self.genesis = "4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed"
         if self.mempool_ram != self.mempool_ram_conf:
