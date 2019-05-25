@@ -389,7 +389,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
 
             if skip:
                 rollback = {"timestamp": my_time, "height": db_block_height, "ip": peer_ip,
-                            "sha_hash": db_block_hash, "skipped": True, "reason": reason}
+                            "hash": db_block_hash, "skipped": True, "reason": reason}
                 node.plugin_manager.execute_action_hook('rollback', rollback)
                 node.logger.app_log.info(f"Skipping rollback: {reason}")
             else:
@@ -411,7 +411,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
                             miner = tx[3]
                             height = tx[0]
                     rollback = {"timestamp": my_time, "height": height, "ip": peer_ip, "miner": miner,
-                                "sha_hash": db_block_hash, "tx_count": nb_tx, "skipped": False, "reason": ""}
+                                "hash": db_block_hash, "tx_count": nb_tx, "skipped": False, "reason": ""}
                     node.plugin_manager.execute_action_hook('rollback', rollback)
 
                 except Exception as e:
@@ -1288,7 +1288,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "tokensget":
                     if node.peers.is_allowed(peer_ip, data):
                         tokens.tokens_update(node.index_db, node.ledger_path, "normal", node.logger.app_log,
-                                             node.plugin_manager, trace_db_calls = node.trace_db_calls)
+                                             node.
+                                             _manager, trace_db_calls = node.trace_db_calls)
                         tokens_address = receive(self.request)
 
                         tokens_user = db_handler_instance.tokens_user(tokens_address)
