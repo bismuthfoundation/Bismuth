@@ -389,7 +389,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
 
             if skip:
                 rollback = {"timestamp": my_time, "height": db_block_height, "ip": peer_ip,
-                            "sha_hash": db_block_hash, "skipped": True, "reason": reason}
+                            "hash": db_block_hash, "skipped": True, "reason": reason}
                 node.plugin_manager.execute_action_hook('rollback', rollback)
                 node.logger.app_log.info(f"Skipping rollback: {reason}")
             else:
@@ -411,7 +411,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
                             miner = tx[3]
                             height = tx[0]
                     rollback = {"timestamp": my_time, "height": height, "ip": peer_ip, "miner": miner,
-                                "sha_hash": db_block_hash, "tx_count": nb_tx, "skipped": False, "reason": ""}
+                                "hash": db_block_hash, "tx_count": nb_tx, "skipped": False, "reason": ""}
                     node.plugin_manager.execute_action_hook('rollback', rollback)
 
                 except Exception as e:
@@ -1643,7 +1643,7 @@ def setup_net_type():
             sys.exit()
         for allowed in node.version_allow:
             num_ver = just_int_from(allowed)
-            if num_ver < 19:
+            if num_ver < 18:
                 node.logger.app_log.error("Too low allowed version, check config.txt")
                 sys.exit()
 

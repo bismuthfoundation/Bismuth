@@ -25,7 +25,7 @@ ledger_path = config.ledger_path
 hyper_path = config.hyper_path
 
 
-key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_hashed, address, keyfile = essentials.keys_load_new("hypernode_contract.der")
+key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_hashed, address, keyfile = essentials.keys_load_new("wallet.der")
 
 if encrypted:
     key, private_key_readable = essentials.keys_unlock(private_key_readable)
@@ -55,8 +55,10 @@ c = conn.cursor()
 def connect():
     s = socks.socksocket()
     s.settimeout(10)
-    s.connect(("31.31.75.71", 8150))
-    #s.connect(("127.0.0.1", 5658))
+    if 'regnet' in config.version:
+        s.connect(("127.0.0.1", 3030))
+    else:
+        s.connect(("127.0.0.1", 5658))
     return s
 
 s = connect()
