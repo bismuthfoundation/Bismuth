@@ -38,6 +38,7 @@ class Get:
         "mempool_ram": ["bool"],
         "egress": ["bool"],
         "trace_db_calls": ["bool"],
+        "heavy3_path": ["str"],
     }
 
     # Optional default values so we don't bug if they are not in the config.
@@ -47,6 +48,7 @@ class Get:
         "regnet": False,
         "trace_db_calls": False,
         "mempool_ram": True,
+        "heavy3_path": "./heavy3a.bin",
     }
 
     def load_file(self, filename):
