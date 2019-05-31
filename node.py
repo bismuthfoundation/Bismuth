@@ -1288,8 +1288,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "tokensget":
                     if node.peers.is_allowed(peer_ip, data):
                         tokens.tokens_update(node.index_db, node.ledger_path, "normal", node.logger.app_log,
-                                             node.
-                                             _manager, trace_db_calls = node.trace_db_calls)
+                                             node.plugin_manager, trace_db_calls = node.trace_db_calls)
                         tokens_address = receive(self.request)
 
                         tokens_user = db_handler_instance.tokens_user(tokens_address)
