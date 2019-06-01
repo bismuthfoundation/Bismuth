@@ -36,16 +36,8 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             self.nonce = None
             self.miner_address = None
 
-    class PreviousBlock:
-        def __init__(self):
-            db_handler.execute(db_handler.c, "SELECT block_hash, block_height, timestamp FROM transactions "
-                                             "WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
-            result = db_handler.c.fetchone()
-            self.block_hash = result[0]
-            self.block_height = result[1]
-            self.q_timestamp_last = quantize_two(result[2])
-
     class BlockArray:
+        """array of transactions within a block"""
         def __init__(self):
             self.tx_count = 0
             self.block_height_new = node.last_block + 1  # for logging purposes.
@@ -75,7 +67,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
         if tx.start_time_tx < tx.q_received_timestamp:
             raise ValueError(f"Future transaction not allowed, timestamp "
                              f"{quantize_two((tx.q_received_timestamp - tx.start_time_tx) / 60)} minutes in the future")
-        if previous_block.q_timestamp_last - 86400 > tx.q_received_timestamp:
+        if node.last_block_timestamp - 86400 > tx.q_received_timestamp:
             raise ValueError("Transaction older than 24h not allowed.")
         # Amount
         if float(tx.received_amount) < 0:
@@ -169,12 +161,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
                 del signature_list[:]
 
-                previous_block = PreviousBlock()
-
-                block_array.block_height_new = previous_block.block_height + 1
-
-                db_handler.execute(db_handler.c, "SELECT max(block_height) FROM transactions")
-                node.last_block = db_handler.c.fetchone()[0]
+                block_array.block_height_new = node.last_block + 1
 
                 start_time_block = quantize_two(time.time())
                 transaction_list_converted = []  # makes sure all the data are properly converted
@@ -218,14 +205,14 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                     transaction_validate()
 
                 # reject blocks older than latest block
-                if miner_tx.q_block_timestamp <= previous_block.q_timestamp_last:
+                if miner_tx.q_block_timestamp <= node.last_block_timestamp:
                     raise ValueError("Block is older than the previous one, will be rejected")
 
                 # calculate current difficulty (is done for each block in block array, not super easy to isolate)
                 diff = difficulty(node, db_handler)
                 node.difficulty = diff
 
-                node.logger.app_log.warning(f"Time to generate block {previous_block.block_height + 1}: {'%.2f' % diff[2]}")
+                node.logger.app_log.warning(f"Time to generate block {node.last_block + 1}: {'%.2f' % diff[2]}")
                 node.logger.app_log.warning(f"Current difficulty: {diff[3]}")
                 node.logger.app_log.warning(f"Current blocktime: {diff[4]}")
                 node.logger.app_log.warning(f"Current hashrate: {diff[5]}")
@@ -235,7 +222,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 # node.logger.app_log.info("Transaction list: {}".format(transaction_list_converted))
 
 
-                block_array.block_hash = hashlib.sha224((str(transaction_list_converted) + previous_block.block_hash).encode("utf-8")).hexdigest()
+                block_array.block_hash = hashlib.sha224((str(transaction_list_converted) + node.last_block_hash).encode("utf-8")).hexdigest()
 
                 # node.logger.app_log.info("Last block sha_hash: {}".format(block_hash))
                 node.logger.app_log.info(f"Calculated block sha_hash: {block_array.block_hash}")
@@ -254,22 +241,22 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                     diff_save = mining_heavy3.check_block(block_array.block_height_new,
                                                           miner_tx.miner_address,
                                                           miner_tx.nonce,
-                                                          previous_block.block_hash,
+                                                          node.last_block_hash,
                                                           diff[0],
                                                           tx.received_timestamp,
                                                           tx.q_received_timestamp,
-                                                          previous_block.q_timestamp_last,
+                                                          node.last_block_timestamp,
                                                           peer_ip=peer_ip,
                                                           app_log=node.logger.app_log)
                 elif node.is_testnet:
                     diff_save = mining_heavy3.check_block(block_array.block_height_new,
                                                           miner_tx.miner_address,
                                                           miner_tx.nonce,
-                                                          previous_block.block_hash,
+                                                          node.last_block_hash,
                                                           diff[0],
                                                           tx.received_timestamp,
                                                           tx.q_received_timestamp,
-                                                          previous_block.q_timestamp_last,
+                                                          node.last_block_timestamp,
                                                           peer_ip=peer_ip,
                                                           app_log=node.logger.app_log)
                 else:
@@ -277,11 +264,11 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                     diff_save = mining_heavy3.check_block(block_array.block_height_new,
                                                           miner_tx.miner_address,
                                                           miner_tx.nonce,
-                                                          previous_block.block_hash,
+                                                          node.last_block_hash,
                                                           regnet.REGNET_DIFF,
                                                           tx.received_timestamp,
                                                           tx.q_received_timestamp,
-                                                          previous_block.q_timestamp_last,
+                                                          node.last_block_timestamp,
                                                           peer_ip=peer_ip,
                                                           app_log=node.logger.app_log)
                 fees_block = []
@@ -335,7 +322,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                     # decide reward
                     if tx_index == block_array.tx_count - 1:
                         db_amount = 0  # prevent spending from another address, because mining txs allow delegation
-                        if previous_block.block_height <= 10000000:
+                        if node.last_block <= 10000000:
 
                             if node.last_block >= fork.POW_FORK or (node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET):
                                 mining_reward = 15 - (quantize_eight(block_array.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("2.4")
@@ -441,8 +428,12 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 # /whole block validation
                 # NEW: returns new block sha_hash
 
-            checkpoint_set(node, block_array.block_height_new)
-            return block_array.block_hash
+                #after all is done, cleanly update values for node object
+                node.last_block += 1
+                node.last_block_hash = block_array.block_hash
+
+            checkpoint_set(node)
+            return node.last_block_hash
 
         except Exception as e:
             node.logger.app_log.warning(f"Chain processing failed: {e}")

@@ -99,9 +99,9 @@ def round_down(number, order):
     return int(math.floor(number / order)) * order
 
 
-def checkpoint_set(node, block_reference):
-    if block_reference > 2000:
-        node.checkpoint = round_down(block_reference, 1000) - 1000
+def checkpoint_set(node):
+    if node.last_block > 2000:
+        node.checkpoint = round_down(node.last_block, 1000) - 1000
         node.logger.app_log.warning(f"Checkpoint set to {node.checkpoint}")
 
 

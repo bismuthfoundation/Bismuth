@@ -55,8 +55,11 @@ class Node():
         self.terminal_output = None
         self.egress = None
         self.genesis = None
+
+        self.last_block_hash = None
+        self.last_block_timestamp = None
         self.last_block_ago = None
-        self.last_block_timestamp = 0
+
         self.accept_peers = True
         self.difficulty = None
         self.ledger_temp = None

@@ -1693,9 +1693,13 @@ def setup_net_type():
 
 def node_block_init(database):
     node.hdd_block = database.block_height_max()
-    node.last_block = node.hdd_block  # ram equals drive at this point
-    checkpoint_set(node, node.hdd_block)
     node.difficulty = difficulty(node, db_handler_initial)  # check diff for miner
+
+    node.last_block = node.hdd_block  # ram equals drive at this point
+    node.last_block_hash = database.lastblockhash()
+    node.last_block_timestamp = database.lasttimestamp()
+
+    checkpoint_set(node)
 
 def ram_init(database):
     try:

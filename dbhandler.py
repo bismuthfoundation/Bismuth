@@ -59,6 +59,18 @@ class DbHandler:
         self.SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
         self.SQL_TO_MISC = "INSERT INTO misc VALUES (?,?)"
 
+    def lastblockhash(self):
+        self.execute(self.c, "SELECT block_hash FROM transactions "
+                             "WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
+        result = self.c.fetchone()[0]
+        return result
+
+    def lasttimestamp(self):
+        self.execute(self.c, "SELECT timestamp FROM transactions "
+                             "WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
+        result = self.c.fetchone()[0]
+        return result
+
     def pubkeyget(self, address):
         self.execute_param(self.c, "SELECT public_key FROM transactions WHERE address = ? and reward = 0 LIMIT 1", (address,))
         result = self.c.fetchone()[0]
