@@ -1649,8 +1649,9 @@ def setup_net_type():
 
     if "testnet" in node.version or node.is_testnet:
         node.port = 2829
-        node.hyper_path = "static/test_hyper.db"
-        node.ledger_path = "static/test.db"  # for tokens
+        node.hyper_path = "static/hyper_test.db"
+        node.ledger_path = "static/ledger_test.db"
+
         node.ledger_ram_file = "file:ledger_testnet?mode=memory&cache=shared"
         #node.hyper_recompress = False
         node.peerfile = "peers_test.txt"
@@ -1661,12 +1662,12 @@ def setup_net_type():
 
         redownload_test = input("Status: Welcome to the testnet. Redownload test ledger? y/n")
         if redownload_test == "y":
-            types = ['static/test.db-wal', 'static/test.db-shm', 'static/index_test.db', 'static/test_hyper.db-wal', 'static/test_hyper.db-shm']
+            types = ['static/ledger_test.db-wal', 'static/ledger_test.db-shm', 'static/index_test.db', 'static/hyper_test.db-wal', 'static/hyper_test.db-shm']
             for type in types:
                 for file in glob.glob(type):
                     os.remove(file)
                     print(file, "deleted")
-            download_file("https://bismuth.cz/test.db", "static/test.zip")
+            download_file("https://bismuth.cz/test.rar.gz", "static/test.rar.gz")
         else:
             print("Not redownloading test db")
 

@@ -209,5 +209,5 @@ def tokens_update(file, ledger, mode, app_log, plugin_manager=None, trace_db_cal
 
 if __name__ == "__main__":
     app_log = log.log("tokens.log", "WARNING", True)
-    tokens_update("static/index_test.db", "static/test.db", "normal", app_log)
+    tokens_update("static/index_test.db", "static/ledger_test.db", "normal", app_log)
     # tokens_update("tokens.db","reindex")
