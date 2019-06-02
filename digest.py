@@ -261,12 +261,9 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             del signature_list[:]
 
             block_instance.block_height_new = node.last_block + 1
-
             block_instance.start_time_block = quantize_two(time.time())
-              
 
             fork_reward_check()
-
             sort_transactions(block)
 
             # reject blocks older than latest block

@@ -728,13 +728,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         node.peers.consensus_add(peer_ip, consensus_blockheight, self.request, node.last_block)
                         # consensus pool 1 (connection from them)
 
-                        db_block_height = db_handler_instance.block_height_max()
-
                         # append zeroes to get static length
-                        send(self.request, db_block_height)
+                        send(self.request, node.last_block)
                         # send own block height
 
-                        if int(received_block_height) > db_block_height:
+                        if int(received_block_height) > node.last_block:
                             node.logger.app_log.warning("Inbound: Client has higher block")
 
                             db_handler_instance.execute(db_handler_instance.c,
@@ -747,7 +745,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             # receive their latest sha_hash
                             # confirm you know that sha_hash or continue receiving
 
-                        elif int(received_block_height) <= db_block_height:
+                        elif int(received_block_height) <= node.last_block:
                             if int(received_block_height) == db_block_height:
                                 node.logger.app_log.info(
                                     f"Inbound: We have the same height as {peer_ip} ({received_block_height}), hash will be verified")
@@ -864,13 +862,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         segments = receive(self.request)
                         # node.logger.app_log.info("Inbound: Combined mined segments: " + segments)
 
-                        # check if we have the latest block
-
-                        db_block_height = db_handler_instance.block_height_max()
-
-                        # check if we have the latest block
-
-                        mined = {"timestamp": time.time(), "last": db_block_height, "ip": peer_ip, "miner": "",
+                        mined = {"timestamp": time.time(), "last": node.last_block, "ip": peer_ip, "miner": "",
                                  "result": False, "reason": ''}
                         try:
                             mined['miner'] = segments[0][-1][2]
@@ -887,7 +879,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                 mined['reason'] = reason
                                 node.plugin_manager.execute_action_hook('mined', mined)
                                 node.logger.app_log.warning(reason)
-                            elif db_block_height >= node.peers.consensus_max - 3:
+                            elif node.last_block >= node.peers.consensus_max - 3:
                                 mined['result'] = True
                                 node.plugin_manager.execute_action_hook('mined', mined)
                                 node.logger.app_log.info("Outbound: Processing block from miner")
@@ -896,7 +888,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                 #node.difficulty = difficulty(node, db_handler_instance)
 
                             else:
-                                reason = f"Outbound: Mined block was orphaned because node was not synced, we are at block {db_block_height}, should be at least {node.peers.consensus_max - 3}"
+                                reason = f"Outbound: Mined block was orphaned because node was not synced, we are at block {node.last_block}, should be at least {node.peers.consensus_max - 3}"
                                 mined['reason'] = reason
                                 node.plugin_manager.execute_action_hook('mined', mined)
                                 node.logger.app_log.warning(reason)
