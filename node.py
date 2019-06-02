@@ -379,6 +379,8 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
                 db_handler.staking_rollback(node, db_block_height)
                 # /rollback indices
 
+                node.last_block_hash = db_handler.last_block_hash()
+
         except Exception as e:
             node.logger.app_log.warning(e)
 

@@ -284,8 +284,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             node.logger.app_log.warning(f"Difficulty adjustment: {diff[6]}")
             node.logger.app_log.warning(f"Difficulty: {diff[0]} {diff[1]}")
 
-            node.last_block_hash = db_handler.last_block_hash()
-
             block_instance.block_hash = hashlib.sha224((str(block_instance.transaction_list_converted) + node.last_block_hash).encode("utf-8")).hexdigest()
             del block_instance.transaction_list_converted[:]
 
@@ -337,7 +335,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                                       peer_ip=peer_ip,
                                                       app_log=node.logger.app_log)
 
-            node.last_block_hash = db_handler.last_block_hash()
+            node.last_block_hash = block_instance.block_hash
 
             process_transactions(block)
             # end for block
