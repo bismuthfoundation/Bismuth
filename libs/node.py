@@ -27,7 +27,6 @@ class Node():
         self.is_regnet = False
         self.is_mainnet = False
 
-        self.port = None
         self.hyper_recompress = True
         self.hyper_path = None
         self.ledger_path = None

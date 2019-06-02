@@ -627,6 +627,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     # receive theirs
                     segments = receive(self.request)
                     node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, db_handler_instance.c, False))
+                    #improvement possible - pass peer_ip from worker
 
                     # receive theirs
 
@@ -1527,10 +1528,42 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if node.peers.is_allowed(peer_ip, data):
                         node.logger.app_log.warning(f"Received stop from {peer_ip}")
                         node.IS_STOPPING = True
+                    else:
+                        node.logger.app_log.info(f"{peer_ip} not whitelisted for stop command")
 
 
-                elif data == "hyperlane":
-                    pass
+                elif data == "block_height_from_hash":
+                    if node.peers.is_whitelisted(peer_ip, data):
+                        hash = receive(self.request)
+                        try:
+                            response = db_handler_instance.block_height_from_hash(hash)
+                        except:
+                            response = None
+
+                        send(self.request, response)
+                    else:
+                        node.logger.app_log.info(f"{peer_ip} not whitelisted for block_height_from_hash command")
+
+                elif data == "blocks_after":
+                    if node.peers.is_whitelisted(peer_ip, data):
+                        block = receive(self.request)
+                        response = db_handler_instance.blocks_after(block)
+                        send(self.request, response)
+
+                elif data == "digest_direct":
+                    if node.peers.is_whitelisted(peer_ip, data):
+                        received = receive(self.request)
+                        digest_block(node, received["segments"], self.request, received["peer_ip"], db_handler_instance)
+                    else:
+                        node.logger.app_log.info(f"{peer_ip} not whitelisted for block_height_from_hash command")
+
+
+                elif data == "blocknf_direct":
+                    if node.peers.is_whitelisted(peer_ip, data):
+                        received = receive(self.request)
+                        blocknf(node, received["block_hash"], received["peer_ip"], db_handler_instance, received["hyperblocks"])
+                    else:
+                        node.logger.app_log.info(f"{peer_ip} not whitelisted for block_height_from_hash command")
 
                 else:
                     if data == '*':
