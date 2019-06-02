@@ -370,7 +370,6 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
 
                 # roll back hdd too
                 db_handler.rollback_to(db_block_height)
-                node.hdd_block = db_block_height-1 #-1 because rollback is >=
                 # /roll back hdd too
 
                 # rollback indices
@@ -1669,7 +1668,9 @@ def setup_net_type():
                 for file in glob.glob(type):
                     os.remove(file)
                     print(file, "deleted")
-            download_file("https://bismuth.cz/test.rar.gz", "static/test.rar.gz")
+            download_file("https://bismuth.cz/test.rar.gz", "static/test.tar.gz")
+            with tarfile.open("static/test.tar.gz") as tar:
+                tar.extractall("static/")  # NOT COMPATIBLE WITH CUSTOM PATH CONFS
         else:
             print("Not redownloading test db")
 
