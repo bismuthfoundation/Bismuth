@@ -141,20 +141,17 @@ def worker(host, port, node):
                     # send block height, receive block height
                     send(s, "blockheight")
 
-                    db_handler_instance.execute(db_handler_instance.c, 'SELECT max(block_height) FROM transactions')
-                    db_block_height = db_handler_instance.c.fetchone()[0]
-
-                    node.logger.app_log.info(f"Outbound: Sending block height to compare: {db_block_height}")
+                    node.logger.app_log.info(f"Outbound: Sending block height to compare: {node.last_block}")
                     # append zeroes to get static length
-                    send(s, db_block_height)
+                    send(s, node.last_block)
 
                     received_block_height = receive(s)  # receive node's block height
                     node.logger.app_log.info(
                         f"Outbound: Node {peer_ip} is at block height: {received_block_height}")
 
-                    if int(received_block_height) < db_block_height:
+                    if int(received_block_height) < node.last_block:
                         node.logger.app_log.warning(
-                            f"Outbound: We have a higher block ({db_block_height}) than {peer_ip} ({received_block_height}), sending")
+                            f"Outbound: We have a higher block ({node.last_block}) than {peer_ip} ({received_block_height}), sending")
 
                         data = receive(s)  # receive client's last block_hash
 
@@ -167,9 +164,7 @@ def worker(host, port, node):
                         # consensus pool 2 (active connection)
 
                         try:
-                            db_handler_instance.execute_param(db_handler_instance.h, "SELECT block_height FROM transactions WHERE block_hash = ?;",
-                                                              (data,))
-                            client_block = db_handler_instance.h.fetchone()[0]
+                            client_block = db_handler_instance.block_height_from_hash(data)
                         except Exception:
                             node.logger.app_log.warning(f"Outbound: Block {data[:8]} of {peer_ip} not found")
                             if node.full_ledger:
@@ -183,9 +178,7 @@ def worker(host, port, node):
                             node.logger.app_log.info(
                                 f"Outbound: Node is at block {client_block}")  # now check if we have any newer
 
-                            db_handler_instance.execute(db_handler_instance.h,
-                                                        'SELECT block_hash FROM transactions ORDER BY block_height DESC LIMIT 1')
-                            db_block_hash = db_handler_instance.h.fetchone()[0]  # get latest block_hash
+                            db_block_hash = db_handler_instance.last_block_hash()
 
                             if db_block_hash == data or not node.egress:
                                 if not node.egress:
@@ -228,14 +221,13 @@ def worker(host, port, node):
 
 
 
-                    elif int(received_block_height) >= db_block_height:
-                        if int(received_block_height) == db_block_height:
+                    elif int(received_block_height) >= node.last_block:
+                        if int(received_block_height) == node.last_block:
                             node.logger.app_log.info(f"Outbound: We have the same block as {peer_ip} ({received_block_height}), hash will be verified")
                         else:
-                            node.logger.app_log.warning(f"Outbound: We have a lower block ({db_block_height}) than {peer_ip} ({received_block_height}), hash will be verified")
+                            node.logger.app_log.warning(f"Outbound: We have a lower block ({node.last_block}) than {peer_ip} ({received_block_height}), hash will be verified")
 
-                        db_handler_instance.execute(db_handler_instance.c, 'SELECT block_hash FROM transactions ORDER BY block_height DESC LIMIT 1')
-                        db_block_hash = db_handler_instance.c.fetchone()[0]  # get latest block_hash
+                        db_block_hash = db_handler_instance.last_block_hash()
 
                         node.logger.app_log.info(f"Outbound: block_hash to send: {db_block_hash}")
                         send(s, db_block_hash)
@@ -288,9 +280,7 @@ def worker(host, port, node):
                     node.logger.app_log.warning(f"Skipping sync from {peer_ip}, syncing already in progress")
 
                 else:
-                    db_handler_instance.execute(db_handler_instance.c,
-                                                "SELECT timestamp FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")  # or it takes the first
-                    node.last_block_timestamp = quantize_two(db_handler_instance.c.fetchone()[0])
+                    node.last_block_timestamp = db_handler_instance.last_block_timestamp()
 
                     if int(node.last_block_timestamp) < (time.time() - 600):
                         block_req = node.peers.consensus_most_common

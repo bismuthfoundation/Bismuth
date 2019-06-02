@@ -284,7 +284,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             node.logger.app_log.warning(f"Difficulty adjustment: {diff[6]}")
             node.logger.app_log.warning(f"Difficulty: {diff[0]} {diff[1]}")
 
-            node.last_block_hash = db_handler.lastblockhash()
+            node.last_block_hash = db_handler.last_block_hash()
 
             block_instance.block_hash = hashlib.sha224((str(block_instance.transaction_list_converted) + node.last_block_hash).encode("utf-8")).hexdigest()
             del block_instance.transaction_list_converted[:]
@@ -337,7 +337,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                                       peer_ip=peer_ip,
                                                       app_log=node.logger.app_log)
 
-            node.last_block_hash = db_handler.lastblockhash()
+            node.last_block_hash = db_handler.last_block_hash()
 
             process_transactions(block)
             # end for block
@@ -381,7 +381,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             # not the latest block, nor the mirror of the latest block.
             # c.execute("SELECT * FROM transactions WHERE block_height = ?", (block_instance.block_height_new -1,))
             tx_list_to_hash = db_handler.c.fetchall()
-            mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).hexdigest()
+            block_instance.mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).hexdigest()
             # /new sha_hash
 
             rewards()
@@ -470,8 +470,10 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             # node.logger.app_log.warning("Block: {}: {} digestion completed in {}s."
             # .format(block_instance.block_height_new,  block_hash[:10], delta_t))
             node.plugin_manager.execute_action_hook('digestblock',
-                                                    {'failed': block_instance.failed_cause, 'ip': peer_ip,
-                                                     'deltat': delta_t, "blocks": block_instance.block_count,
+                                                    {'failed': block_instance.failed_cause,
+                                                     'ip': peer_ip,
+                                                     'deltat': delta_t,
+                                                     "blocks": block_instance.block_count,
                                                      "txs": block_instance.tx_count})
 
     else:

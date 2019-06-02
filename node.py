@@ -370,7 +370,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
 
                 # roll back hdd too
                 db_handler.rollback_to(db_block_height)
-                node.hdd_block -= 1
+                node.hdd_block = db_block_height-1 #-1 because rollback is >=
                 # /roll back hdd too
 
                 # rollback indices
@@ -1649,7 +1649,7 @@ def setup_net_type():
 
     if "testnet" in node.version or node.is_testnet:
         node.port = 2829
-        node.hyper_path = "static/test.db"
+        node.hyper_path = "static/test_hyper.db"
         node.ledger_path = "static/test.db"  # for tokens
         node.ledger_ram_file = "file:ledger_testnet?mode=memory&cache=shared"
         #node.hyper_recompress = False
@@ -1660,14 +1660,13 @@ def setup_net_type():
             sys.exit()
 
         redownload_test = input("Status: Welcome to the testnet. Redownload test ledger? y/n")
-        if redownload_test == "y" or not os.path.exists("static/test.db"):
-            types = ['static/test.db-wal', 'static/test.db-shm', 'static/index_test.db']
+        if redownload_test == "y":
+            types = ['static/test.db-wal', 'static/test.db-shm', 'static/index_test.db', 'static/test_hyper.db-wal', 'static/test_hyper.db-shm']
             for type in types:
                 for file in glob.glob(type):
                     os.remove(file)
                     print(file, "deleted")
-            download_file("https://bismuth.cz/test.db", "static/test.db")
-            download_file("https://bismuth.cz/index_test.db", "static/index_test.db")
+            download_file("https://bismuth.cz/test.db", "static/test.zip")
         else:
             print("Not redownloading test db")
 
@@ -1696,9 +1695,9 @@ def node_block_init(database):
     node.difficulty = difficulty(node, db_handler_initial)  # check diff for miner
 
     node.last_block = node.hdd_block  # ram equals drive at this point
-    node.last_block_hash = database.lastblockhash()
+    node.last_block_hash = database.last_block_hash()
 
-    node.last_block_timestamp = database.lasttimestamp()
+    node.last_block_timestamp = database.last_timestamp()
 
     checkpoint_set(node)
 
