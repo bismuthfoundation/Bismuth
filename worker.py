@@ -178,9 +178,7 @@ def worker(host, port, node):
                             node.logger.app_log.info(
                                 f"Outbound: Node is at block {client_block}")  # now check if we have any newer
 
-                            db_block_hash = db_handler_instance.last_block_hash()
-
-                            if db_block_hash == data or not node.egress:
+                            if node.last_block_hash == data or not node.egress:
                                 if not node.egress:
                                     node.logger.app_log.warning(f"Outbound: Egress disabled for {peer_ip}")
                                     time.sleep(int(node.pause))  # reduce CPU usage
@@ -227,10 +225,8 @@ def worker(host, port, node):
                         else:
                             node.logger.app_log.warning(f"Outbound: We have a lower block ({node.last_block}) than {peer_ip} ({received_block_height}), hash will be verified")
 
-                        db_block_hash = db_handler_instance.last_block_hash()
-
-                        node.logger.app_log.info(f"Outbound: block_hash to send: {db_block_hash}")
-                        send(s, db_block_hash)
+                        node.logger.app_log.info(f"Outbound: block_hash to send: {node.last_block_hash}")
+                        send(s, node.last_block_hash)
 
                         #ensure_good_peer_version(host)
 
@@ -280,8 +276,6 @@ def worker(host, port, node):
                     node.logger.app_log.warning(f"Skipping sync from {peer_ip}, syncing already in progress")
 
                 else:
-                    node.last_block_timestamp = db_handler_instance.last_block_timestamp()
-
                     if int(node.last_block_timestamp) < (time.time() - 600):
                         block_req = node.peers.consensus_most_common
                         node.logger.app_log.warning("Most common block rule triggered")

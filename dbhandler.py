@@ -322,6 +322,7 @@ class DbHandler:
             if node.ram:  # we want to save to hyper.db from RAM
                 misc_to_h2(result2)
 
+            node.hdd_block = node.last_block
             node.logger.app_log.warning(f"Chain: {len(result1)} txs moved to HDD")
         except Exception as e:
             node.logger.app_log.warning(f"Chain: Exception Moving new data to HDD: {e}")
