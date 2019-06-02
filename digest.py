@@ -404,7 +404,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             # NEW: returns new block sha_hash
 
             # after all is done, cleanly update values for node object
-            node.last_block += 1
+            node.last_block = block_instance.block_height_new
 
     # digestion begins here
     if node.peers.is_banned(peer_ip):
