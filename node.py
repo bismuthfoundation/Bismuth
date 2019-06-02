@@ -728,6 +728,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         node.peers.consensus_add(peer_ip, consensus_blockheight, self.request, node.last_block)
                         # consensus pool 1 (connection from them)
 
+
                         # append zeroes to get static length
                         send(self.request, node.last_block)
                         # send own block height
@@ -746,12 +747,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             # confirm you know that sha_hash or continue receiving
 
                         elif int(received_block_height) <= node.last_block:
-                            if int(received_block_height) == db_block_height:
+                            if int(received_block_height) == node.last_block:
                                 node.logger.app_log.info(
                                     f"Inbound: We have the same height as {peer_ip} ({received_block_height}), hash will be verified")
                             else:
                                 node.logger.app_log.warning(
-                                    f"Inbound: We have higher ({db_block_height}) block height than {peer_ip} ({received_block_height}), hash will be verified")
+                                    f"Inbound: We have higher ({node.last_block}) block height than {peer_ip} ({received_block_height}), hash will be verified")
 
                             data = receive(self.request)  # receive client's last block_hash
                             # send all our followup hashes
