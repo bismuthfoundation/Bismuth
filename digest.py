@@ -332,8 +332,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                                       peer_ip=peer_ip,
                                                       app_log=node.logger.app_log)
 
-            node.last_block_hash = block_instance.block_hash
-
             process_transactions(block)
             # end for block
 
@@ -402,6 +400,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
             # after all is done, cleanly update values for node object
             node.last_block = block_instance.block_height_new
+            node.last_block_hash = block_instance.block_hash
 
     # digestion begins here
     if node.peers.is_banned(peer_ip):

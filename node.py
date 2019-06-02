@@ -788,22 +788,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                                 else:
 
-                                    blocks_fetched = []
-                                    del blocks_fetched[:]
-                                    while sys.getsizeof(
-                                            str(blocks_fetched)) < 500000:  # limited size based on txs in blocks
-                                        db_handler_instance.execute_param(db_handler_instance.h, (
-                                            "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),
-                                                                          (str(int(client_block)), str(int(client_block + 1)),))
-                                        result = db_handler_instance.h.fetchall()
-                                        if not result:
-                                            break
-                                        blocks_fetched.extend([result])
-                                        client_block = int(client_block) + 1
+                                    blocks_fetched = db_handler_instance.blocks_after(client_block)
 
-                                    # blocks_send = [[l[1:] for l in group] for _, group in groupby(blocks_fetched, key=itemgetter(0))]  # remove block number
-
-                                    # node.logger.app_log.info("Inbound: Selected " + str(blocks_fetched) + " to send")
+                                    node.logger.app_log.info(f"Inbound: Selected {blocks_fetched}")
 
                                     send(self.request, "blocksfnd")
 

@@ -8,6 +8,7 @@ import essentials
 from quantizer import *
 import functools
 from fork import Fork
+import sys
 
 
 def sql_trace_callback(log, id, statement):
@@ -140,6 +141,21 @@ class DbHandler:
         self.execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?;",
                            (data,))
         return self.h.fetchone()[0]
+
+    def blocks_after(self, block):
+        blocks_fetched = []
+        while sys.getsizeof(
+                str(blocks_fetched)) < 500000:  # limited size based on txs in blocks
+            # db_handler.execute_param(db_handler.h, ("SELECT block_height, timestamp,address,recipient,amount,signature,public_key,keep,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),(str(int(client_block)),) + (str(int(client_block + 1)),))
+            self.execute_param(self.h, (
+                "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),
+                                              (str(int(block)), str(int(block + 1)),))
+            result = self.h.fetchall()
+            if not result:
+                break
+            blocks_fetched.extend([result])
+            block = int(block) + 1
+        return blocks_fetched
 
     def block_height_max(self):
         self.h.execute("SELECT max(block_height) FROM transactions")

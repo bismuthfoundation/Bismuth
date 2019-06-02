@@ -188,20 +188,7 @@ def worker(host, port, node):
                                 send(s, "nonewblk")
 
                             else:
-                                blocks_fetched = []
-                                while sys.getsizeof(
-                                        str(blocks_fetched)) < 500000:  # limited size based on txs in blocks
-                                    # db_handler.execute_param(db_handler.h, ("SELECT block_height, timestamp,address,recipient,amount,signature,public_key,keep,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),(str(int(client_block)),) + (str(int(client_block + 1)),))
-                                    db_handler_instance.execute_param(db_handler_instance.h, (
-                                        "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),
-                                                                      (str(int(client_block)), str(int(client_block + 1)),))
-                                    result = db_handler_instance.h.fetchall()
-                                    if not result:
-                                        break
-                                    blocks_fetched.extend([result])
-                                    client_block = int(client_block) + 1
-
-                                # blocks_send = [[l[1:] for l in group] for _, group in groupby(blocks_fetched, key=itemgetter(0))]  # remove block number
+                                blocks_fetched = db_handler_instance.blocks_after(client_block)
 
                                 node.logger.app_log.info(f"Outbound: Selected {blocks_fetched}")
 
