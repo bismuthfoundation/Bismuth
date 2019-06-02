@@ -426,12 +426,12 @@ class Mempool:
         # Sorry, no space left for this tx type.
         return False
 
-    def merge(self, data, peer_ip, node, size_bypass=False, wait=False, revert=False):
+    def merge(self, data, peer_ip, c, size_bypass=False, wait=False, revert=False):
         """
         Checks and merge the tx list in out mempool
         :param data:
         :param peer_ip:
-        :param node:
+        :param c:
         :param size_bypass: if True, will merge whatever the mempool size is
         :param wait: if True, will wait until the main db_lock is free. if False, will just drop.
         :param revert: if True, we are reverting tx from digest_block, so main lock is on. Don't bother, process without lock.

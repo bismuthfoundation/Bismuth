@@ -172,8 +172,8 @@ def worker(host, port, node):
                         send(s_local_node, "block_height_from_hash")
                         send(s_local_node, data)
                         client_block = receive(s_local_node)
-                        print("HEUREKA")
-                        print(client_block)
+                        print("HEUREKA" + client_block)
+
 
                         if not client_block:
                             node.logger.app_log.warning(f"Outbound: Block {data[:8]} of {peer_ip} not found")
@@ -202,8 +202,7 @@ def worker(host, port, node):
                                 send(s_local_node, "blocks_after")
                                 send(s_local_node, data)
                                 blocks_fetched = receive(s_local_node)
-                                print ("HEUREKA")
-                                print(blocks_fetched)
+                                print ("HEUREKA" + blocks_fetched)
 
                                 node.logger.app_log.info(f"Outbound: Selected {blocks_fetched}")
 
@@ -337,7 +336,7 @@ def worker(host, port, node):
                     #node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, node, True))
                     send(s_local_node, "mempool")
                     send(s_local_node, segments)
-                    print("HEUREKA")
+                    print("HEUREKA" + segments)
 
 
                     # receive theirs
