@@ -48,7 +48,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             
             self.mining_reward = None
             self.mirror_hash = None
-            self.start_time_block = None
+            self.start_time_block = quantize_two(time.time())
 
     def fork_reward_check():
         # fork handling
