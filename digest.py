@@ -162,7 +162,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
     def process_transactions(block):
         fees_block = []
-        mining_reward = 0  # avoid warning
+        block_instance.mining_reward = 0  # avoid warning
 
         # Cache for multiple tx from same address
         balances = {}
@@ -204,16 +204,16 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 if node.last_block <= 10000000:
 
                     if node.last_block >= fork.POW_FORK or (node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET):
-                        mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("2.4")
+                        block_instance.mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("2.4")
                     else:
-                        mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("0.8")
+                        block_instance.mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("0.8")
 
-                    if mining_reward < 0:
-                        mining_reward = 0
+                    if block_instance.mining_reward < 0:
+                        block_instance.mining_reward = 0
                 else:
-                    mining_reward = 0
+                    block_instance.mining_reward = 0
 
-                reward = quantize_eight(mining_reward + sum(fees_block[:-1]))
+                reward = quantize_eight(block_instance.mining_reward + sum(fees_block[:-1]))
                 # don't request a fee for mined block so new accounts can mine
                 fee = 0
             else:
