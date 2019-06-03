@@ -968,7 +968,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         mempool_insert = receive(self.request)
                         node.logger.app_log.warning("mpinsert command")
 
-                        if peer_ip == "127.0.0.1":
+                        if node.peers.is_whitelisted(peer_ip, data):
                             mpinsert_result = mp.MEMPOOL.merge(mempool_insert, peer_ip, db_handler_instance.c, False, True)
                         else:
                             mpinsert_result = mp.MEMPOOL.merge(mempool_insert, peer_ip, db_handler_instance.c, True, True)

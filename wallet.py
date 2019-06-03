@@ -694,15 +694,20 @@ def send(amount_input, recipient_input, operation_input, openfield_input):
             tx_submit = str(tx_timestamp), str(keyring.myaddress), str(recipient_input), '%.8f' % float(amount_input), str(signature_enc.decode("utf-8")), str(keyring.public_key_hashed.decode("utf-8")), str(operation_input), str(openfield_input)  # float kept for compatibility
 
             while True:
-                connections.send(wallet.s, "mpinsert")
-                connections.send(wallet.s, tx_submit)
-                reply = connections.receive(wallet.s)
-                app_log.warning("Client: {}".format(reply))
-                if reply[-1] == "Success":
-                    messagebox.showinfo("OK", "Transaction accepted to mempool")
-                else:
-                    messagebox.showerror("Error", "There was a problem with transaction processing. Full message: {}".format(reply))
-                break
+                try:
+                    connections.send(wallet.s, "mpinsert")
+                    connections.send(wallet.s, tx_submit)
+                    reply = connections.receive(wallet.s)
+                    app_log.warning("Client: {}".format(reply))
+                    if reply[-1] == "Success":
+                        messagebox.showinfo("OK", "Transaction accepted to mempool")
+                    else:
+                        messagebox.showerror("Error", "There was a problem with transaction processing. Full message: {}".format(reply))
+                    break
+                except Exception as e:
+                    app_log.warning(f"Retrying due to {e}")
+                    time.sleep(1)
+                    pass
 
             t = threading.Thread(target=refresh, args=(gui_address_t.get(),))
             t.start()
