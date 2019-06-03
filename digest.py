@@ -17,6 +17,8 @@ fork = Fork()
 
 def digest_block(node, data, sdef, peer_ip, db_handler):
     """node param for imports"""
+
+    tokens_operation_present = False
     
     class Transaction:
         def __init__(self):
@@ -50,7 +52,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             self.mining_reward = None
             self.mirror_hash = None
             self.start_time_block = quantize_two(time.time())
-            self.tokens_operation_present = False
+
 
     def fork_reward_check():
         # fork handling
@@ -142,7 +144,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             tx.received_openfield = str(transaction[7])[:100000]
 
             if tx.received_operation in ["token:issue","token:transfer"]:
-                block.tokens_operation_present = True  # update on change
+                tokens_operation_present = True  # update on change
 
 
             # if transaction == block[-1]:
@@ -479,7 +481,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                                      "blocks": block_instance.block_count,
                                                      "txs": block_instance.tx_count})
 
-            if block_instance.tokens_operation_present:
+            if tokens_operation_present:
                 tokens.tokens_update(node, db_handler)
 
     else:
