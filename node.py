@@ -380,6 +380,8 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
 
                 node.last_block_hash = db_handler.last_block_hash()
                 node.last_block = db_block_height - 1
+                node.hdd_hash = db_handler.last_block_hash()
+                node.hdd_block = db_block_height - 1
 
         except Exception as e:
             node.logger.app_log.warning(e)
