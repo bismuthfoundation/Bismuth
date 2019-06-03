@@ -382,6 +382,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
                 node.last_block = db_block_height - 1
                 node.hdd_hash = db_handler.last_block_hash()
                 node.hdd_block = db_block_height - 1
+                tokens.tokens_update(node, db_handler)
 
         except Exception as e:
             node.logger.app_log.warning(e)
@@ -967,7 +968,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         mempool_insert = receive(self.request)
                         node.logger.app_log.warning("mpinsert command")
 
-                        mpinsert_result = mp.MEMPOOL.merge(mempool_insert, peer_ip, db_handler_instance.c, True, True)
+                        if peer_ip == "127.0.0.1":
+                            mpinsert_result = mp.MEMPOOL.merge(mempool_insert, peer_ip, db_handler_instance.c, False, True)
+                        else:
+                            mpinsert_result = mp.MEMPOOL.merge(mempool_insert, peer_ip, db_handler_instance.c, True, True)
                         node.logger.app_log.warning(f"mpinsert result: {mpinsert_result}")
                         send(self.request, mpinsert_result)
                     else:
@@ -1256,15 +1260,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for aliasesget command")
 
                 # Not mandatory, but may help to reindex with minimal sql queries
-                elif data == "tokensupdate":
-                    if node.peers.is_allowed(peer_ip, data):
-                        tokens.tokens_update(node.index_db, node.ledger_path, "normal", node.logger.app_log,
-                                             node.plugin_manager, trace_db_calls = node.trace_db_calls)
-                #
+
                 elif data == "tokensget":
                     if node.peers.is_allowed(peer_ip, data):
-                        tokens.tokens_update(node.index_db, node.ledger_path, "normal", node.logger.app_log,
-                                             node.plugin_manager, trace_db_calls = node.trace_db_calls)
+
                         tokens_address = receive(self.request)
 
                         tokens_user = db_handler_instance.tokens_user(tokens_address)
@@ -1779,8 +1778,6 @@ def initial_db_check():
             print("Database needs upgrading, bootstrapping...")
             bootstrap()
 
-    node.logger.app_log.warning(f"Status: Indexing tokens from ledger {node.ledger_path}")
-    tokens.tokens_update(node.index_db, node.ledger_path, "normal", node.logger.app_log, node.plugin_manager, trace_db_calls = node.trace_db_calls)
     node.logger.app_log.warning("Status: Indexing aliases")
     aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log, trace_db_calls = node.trace_db_calls)
 

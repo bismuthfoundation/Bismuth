@@ -579,7 +579,6 @@ def send_confirm(amount_input, recipient_input, operation_input, openfield_input
 
     # Exchange check
     exchange_addresses = {
-        "edf2d63cdf0b6275ead22c9e6d66aa8ea31dc0ccb367fad2e7c08a25": "Cryptopia",
         "f6c0363ca1c5aa28cc584252e65a63998493ff0a5ec1bb16beda9bac": "qTrade",
     }
     if recipient_input in exchange_addresses and len(openfield_input) < 16:
@@ -1128,19 +1127,21 @@ def tokens():
     scrollbar_v = Scrollbar(tokens_main, command=token_box.yview)
     scrollbar_v.grid(row=0, column=1, sticky=N + S + E)
 
-    connections.send(wallet.s, "tokensget")
-    connections.send(wallet.s, gui_address_t.get())
-    tokens_results = connections.receive(wallet.s)
-    print(tokens_results)
+    try:
+        connections.send(wallet.s, "tokensget")
+        connections.send(wallet.s, gui_address_t.get())
+        tokens_results = connections.receive(wallet.s)
+        print(tokens_results)
 
-    for pair in tokens_results:
-        try:
+        for pair in tokens_results:
+
             token = pair[0]
             balance = pair[1]
             token_box.insert(END, (token, ":", balance))
-        except:
-            app_log.warning("There was an issue fetching tokens")
-            pass
+
+    except:
+        app_log.warning("There was an issue fetching tokens")
+        pass
 
     # callback
     def callback(event):
