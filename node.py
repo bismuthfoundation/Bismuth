@@ -1549,13 +1549,15 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         block = receive(self.request)
                         response = db_handler_instance.blocks_after(block)
                         send(self.request, response)
+                    else:
+                        node.logger.app_log.info(f"{peer_ip} not whitelisted for blocks_after command")
 
                 elif data == "digest_direct":
                     if node.peers.is_whitelisted(peer_ip, data):
                         received = receive(self.request)
                         digest_block(node, received["segments"], self.request, received["peer_ip"], db_handler_instance)
                     else:
-                        node.logger.app_log.info(f"{peer_ip} not whitelisted for block_height_from_hash command")
+                        node.logger.app_log.info(f"{peer_ip} not whitelisted for digest_direct command")
 
 
                 elif data == "blocknf_direct":
@@ -1563,7 +1565,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         received = receive(self.request)
                         blocknf(node, received["block_hash_delete"], received["peer_ip"], db_handler_instance, received["hyperblocks"])
                     else:
-                        node.logger.app_log.info(f"{peer_ip} not whitelisted for block_height_from_hash command")
+                        node.logger.app_log.info(f"{peer_ip} not whitelisted for blocknf_direct command")
 
                 else:
                     if data == '*':
@@ -1681,7 +1683,7 @@ def setup_net_type():
                 for file in glob.glob(type):
                     os.remove(file)
                     print(file, "deleted")
-            download_file("https://bismuth.cz/test.rar.gz", "static/test.tar.gz")
+            download_file("https://bismuth.cz/test.tar.gz", "static/test.tar.gz")
             with tarfile.open("static/test.tar.gz") as tar:
                 tar.extractall("static/")  # NOT COMPATIBLE WITH CUSTOM PATH CONFS
         else:
