@@ -172,7 +172,6 @@ def worker(host, port, node):
                         send(s_local_node, "block_height_from_hash")
                         send(s_local_node, data)
                         client_block = receive(s_local_node)
-                        print("HEUREKA client_block" + str(client_block))
 
 
                         if not client_block:
@@ -185,7 +184,7 @@ def worker(host, port, node):
 
                         else:
 
-                            node.logger.app_log.info(
+                            node.logger.app_log.warning(
                                 f"Outbound: Node is at block {client_block}")  # now check if we have any newer
 
                             if node.last_block_hash == data or not node.egress:
@@ -202,7 +201,6 @@ def worker(host, port, node):
                                 send(s_local_node, "blocks_after")
                                 send(s_local_node, data)
                                 blocks_fetched = receive(s_local_node)
-                                print ("HEUREKA blocks_fetched" + str(blocks_fetched))
 
                                 node.logger.app_log.info(f"Outbound: Selected {blocks_fetched}")
 
@@ -251,7 +249,6 @@ def worker(host, port, node):
                     # blocknf(node, block_hash_delete, peer_ip, db_handler_instance, hyperblocks=True)
                     send(s_local_node, "blocknf_direct")
                     send(s_local_node, {"block_hash_delete": block_hash_delete, "peer_ip": peer_ip, "hyperblocks": True})
-                    print("HEUREKA block_hash_delete"+str(block_hash_delete))
 
                     if node.peers.warning(s, peer_ip, "Rollback", 2):
                         raise ValueError(f"{peer_ip} is banned")
@@ -309,7 +306,6 @@ def worker(host, port, node):
                             #digest_block(node, segments, s, peer_ip, db_handler_instance)
                             send(s_local_node, "digest_direct")
                             send(s_local_node, {"segments" : segments, "peer_ip" : peer_ip})
-                            print("HEUREKA segments"+str(segments))
 
                             # receive theirs
                     else:
@@ -336,8 +332,6 @@ def worker(host, port, node):
                     #node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, node, True))
                     send(s_local_node, "mempool")
                     send(s_local_node, segments)
-                    print("HEUREKA segments mp" + str(segments))
-
 
                     # receive theirs
                     # Tell the mempool we just send our pool to a peer

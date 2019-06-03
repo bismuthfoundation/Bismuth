@@ -138,9 +138,13 @@ class DbHandler:
         return results
 
     def block_height_from_hash(self, data):
-        self.execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?;",
-                           (data,))
-        return self.h.fetchone()[0]
+        try:
+            self.execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?;",(data,))
+            result = self.h.fetchone()[0]
+        except:
+            result = None
+
+        return result
 
     def blocks_after(self, block):
         blocks_fetched = []

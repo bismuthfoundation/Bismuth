@@ -379,6 +379,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
                 # /rollback indices
 
                 node.last_block_hash = db_handler.last_block_hash()
+                node.last_block = db_handler.block_height_max()
 
         except Exception as e:
             node.logger.app_log.warning(e)
@@ -1535,11 +1536,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "block_height_from_hash":
                     if node.peers.is_whitelisted(peer_ip, data):
                         hash = receive(self.request)
-                        try:
-                            response = db_handler_instance.block_height_from_hash(hash)
-                        except:
-                            response = None
-
+                        response = db_handler_instance.block_height_from_hash(hash)
                         send(self.request, response)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for block_height_from_hash command")

@@ -40,7 +40,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
         """array of transactions within a block"""
         def __init__(self):
             self.tx_count = 0
-            self.block_height_new = node.last_block + 1  # for logging purposes.
+            self.block_height_new = node.last_block + 1
             self.block_hash = 'N/A'
             self.failed_cause = ''
             self.block_count = 0
@@ -333,6 +333,8 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                                       app_log=node.logger.app_log)
 
             process_transactions(block)
+
+
             # end for block
 
             # save current diff (before the new block)
@@ -401,6 +403,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             # after all is done, cleanly update values for node object
             node.last_block = block_instance.block_height_new
             node.last_block_hash = block_instance.block_hash
+
 
     # digestion begins here
     if node.peers.is_banned(peer_ip):
