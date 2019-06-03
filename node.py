@@ -717,7 +717,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                 f"Inbound: Distant peer {peer_ip} is at {received_block_height}, should be at least {block_req}")
 
                     send(self.request, "sync")
-
                 elif data == "blockheight":
                     try:
                         received_block_height = receive(self.request)  # receive client's last block height
@@ -727,34 +726,29 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         # consensus pool 1 (connection from them)
                         consensus_blockheight = int(received_block_height)  # str int to remove leading zeros
                         # consensus_add(peer_ip, consensus_blockheight, self.request)
-                        node.peers.consensus_add(peer_ip, consensus_blockheight, self.request, node.last_block)
+                        node.peers.consensus_add(peer_ip, consensus_blockheight, self.request, node.hdd_block)
                         # consensus pool 1 (connection from them)
 
-
                         # append zeroes to get static length
-                        send(self.request, node.last_block)
+                        send(self.request, node.hdd_block)
                         # send own block height
 
-                        if int(received_block_height) > node.last_block:
+                        if int(received_block_height) > node.hdd_block:
                             node.logger.app_log.warning("Inbound: Client has higher block")
 
-                            db_handler_instance.execute(db_handler_instance.c,
-                                                        'SELECT block_hash FROM transactions ORDER BY block_height DESC LIMIT 1')
-                            db_block_hash = db_handler_instance.c.fetchone()[0]  # get latest block_hash
-
-                            node.logger.app_log.info(f"Inbound: block_hash to send: {db_block_hash}")
-                            send(self.request, db_block_hash)
+                            node.logger.app_log.info(f"Inbound: block_hash to send: {node.hdd_hash}")
+                            send(self.request, node.hdd_hash)
 
                             # receive their latest sha_hash
                             # confirm you know that sha_hash or continue receiving
 
-                        elif int(received_block_height) <= node.last_block:
-                            if int(received_block_height) == node.last_block:
+                        elif int(received_block_height) <= node.hdd_block:
+                            if int(received_block_height) == node.hdd_block:
                                 node.logger.app_log.info(
                                     f"Inbound: We have the same height as {peer_ip} ({received_block_height}), hash will be verified")
                             else:
                                 node.logger.app_log.warning(
-                                    f"Inbound: We have higher ({node.last_block}) block height than {peer_ip} ({received_block_height}), hash will be verified")
+                                    f"Inbound: We have higher ({node.hdd_block}) block height than {peer_ip} ({received_block_height}), hash will be verified")
 
                             data = receive(self.request)  # receive client's last block_hash
                             # send all our followup hashes
@@ -768,18 +762,16 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             except Exception:
                                 node.logger.app_log.warning(f"Inbound: Block {data[:8]} of {peer_ip} not found")
                                 if node.full_ledger:
-                                    send(self.request, "blocknf") #announce block hash was not found
+                                    send(self.request, "blocknf")  # announce block hash was not found
                                 else:
-                                    send(self.request, "blocknfhb") #announce we are on hyperblocks
+                                    send(self.request, "blocknfhb")  # announce we are on hyperblocks
                                 send(self.request, data)
 
                             else:
                                 node.logger.app_log.info(f"Inbound: Client is at block {client_block}")  # now check if we have any newer
 
-                                db_handler_instance.execute(db_handler_instance.h,
-                                                            'SELECT block_hash FROM transactions ORDER BY block_height DESC LIMIT 1')
-                                db_block_hash = db_handler_instance.h.fetchone()[0]  # get latest block_hash
-                                if db_block_hash == data or not node.egress:
+
+                                if node.hdd_hash == data or not node.egress:
                                     if not node.egress:
                                         node.logger.app_log.warning(f"Outbound: Egress disabled for {peer_ip}")
                                     else:
