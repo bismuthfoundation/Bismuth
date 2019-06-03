@@ -15,6 +15,8 @@ class Node():
         self.startup_time = None
         self.version_allow = None
         self.hdd_block = None #interferes with block flows, careful
+        self.hdd_hash = None
+
         self.last_block = None #interferes with block flows, careful
         self.plugin_manager = None
         self.peers = None

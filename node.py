@@ -106,7 +106,7 @@ def check_integrity(database):
 def rollback(node, db_handler, block_height):
     node.logger.app_log.warning(f"Status: Rolling back below: {block_height}")
 
-    db_handler.rollback_to(block_height)
+    db_handler.rollback_under(block_height)
 
     # rollback indices
     db_handler.tokens_rollback(node, block_height)
@@ -369,7 +369,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
                 node.logger.app_log.warning(f"Node {peer_ip} didn't find block {db_block_height}({db_block_hash})")
 
                 # roll back hdd too
-                db_handler.rollback_to(db_block_height)
+                db_handler.rollback_under(db_block_height)
                 # /roll back hdd too
 
                 # rollback indices
@@ -379,7 +379,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
                 # /rollback indices
 
                 node.last_block_hash = db_handler.last_block_hash()
-                node.last_block = db_handler.block_height_max()
+                node.last_block = db_block_height - 1
 
         except Exception as e:
             node.logger.app_log.warning(e)
@@ -1711,7 +1711,9 @@ def node_block_init(database):
     node.difficulty = difficulty(node, db_handler_initial)  # check diff for miner
 
     node.last_block = node.hdd_block  # ram equals drive at this point
+
     node.last_block_hash = database.last_block_hash()
+    node.hdd_hash = node.last_block_hash # ram equals drive at this point
 
     node.last_block_timestamp = database.last_timestamp()
 

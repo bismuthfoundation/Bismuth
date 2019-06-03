@@ -143,18 +143,18 @@ def worker(host, port, node):
 
                     # send block height, receive block height
                     send(s, "blockheight")
-
-                    node.logger.app_log.info(f"Outbound: Sending block height to compare: {node.last_block}")
+                    
+                    node.logger.app_log.info(f"Outbound: Sending block height to compare: {node.hdd_block}")
                     # append zeroes to get static length
-                    send(s, node.last_block)
+                    send(s, node.hdd_block)
 
                     received_block_height = receive(s)  # receive node's block height
                     node.logger.app_log.info(
                         f"Outbound: Node {peer_ip} is at block height: {received_block_height}")
 
-                    if int(received_block_height) < node.last_block:
+                    if int(received_block_height) < node.hdd_block:
                         node.logger.app_log.warning(
-                            f"Outbound: We have a higher block ({node.last_block}) than {peer_ip} ({received_block_height}), sending")
+                            f"Outbound: We have a higher block ({node.hdd_block}) than {peer_ip} ({received_block_height}), sending")
 
                         data = receive(s)  # receive client's last block_hash
 
@@ -163,7 +163,7 @@ def worker(host, port, node):
 
                         # consensus pool 2 (active connection)
                         consensus_blockheight = int(received_block_height)
-                        node.peers.consensus_add(peer_ip, consensus_blockheight, s, node.last_block)
+                        node.peers.consensus_add(peer_ip, consensus_blockheight, s, node.hdd_block)
                         # consensus pool 2 (active connection)
 
 
@@ -187,7 +187,7 @@ def worker(host, port, node):
                             node.logger.app_log.warning(
                                 f"Outbound: Node is at block {client_block}")  # now check if we have any newer
 
-                            if node.last_block_hash == data or not node.egress:
+                            if node.hdd_hash == data or not node.egress:
                                 if not node.egress:
                                     node.logger.app_log.warning(f"Outbound: Egress disabled for {peer_ip}")
                                     time.sleep(int(node.pause))  # reduce CPU usage
@@ -218,20 +218,20 @@ def worker(host, port, node):
 
 
 
-                    elif int(received_block_height) >= node.last_block:
-                        if int(received_block_height) == node.last_block:
+                    elif int(received_block_height) >= node.hdd_block:
+                        if int(received_block_height) == node.hdd_block:
                             node.logger.app_log.info(f"Outbound: We have the same block as {peer_ip} ({received_block_height}), hash will be verified")
                         else:
-                            node.logger.app_log.warning(f"Outbound: We have a lower block ({node.last_block}) than {peer_ip} ({received_block_height}), hash will be verified")
+                            node.logger.app_log.warning(f"Outbound: We have a lower block ({node.hdd_block}) than {peer_ip} ({received_block_height}), hash will be verified")
 
-                        node.logger.app_log.info(f"Outbound: block_hash to send: {node.last_block_hash}")
-                        send(s, node.last_block_hash)
+                        node.logger.app_log.info(f"Outbound: block_hash to send: {node.hdd_hash}")
+                        send(s, node.hdd_hash)
 
                         #ensure_good_peer_version(host)
 
                         # consensus pool 2 (active connection)
                         consensus_blockheight = int(received_block_height)  # str int to remove leading zeros
-                        node.peers.consensus_add(peer_ip, consensus_blockheight, s, node.last_block)
+                        node.peers.consensus_add(peer_ip, consensus_blockheight, s, node.hdd_block)
                         # consensus pool 2 (active connection)
 
                 except Exception as e:

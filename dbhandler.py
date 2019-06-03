@@ -182,15 +182,15 @@ class DbHandler:
         self.execute_param(self.c, "SELECT * FROM transactions WHERE block_height >= ?;", (block_height,))
         backup_data = self.c.fetchall()
 
-        self.execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height)) #this belongs to rollback_to
-        self.commit(self.conn) #this belongs to rollback_to
+        self.execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height)) #this belongs to rollback_under
+        self.commit(self.conn) #this belongs to rollback_under
 
-        self.execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,)) #this belongs to rollback_to
-        self.commit(self.conn)  #this belongs to rollback_to
+        self.execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,)) #this belongs to rollback_under
+        self.commit(self.conn)  #this belongs to rollback_under
 
         return backup_data
 
-    def rollback_to(self, block_height):
+    def rollback_under(self, block_height):
         self.h.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height,))
         self.commit(self.hdd)
 
@@ -343,6 +343,8 @@ class DbHandler:
                 misc_to_h2(result2)
 
             node.hdd_block = node.last_block
+            node.hdd_hash = node.last_block_hash
+
             node.logger.app_log.warning(f"Chain: {len(result1)} txs moved to HDD")
         except Exception as e:
             node.logger.app_log.warning(f"Chain: Exception Moving new data to HDD: {e}")

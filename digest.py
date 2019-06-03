@@ -55,13 +55,13 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
         if node.is_testnet:
             if node.last_block > fork.POW_FORK_TESTNET:
                 if not fork.check_postfork_reward_testnet(db_handler):
-                    db_handler.rollback_to(fork.POW_FORK_TESTNET - 1)
+                    db_handler.rollback_under(fork.POW_FORK_TESTNET - 1)
                     raise ValueError("Rolling back chain due to old fork data")
         else:
             if node.last_block > fork.POW_FORK:
                 if not fork.check_postfork_reward(db_handler):
                     print("Rolling back")
-                    db_handler.rollback_to(fork.POW_FORK - 1)
+                    db_handler.rollback_under(fork.POW_FORK - 1)
                     raise ValueError("Rolling back chain due to old fork data")
         # fork handling
 
