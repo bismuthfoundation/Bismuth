@@ -1561,7 +1561,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "blocknf_direct":
                     if node.peers.is_whitelisted(peer_ip, data):
                         received = receive(self.request)
-                        blocknf(node, received["block_hash"], received["peer_ip"], db_handler_instance, received["hyperblocks"])
+                        blocknf(node, received["block_hash_delete"], received["peer_ip"], db_handler_instance, received["hyperblocks"])
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for block_height_from_hash command")
 
