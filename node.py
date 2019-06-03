@@ -1681,7 +1681,7 @@ def setup_net_type():
                 for file in glob.glob(type):
                     os.remove(file)
                     print(file, "deleted")
-            download_file("https://bismuth.cz/test.rar.gz", "static/test.tar.gz")
+            download_file("https://bismuth.cz/test.tar.gz", "static/test.tar.gz")
             with tarfile.open("static/test.tar.gz") as tar:
                 tar.extractall("static/")  # NOT COMPATIBLE WITH CUSTOM PATH CONFS
         else:
