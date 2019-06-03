@@ -756,9 +756,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             node.logger.app_log.info(f"Inbound: Will seek the following block: {data}")
 
                             try:
-                                db_handler_instance.execute_param(db_handler_instance.h,
-                                                                  "SELECT block_height FROM transactions WHERE block_hash = ?;", (data,))
-                                client_block = db_handler_instance.h.fetchone()[0]
+
+                                client_block = db_handler_instance.block_height_from_hash(data)
                             except Exception:
                                 node.logger.app_log.warning(f"Inbound: Block {data[:8]} of {peer_ip} not found")
                                 if node.full_ledger:
