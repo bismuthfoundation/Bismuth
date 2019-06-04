@@ -152,7 +152,42 @@ class ApiHandler:
                 db_handler.execute_param(db_handler.h,
                                         ('SELECT * FROM transactions WHERE block_height > ?;'),
                                         (block_height, ))
-                info = db_handler.db_handler.h.fetchall()
+                info = db_handler.h.fetchall()
+                # it's a list of tuples, send as is.
+                #print(all)
+            except Exception as e:
+                print(e)
+                raise
+            # print("info", info)
+            connections.send(socket_handler, info)
+        except Exception as e:
+            print(e)
+            raise
+
+    def api_getdiffsafter(self, socket_handler, db_handler, peers):
+        """
+        Returns the full blocks and transactions following a given block_height
+        Returns at most transactions from 10 blocks (the most recent ones if it truncates)
+        Used by the json-rpc server to poll and be notified of tx and new blocks.
+        :param socket_handler:
+        :param db_handler:
+        :param peers:
+        :return:
+        """
+        info = []
+        # get the last known block
+        since_height = connections.receive(socket_handler)
+        #print('api_getblocksince', since_height)
+        try:
+            try:
+                db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
+                # what is the min block height to consider ?
+                block_height = max(db_handler.h.fetchone()[0]-11, since_height)
+                #print("block_height",block_height)
+                db_handler.execute_param(db_handler.h,
+                                        ('SELECT * FROM transactions WHERE block_height > ?;'),
+                                        (block_height, ))
+                info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
                 #print(all)
             except Exception as e:
@@ -188,7 +223,7 @@ class ApiHandler:
                 db_handler.execute_param(db_handler.h,
                                         'SELECT * FROM transactions WHERE block_height > ? and block_height <= ? and openfield like ?',
                                         (since_height, block_height, where_openfield_like) )
-                info = db_handler.db_handler.h.fetchall()
+                info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
                 #print("info", info)
             except Exception as e:
@@ -245,7 +280,7 @@ class ApiHandler:
                 db_handler.execute_param(db_handler.h,
                                         ('SELECT * FROM transactions WHERE block_height > ? and block_height <= ? and ( '+where_assembled+')'),
                                         (since_height, block_height)+conditions_assembled)
-                info = db_handler.db_handler.h.fetchall()
+                info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
                 #print(all)
             except Exception as e:
@@ -283,7 +318,7 @@ class ApiHandler:
                                         ('SELECT * FROM transactions WHERE block_height > ? AND block_height <= ? '
                                          'AND ((address = ?) OR (recipient = ?)) ORDER BY block_height ASC'),
                                         (since_height, block_height, address, address))
-                info = db_handler.db_handler.h.fetchall()
+                info = db_handler.h.fetchall()
             except Exception as e:
                 print("Exception api_getaddresssince:".format(e))
                 raise

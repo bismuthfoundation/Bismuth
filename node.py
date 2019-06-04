@@ -1470,7 +1470,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         try:
                             node.apihandler.dispatch(data, self.request, db_handler_instance, node.peers)
                         except Exception as e:
-                            print(e)
+                            if node.debug:
+                                raise
+                            else:
+                                node.logger.app_log.warning(e)
 
                 elif data == "diffget":
                     if node.peers.is_allowed(peer_ip, data):
@@ -1523,7 +1526,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
 
                 elif data == "block_height_from_hash":
-                    if node.peers.is_whitelisted(peer_ip, data):
+                    if node.peers.is_allowed(peer_ip, data):
                         hash = receive(self.request)
                         response = db_handler_instance.block_height_from_hash(hash)
                         send(self.request, response)
@@ -1531,7 +1534,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for block_height_from_hash command")
 
                 elif data == "blocks_after":
-                    if node.peers.is_whitelisted(peer_ip, data):
+                    if node.peers.is_allowed(peer_ip, data):
                         block = receive(self.request)
                         response = db_handler_instance.blocks_after(block)
                         send(self.request, response)
