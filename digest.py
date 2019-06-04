@@ -128,8 +128,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 raise ValueError(f"Empty signature from {peer_ip}")
 
     def sort_transactions(block):
-
-        
         for tx_index, transaction in enumerate(block):            
 
             tx.start_time_tx = quantize_two(time.time())

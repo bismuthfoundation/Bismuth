@@ -1590,10 +1590,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             node.logger.app_log.warning(f"Inbound: Closing connection to old {peer_ip} node: {node.peers.ip_to_mainnet['peer_ip']}")
         return
 
-# client thread
-# if you "return" from the function, the exception code will node be executed and client thread will hang
-
-
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
 
