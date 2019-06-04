@@ -146,7 +146,7 @@ class DbHandler:
 
         return result
 
-    def blocks_after(self, block):
+    def blocksync(self, block):
         blocks_fetched = []
         while sys.getsizeof(
                 str(blocks_fetched)) < 500000:  # limited size based on txs in blocks

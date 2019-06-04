@@ -197,8 +197,8 @@ def worker(host, port, node):
                                 send(s, "nonewblk")
 
                             else:
-                                #blocks_fetched = db_handler_instance.blocks_after(client_block)
-                                send(s_local_node, "blocks_after")
+                                #blocks_fetched = db_handler_instance.blocksync(client_block)
+                                send(s_local_node, "blocksync")
                                 send(s_local_node, data)
                                 blocks_fetched = receive(s_local_node)
 

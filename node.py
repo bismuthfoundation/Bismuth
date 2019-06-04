@@ -785,7 +785,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                                 else:
 
-                                    blocks_fetched = db_handler_instance.blocks_after(client_block)
+                                    blocks_fetched = db_handler_instance.blocksync(client_block)
 
                                     node.logger.app_log.info(f"Inbound: Selected {blocks_fetched}")
 
@@ -1533,13 +1533,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for block_height_from_hash command")
 
-                elif data == "blocks_after":
+                elif data == "blocksync":
                     if node.peers.is_allowed(peer_ip, data):
                         block = receive(self.request)
-                        response = db_handler_instance.blocks_after(block)
+                        response = db_handler_instance.blocksync(block)
                         send(self.request, response)
                     else:
-                        node.logger.app_log.info(f"{peer_ip} not whitelisted for blocks_after command")
+                        node.logger.app_log.info(f"{peer_ip} not whitelisted for blocksync command")
 
                 elif data == "digest_direct":
                     if node.peers.is_whitelisted(peer_ip, data):
