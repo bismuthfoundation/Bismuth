@@ -180,12 +180,12 @@ class ApiHandler:
         #print('api_getblocksince', since_height)
         try:
             try:
-                db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
+                db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM misc")
                 # what is the min block height to consider ?
                 block_height = max(db_handler.h.fetchone()[0]-11, since_height)
                 #print("block_height",block_height)
                 db_handler.execute_param(db_handler.h,
-                                        ('SELECT * FROM transactions WHERE block_height > ?;'),
+                                        ('SELECT * FROM misc WHERE block_height > ?;'),
                                         (block_height, ))
                 info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
