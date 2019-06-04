@@ -342,7 +342,6 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
             db_block_height = block_max_ram ['block_height']
             db_block_hash = block_max_ram ['block_hash']
 
-
             ip = {'ip': peer_ip}
             node.plugin_manager.execute_filter_hook('filter_rollback_ip', ip)
             if ip['ip'] == 'no':
@@ -390,6 +389,8 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
 
         finally:
             node.db_lock.release()
+
+
             node.logger.app_log.warning(f"Database lock released")
 
             if skip:
@@ -967,11 +968,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if node.peers.is_allowed(peer_ip, data):
                         mempool_insert = receive(self.request)
                         node.logger.app_log.warning("mpinsert command")
-
-                        if node.peers.is_whitelisted(peer_ip, data):
-                            mpinsert_result = mp.MEMPOOL.merge(mempool_insert, peer_ip, db_handler_instance.c, False, True)
-                        else:
-                            mpinsert_result = mp.MEMPOOL.merge(mempool_insert, peer_ip, db_handler_instance.c, True, True)
+                        mpinsert_result = mp.MEMPOOL.merge(mempool_insert, peer_ip, db_handler_instance.c, True, True)
                         node.logger.app_log.warning(f"mpinsert result: {mpinsert_result}")
                         send(self.request, mpinsert_result)
                     else:
@@ -1241,7 +1238,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "aliasget":  # all for a single address, no protection against overlapping
                     if node.peers.is_allowed(peer_ip, data):
-                        aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log, trace_db_calls = node.trace_db_calls)
+                        aliases.aliases_update(node, db_handler_instance)
 
                         alias_address = receive(self.request)
                         result = db_handler_instance.aliasget(alias_address)
@@ -1252,7 +1249,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "aliasesget":  # only gets the first one, for multiple addresses
                     if node.peers.is_allowed(peer_ip, data):
-                        aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log, trace_db_calls = node.trace_db_calls)
+                        aliases.aliases_update(node, db_handler_instance)
                         aliases_request = receive(self.request)
                         results = db_handler_instance.aliasesget(aliases_request)
                         send(self.request, results)
@@ -1294,7 +1291,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "addfromalias":
                     if node.peers.is_allowed(peer_ip, data):
 
-                        aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log, trace_db_calls = node.trace_db_calls)
+                        aliases.aliases_update(node, db_handler_instance)
                         alias_address = receive(self.request)
                         address_fetch = db_handler_instance.addfromalias(alias_address)
                         node.logger.app_log.warning(f"Fetched the following alias address: {address_fetch}")
@@ -1711,6 +1708,10 @@ def node_block_init(database):
 
     checkpoint_set(node)
 
+    node.logger.app_log.warning("Status: Indexing aliases")
+    aliases.aliases_update(node, database)
+
+
 def ram_init(database):
     try:
         if node.ram:
@@ -1777,11 +1778,6 @@ def initial_db_check():
             upgrade.close()
             print("Database needs upgrading, bootstrapping...")
             bootstrap()
-
-    node.logger.app_log.warning("Status: Indexing aliases")
-    aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log, trace_db_calls = node.trace_db_calls)
-
-
 
 
 

@@ -202,8 +202,8 @@ def node_connect():
                 wallet.s.settimeout(3)
                 wallet.s.connect((connect_ip, int(connect_port)))
 
-                connections.send(wallet.s, "statusget")
-                result = connections.receive(wallet.s)  # validate the connection
+                refresh(keyring.myaddress)  # validate the connection
+
                 app_log.warning("Connection OK")
                 app_log.warning("Status: Wallet connected to {}:{}".format(connect_ip, connect_port))
                 ip_connected_var.set("{}:{}".format(connect_ip, connect_port))
@@ -242,8 +242,8 @@ def alias_register(alias_desired):
     result = connections.receive(wallet.s)
 
     if result == "Alias free":
-        send("0", keyring.myaddress, "", "alias=" + alias_desired)
-        pass
+        print("0", keyring.myaddress, "alias_register", alias_desired)
+        send("0", keyring.myaddress, "alias_register", alias_desired)
     else:
         messagebox.showinfo("Conflict", "Name already registered")
 
@@ -555,9 +555,7 @@ def decrypt_fn(destroy_this):
     busy(destroy_this)
     try:
         keyring.password = password_var_dec.get()
-
         keyring.decrypted_privkey = decrypt(keyring.password, base64.b64decode(keyring.private_key_readable))  # decrypt privkey
-
         keyring.key = RSA.importKey(keyring.decrypted_privkey)  # be able to sign
 
         notbusy(destroy_this)
@@ -693,21 +691,19 @@ def send(amount_input, recipient_input, operation_input, openfield_input):
             # print(str(timestamp), str(address), str(recipient_input), '%.8f' % float(amount_input),str(signature_enc), str(public_key_hashed), str(keep_input), str(openfield_input))
             tx_submit = str(tx_timestamp), str(keyring.myaddress), str(recipient_input), '%.8f' % float(amount_input), str(signature_enc.decode("utf-8")), str(keyring.public_key_hashed.decode("utf-8")), str(operation_input), str(openfield_input)  # float kept for compatibility
 
-            while True:
-                try:
-                    connections.send(wallet.s, "mpinsert")
-                    connections.send(wallet.s, tx_submit)
-                    reply = connections.receive(wallet.s)
-                    app_log.warning("Client: {}".format(reply))
-                    if reply[-1] == "Success":
-                        messagebox.showinfo("OK", "Transaction accepted to mempool")
-                    else:
-                        messagebox.showerror("Error", "There was a problem with transaction processing. Full message: {}".format(reply))
-                    break
-                except Exception as e:
-                    app_log.warning(f"Retrying due to {e}")
-                    time.sleep(1)
-                    pass
+
+            try:
+                connections.send(wallet.s, "mpinsert")
+                connections.send(wallet.s, tx_submit)
+                reply = connections.receive(wallet.s)
+                app_log.warning("Client: {}".format(reply))
+                if reply[-1] == "Success":
+                    messagebox.showinfo("OK", "Transaction accepted to mempool")
+                else:
+                    messagebox.showerror("Error", "There was a problem with transaction processing. Full message: {}".format(reply))
+            except Exception as e:
+                messagebox.showerror(f"Error, {e}")
+                pass
 
             t = threading.Thread(target=refresh, args=(gui_address_t.get(),))
             t.start()
@@ -1144,8 +1140,8 @@ def tokens():
             balance = pair[1]
             token_box.insert(END, (token, ":", balance))
 
-    except:
-        app_log.warning("There was an issue fetching tokens")
+    except Exception as e:
+        messagebox.showerror(f"Error", "There was an issue fetching tokens {e}")
         pass
 
     # callback

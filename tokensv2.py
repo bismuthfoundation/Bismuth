@@ -16,7 +16,6 @@ def blake2bhash_generate(data):
     return blake2bhash
     # new hash
 
-import functools
 def sql_trace_callback(log, id, statement):
     line = f"SQL[{id}] {statement}"
     log.warning(line) 
