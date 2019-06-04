@@ -1141,7 +1141,7 @@ def tokens():
             token_box.insert(END, (token, ":", balance))
 
     except Exception as e:
-        messagebox.showerror(f"Error", "There was an issue fetching tokens {e}")
+        messagebox.showerror("Error", f"There was an issue fetching tokens {e}")
         pass
 
     # callback
