@@ -11,11 +11,14 @@ from difficulty import *
 from essentials import address_is_rsa, checkpoint_set, ledger_balance3
 from polysign.signerfactory import SignerFactory
 from fork import Fork
+import tokensv2 as tokens
 
 fork = Fork()
 
 def digest_block(node, data, sdef, peer_ip, db_handler):
     """node param for imports"""
+
+    tokens_operation_present = False
     
     class Transaction:
         def __init__(self):
@@ -40,7 +43,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
         """array of transactions within a block"""
         def __init__(self):
             self.tx_count = 0
-            self.block_height_new = node.last_block + 1  # for logging purposes.
+            self.block_height_new = node.last_block + 1
             self.block_hash = 'N/A'
             self.failed_cause = ''
             self.block_count = 0
@@ -50,18 +53,19 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             self.mirror_hash = None
             self.start_time_block = quantize_two(time.time())
 
+
     def fork_reward_check():
         # fork handling
         if node.is_testnet:
             if node.last_block > fork.POW_FORK_TESTNET:
                 if not fork.check_postfork_reward_testnet(db_handler):
-                    db_handler.rollback_to(fork.POW_FORK_TESTNET - 1)
+                    db_handler.rollback_under(fork.POW_FORK_TESTNET - 1)
                     raise ValueError("Rolling back chain due to old fork data")
         else:
             if node.last_block > fork.POW_FORK:
                 if not fork.check_postfork_reward(db_handler):
                     print("Rolling back")
-                    db_handler.rollback_to(fork.POW_FORK - 1)
+                    db_handler.rollback_under(fork.POW_FORK - 1)
                     raise ValueError("Rolling back chain due to old fork data")
         # fork handling
 
@@ -124,8 +128,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 raise ValueError(f"Empty signature from {peer_ip}")
 
     def sort_transactions(block):
-
-        
         for tx_index, transaction in enumerate(block):            
 
             tx.start_time_tx = quantize_two(time.time())
@@ -138,6 +140,10 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             tx.received_public_key_hashed = str(transaction[5])[:1068]
             tx.received_operation = str(transaction[6])[:30]
             tx.received_openfield = str(transaction[7])[:100000]
+
+            if tx.received_operation in ["token:issue","token:transfer"]:
+                tokens_operation_present = True  # update on change
+
 
             # if transaction == block[-1]:
             if tx_index == block_instance.tx_count - 1:  # faster than comparing the whole tx
@@ -162,7 +168,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
     def process_transactions(block):
         fees_block = []
-        mining_reward = 0  # avoid warning
+        block_instance.mining_reward = 0  # avoid warning
 
         # Cache for multiple tx from same address
         balances = {}
@@ -204,16 +210,16 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 if node.last_block <= 10000000:
 
                     if node.last_block >= fork.POW_FORK or (node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET):
-                        mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("2.4")
+                        block_instance.mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("2.4")
                     else:
-                        mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("0.8")
+                        block_instance.mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("0.8")
 
-                    if mining_reward < 0:
-                        mining_reward = 0
+                    if block_instance.mining_reward < 0:
+                        block_instance.mining_reward = 0
                 else:
-                    mining_reward = 0
+                    block_instance.mining_reward = 0
 
-                reward = quantize_eight(mining_reward + sum(fees_block[:-1]))
+                reward = quantize_eight(block_instance.mining_reward + sum(fees_block[:-1]))
                 # don't request a fee for mined block so new accounts can mine
                 fee = 0
             else:
@@ -333,6 +339,8 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                                       app_log=node.logger.app_log)
 
             process_transactions(block)
+
+
             # end for block
 
             # save current diff (before the new block)
@@ -402,6 +410,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             node.last_block = block_instance.block_height_new
             node.last_block_hash = block_instance.block_hash
 
+
     # digestion begins here
     if node.peers.is_banned(peer_ip):
         # no need to loose any time with banned peers
@@ -469,6 +478,9 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                                      'deltat': delta_t,
                                                      "blocks": block_instance.block_count,
                                                      "txs": block_instance.tx_count})
+
+            if tokens_operation_present:
+                tokens.tokens_update(node, db_handler)
 
     else:
         node.logger.app_log.warning(f"Chain: Skipping processing from {peer_ip}, someone delivered data faster")

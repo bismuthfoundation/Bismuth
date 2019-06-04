@@ -612,6 +612,7 @@ class Mempool:
                         for entry in essentials.execute_param_c(c,
                                                                 "SELECT sum(reward) FROM transactions WHERE recipient = ?",
                                                                 (mempool_address,), self.app_log):
+
                             rewards = quantize_eight(rewards) + quantize_eight(entry[0])
 
                         balance = quantize_eight(credit - debit - fees + rewards - quantize_eight(mempool_amount))
