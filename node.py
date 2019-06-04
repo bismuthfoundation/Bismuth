@@ -1452,7 +1452,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                   "address": revealed_address,
                                   "walletversion": VERSION,
                                   "testnet": node.is_testnet,  # config data
-                                  "blocks": node.last_block, "timeoffset": 0,
+                                  "blocks": node.hdd_block, "timeoffset": 0,
                                   "connections": node.peers.consensus_size,
                                   "connections_list": node.peers.peer_opinion_dict,
                                   "difficulty": tempdiff[0],  # live status, bitcoind format
