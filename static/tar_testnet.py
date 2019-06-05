@@ -143,7 +143,7 @@ else:
     tar_obj.hdd2.close()
 
     if not process_search.proccess_presence ("node.py"):
-        files = ["ledger_test.db-wal","ledger_test.db-shm","ledger_test.db","hyper_test.db-shm", "hyper_test.db-wal", "hyper_test.db", "test_index.db"]
+        files = ["ledger_test.db-wal","ledger_test.db-shm","ledger_test.db","hyper_test.db-shm", "hyper_test.db-wal", "hyper_test.db", "index_test.db"]
 
         tar = tarfile.open("test.tar.gz", "w:gz")
 
