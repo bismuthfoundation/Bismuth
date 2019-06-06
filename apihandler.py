@@ -129,7 +129,7 @@ class ApiHandler:
         except Exception as e:
             pass
 
-    def api_getblocksince(self, socket_handler, db_handler, peers):
+    def api_getblocksafter(self, socket_handler, db_handler, peers):
         """
         Returns the full blocks and transactions following a given block_height
         Returns at most transactions from 10 blocks (the most recent ones if it truncates)
@@ -142,16 +142,13 @@ class ApiHandler:
         info = []
         # get the last known block
         since_height = connections.receive(socket_handler)
-        #print('api_getblocksince', since_height)
+        #print('api_getblocksafter', since_height)
         try:
             try:
                 db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
-                # what is the min block height to consider ?
-                block_height = max(db_handler.h.fetchone()[0]-11, since_height)
-                #print("block_height",block_height)
                 db_handler.execute_param(db_handler.h,
-                                        ('SELECT * FROM transactions WHERE block_height > ?;'),
-                                        (block_height, ))
+                                        ('SELECT * FROM transactions WHERE block_height >= ? AND block_height < ?;'),
+                                        (since_height, since_height+10,))
                 info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
                 #print(all)
@@ -166,7 +163,7 @@ class ApiHandler:
 
     def api_getdiffsafter(self, socket_handler, db_handler, peers):
         """
-        Returns the full blocks and transactions following a given block_height
+        Returns block heights and diffs following a given block_height
         Returns at most transactions from 10 blocks (the most recent ones if it truncates)
         Used by the json-rpc server to poll and be notified of tx and new blocks.
         :param socket_handler:
@@ -177,16 +174,12 @@ class ApiHandler:
         info = []
         # get the last known block
         since_height = connections.receive(socket_handler)
-        #print('api_getblocksince', since_height)
         try:
             try:
                 db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM misc")
-                # what is the min block height to consider ?
-                block_height = max(db_handler.h.fetchone()[0]-11, since_height)
-                #print("block_height",block_height)
                 db_handler.execute_param(db_handler.h,
-                                        ('SELECT * FROM misc WHERE block_height > ?;'),
-                                        (block_height, ))
+                                        ('SELECT * FROM misc WHERE block_height >= ? AND block_height < ?;'),
+                                        (since_height, since_height+10,))
                 info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
                 #print(all)
@@ -239,7 +232,7 @@ class ApiHandler:
             print(exc_type, fname, exc_tb.tb_lineno)
             raise
 
-    def api_getblocksincewhere(self, socket_handler, db_handler, peers):
+    def api_getblocksafterwhere(self, socket_handler, db_handler, peers):
         """
         Returns the full transactions following a given block_height and with specific conditions
         Returns at most transactions from 720 blocks at a time (the most *older* ones if it truncates) so about 12 hours worth of data.
@@ -253,7 +246,7 @@ class ApiHandler:
         # get the last known block
         since_height = connections.receive(socket_handler)
         where_conditions = connections.receive(socket_handler)
-        print('api_getblocksincewhere', since_height, where_conditions)
+        print('api_getblocksafterwhere', since_height, where_conditions)
         # TODO: feed as array to have a real control and avoid sql injection !important
         # Do *NOT* use in production until it's done.
         raise ValueError("Unsafe, do not use yet")

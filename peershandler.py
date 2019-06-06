@@ -547,7 +547,7 @@ class Peers:
                 # self.
                 self.reset_tried()
 
-            if self.config.nodes_ban_reset and len(self.connection_pool) <= len(self.banlist) \
+            if len(self.connection_pool) <= len(self.banlist) \
                     and int(time.time() - self.reset_time) > 60*10:
                 # do not reset too often. 10 minutes here
                 self.app_log.warning(f"Less active connections ({len(self.connection_pool)}) than banlist ({len(self.banlist)}), resetting banlist and tried list")
