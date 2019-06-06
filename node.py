@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.3.0.0"
+VERSION = "4.3.0.1"  # Post fork candidate
 
 import functools
 import glob
@@ -1586,7 +1586,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     return
 
         if not node.peers.version_allowed(peer_ip, node.version_allow):
-            node.logger.app_log.warning(f"Inbound: Closing connection to old {peer_ip} node: {node.peers.ip_to_mainnet['peer_ip']}")
+            node.logger.app_log.warning(f"Inbound: Closing connection to old {peer_ip} node: {node.peers.ip_to_mainnet[peer_ip]}")
         return
 
 # client thread
@@ -1629,23 +1629,23 @@ def setup_net_type():
     node.index_db = "static/index.db"
 
     if node.is_mainnet:
-        # Allow 18 for transition period. Will be auto removed at fork block.
+        # Allow only 20 and 21
         if node.version != 'mainnet0020':
-            node.version = 'mainnet0019'  # Force in code.
+            node.version = 'mainnet0020'  # Force in code.
         if "mainnet0020" not in node.version_allow:
-            node.version_allow = ['mainnet0019', 'mainnet0020', 'mainnet0021']
+            node.version_allow = ['mainnet0020', 'mainnet0021']
         # Do not allow bad configs.
         if not 'mainnet' in node.version:
             node.logger.app_log.error("Bad mainnet version, check config.txt")
             sys.exit()
         num_ver = just_int_from(node.version)
-        if num_ver < 19:
+        if num_ver < 20:
             node.logger.app_log.error("Too low mainnet version, check config.txt")
             sys.exit()
         for allowed in node.version_allow:
             num_ver = just_int_from(allowed)
-            if num_ver < 18:
-                node.logger.app_log.error("Too low allowed version, check config.txt")
+            if num_ver < 20:
+                node.logger.app_log.error("Too low allowed version, min 0020: check config.txt")
                 sys.exit()
 
     if "testnet" in node.version or node.is_testnet:
