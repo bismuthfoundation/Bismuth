@@ -99,9 +99,9 @@ def round_down(number, order):
     return int(math.floor(number / order)) * order
 
 
-def checkpoint_set(node, block_reference):
-    if block_reference > 2000:
-        node.checkpoint = round_down(block_reference, 1000) - 1000
+def checkpoint_set(node):
+    if node.last_block > 2000:
+        node.checkpoint = round_down(node.last_block, 1000) - 1000
         node.logger.app_log.warning(f"Checkpoint set to {node.checkpoint}")
 
 
@@ -301,6 +301,8 @@ def fee_calculate(openfield: str, operation: str='', block: int=0) -> Decimal:
         fee = Decimal(fee) + Decimal("10")
     if openfield.startswith("alias="):
         fee = Decimal(fee) + Decimal("1")
+    #if operation == "alias_register": #add in the future, careful about forking
+    #    fee = Decimal(fee) + Decimal("1")
     return quantize_eight(fee)
 
 

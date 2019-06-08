@@ -54,7 +54,7 @@ class ApiHandler:
         except AttributeError:
             raise
             print('KO')
-            self.app_log.warning("API Method <{}> does not exist.".format(method))
+            self.app_log.warning(f"API Method <{method}> does not exist.")
             return False
 
     def api_mempool(self, socket_handler, db_handler, peers):
@@ -119,17 +119,18 @@ class ApiHandler:
                     info['pubkey'] = db_handler.h.fetchone()[0]
                     info['pubkey'] = base64.b64decode(info['pubkey']).decode('utf-8')
                 except Exception as e:
-                    print(e)
-                    pass
+                    self.app_log.warning(e)
+                    
             except Exception as e:
-                pass
+                self.app_log.warning(e)
+
             # returns info
             # print("info", info)
             connections.send(socket_handler, info)
         except Exception as e:
-            pass
+            self.app_log.warning(e)
 
-    def api_getblocksince(self, socket_handler, db_handler, peers):
+    def api_getblocksafter(self, socket_handler, db_handler, peers):
         """
         Returns the full blocks and transactions following a given block_height
         Returns at most transactions from 10 blocks (the most recent ones if it truncates)
@@ -142,26 +143,54 @@ class ApiHandler:
         info = []
         # get the last known block
         since_height = connections.receive(socket_handler)
-        #print('api_getblocksince', since_height)
+        #print('api_getblocksafter', since_height)
         try:
             try:
                 db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
-                # what is the min block height to consider ?
-                block_height = max(db_handler.h.fetchone()[0]-11, since_height)
-                #print("block_height",block_height)
                 db_handler.execute_param(db_handler.h,
-                                        ('SELECT * FROM transactions WHERE block_height > ?;'),
-                                        (block_height, ))
-                info = db_handler.db_handler.h.fetchall()
+                                        ('SELECT * FROM transactions WHERE block_height >= ? AND block_height < ?;'),
+                                        (since_height, since_height+10,))
+                info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
                 #print(all)
             except Exception as e:
-                print(e)
+                self.app_log.warning(e)
                 raise
             # print("info", info)
             connections.send(socket_handler, info)
         except Exception as e:
-            print(e)
+            self.app_log.warning(e)
+            raise
+
+    def api_getdiffsafter(self, socket_handler, db_handler, peers):
+        """
+        Returns block heights and diffs following a given block_height
+        Returns at most transactions from 10 blocks (the most recent ones if it truncates)
+        Used by the json-rpc server to poll and be notified of tx and new blocks.
+        :param socket_handler:
+        :param db_handler:
+        :param peers:
+        :return:
+        """
+        info = []
+        # get the last known block
+        since_height = connections.receive(socket_handler)
+        try:
+            try:
+                db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM misc")
+                db_handler.execute_param(db_handler.h,
+                                        ('SELECT * FROM misc WHERE block_height >= ? AND block_height < ?;'),
+                                        (since_height, since_height+10,))
+                info = db_handler.h.fetchall()
+                # it's a list of tuples, send as is.
+                #print(all)
+            except Exception as e:
+                self.app_log.warning(e)
+                raise
+            # print("info", info)
+            connections.send(socket_handler, info)
+        except Exception as e:
+            self.app_log.warning(e)
             raise
 
     def api_getblockswhereoflike(self, socket_handler, db_handler, peers):
@@ -188,23 +217,23 @@ class ApiHandler:
                 db_handler.execute_param(db_handler.h,
                                         'SELECT * FROM transactions WHERE block_height > ? and block_height <= ? and openfield like ?',
                                         (since_height, block_height, where_openfield_like) )
-                info = db_handler.db_handler.h.fetchall()
+                info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
                 #print("info", info)
             except Exception as e:
-                print("error", e)
+                self.app_log.warning(e)
                 raise
             # Add the last fetched block so the client will be able to fetch the next block
             info.append([block_height])
             connections.send(socket_handler, info)
         except Exception as e:
-            print(e)
+            self.app_log.warning(e)
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
+            self.app_log.warning(exc_type, fname, exc_tb.tb_lineno)
             raise
 
-    def api_getblocksincewhere(self, socket_handler, db_handler, peers):
+    def api_getblocksafterwhere(self, socket_handler, db_handler, peers):
         """
         Returns the full transactions following a given block_height and with specific conditions
         Returns at most transactions from 720 blocks at a time (the most *older* ones if it truncates) so about 12 hours worth of data.
@@ -218,7 +247,7 @@ class ApiHandler:
         # get the last known block
         since_height = connections.receive(socket_handler)
         where_conditions = connections.receive(socket_handler)
-        print('api_getblocksincewhere', since_height, where_conditions)
+        self.app_log.warning('api_getblocksafterwhere', since_height, where_conditions)
         # TODO: feed as array to have a real control and avoid sql injection !important
         # Do *NOT* use in production until it's done.
         raise ValueError("Unsafe, do not use yet")
@@ -245,16 +274,16 @@ class ApiHandler:
                 db_handler.execute_param(db_handler.h,
                                         ('SELECT * FROM transactions WHERE block_height > ? and block_height <= ? and ( '+where_assembled+')'),
                                         (since_height, block_height)+conditions_assembled)
-                info = db_handler.db_handler.h.fetchall()
+                info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
                 #print(all)
             except Exception as e:
-                print(e)
+                self.app_log.warning(e)
                 raise
             # print("info", info)
             connections.send(socket_handler, info)
         except Exception as e:
-            print(e)
+            self.app_log.warning(e)
             raise
             
     def api_getaddresssince(self, socket_handler, db_handler, peers):
@@ -283,13 +312,13 @@ class ApiHandler:
                                         ('SELECT * FROM transactions WHERE block_height > ? AND block_height <= ? '
                                          'AND ((address = ?) OR (recipient = ?)) ORDER BY block_height ASC'),
                                         (since_height, block_height, address, address))
-                info = db_handler.db_handler.h.fetchall()
+                info = db_handler.h.fetchall()
             except Exception as e:
                 print("Exception api_getaddresssince:".format(e))
                 raise
             connections.send(socket_handler, {'last': block_height, 'minconf': minirmations, 'transactions': info})
         except Exception as e:
-            print(e)
+            self.app_log.warning(e)
             raise       
 
     def _get_balance(self, db_handler, address, minconf=1):
@@ -317,7 +346,7 @@ class ApiHandler:
             #balance = '{:.8f}'.format(credit - debit)
             balance = credit - debit
         except Exception as e:
-            print(e)
+            self.app_log.warning(e)
             raise
         return balance
 
@@ -363,7 +392,7 @@ class ApiHandler:
             if not credit:
                 credit = 0
         except Exception as e:
-            print(e)
+            self.app_log.warning(e)
             raise
         return credit
 
@@ -388,6 +417,7 @@ class ApiHandler:
             print('api_getreceived', addresses, minconf,':', received)
             connections.send(socket_handler, received)
         except Exception as e:
+            self.app_log.warning(e)
             raise
 
     def api_listreceived(self, socket_handler, db_handler, peers):
@@ -416,6 +446,7 @@ class ApiHandler:
             print('api_listreceived', addresses, minconf,':', received)
             connections.send(socket_handler, received)
         except Exception as e:
+            self.app_log.warning(e)
             raise
 
     def api_listbalance(self, socket_handler, db_handler, peers):
@@ -442,6 +473,7 @@ class ApiHandler:
             print('api_listbalance', addresses, minconf,':', balances)
             connections.send(socket_handler, balances)
         except Exception as e:
+            self.app_log.warning(e)
             raise
 
     def api_gettransaction(self, socket_handler, db_handler, peers):
@@ -495,6 +527,7 @@ class ApiHandler:
             print('api_gettransaction', format, transaction)
             connections.send(socket_handler, transaction)
         except Exception as e:
+            self.app_log.warning(e)
             raise
 
     def api_gettransactionbysignature(self, socket_handler, db_handler, peers):
@@ -548,6 +581,7 @@ class ApiHandler:
             print('api_gettransactionbysignature', format, transaction)
             connections.send(socket_handler, transaction)
         except Exception as e:
+            self.app_log.warning(e)
             raise
 
     def api_getpeerinfo(self, socket_handler, db_handler, peers):
@@ -565,7 +599,7 @@ class ApiHandler:
             # TODO: add outbound connection
             connections.send(socket_handler, info)
         except Exception as e:
-            pass
+            self.app_log.warning(e)
 
 def api_gettransaction_for_recipients(self, socket_handler, db_handler, peers):
         """
@@ -623,4 +657,5 @@ def api_gettransaction_for_recipients(self, socket_handler, db_handler, peers):
             print('api_gettransaction_for_recipients', format, transaction)
             connections.send(socket_handler, transaction)
         except Exception as e:
+            self.app_log.warning(e)
             raise

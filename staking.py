@@ -201,7 +201,7 @@ if __name__ == "__main__":
     mp.MEMPOOL = mp.Mempool (app_log,config,None,False)
 
 
-    conn = sqlite3.connect('static/test.db')
+    conn = sqlite3.connect('static/ledger_test.db')
     conn.text_factory = str
     c = conn.cursor()
 

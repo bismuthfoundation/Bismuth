@@ -14,8 +14,10 @@ class Node():
         self.app_version = None
         self.startup_time = None
         self.version_allow = None
-        self.hdd_block = None #interferes with block flows, careful
-        self.last_block = None #interferes with block flows, careful
+        self.hdd_block = None #in ram mode, this differs from node.last_block
+        self.hdd_hash = None #in ram mode, this differs from node.last_block_hash
+        self.last_block_hash = None #in ram mode, this differs from node.hdd_hash
+        self.last_block = None #in ram mode, this differs from node.hdd_block
         self.plugin_manager = None
         self.peers = None
         self.IS_STOPPING = False
@@ -27,7 +29,6 @@ class Node():
         self.is_regnet = False
         self.is_mainnet = False
 
-        self.port = None
         self.hyper_recompress = True
         self.hyper_path = None
         self.ledger_path = None
@@ -55,8 +56,10 @@ class Node():
         self.terminal_output = None
         self.egress = None
         self.genesis = None
+
+        self.last_block_timestamp = None
         self.last_block_ago = None
-        self.last_block_timestamp = 0
+
         self.accept_peers = True
         self.difficulty = None
         self.ledger_temp = None

@@ -64,6 +64,9 @@ def worker(host, port, node):
 
     try:
 
+        s_local_node = socks.socksocket()
+        s_local_node.connect(("127.0.0.1", node.port))
+
         s = socks.socksocket()
 
         if node.tor:
@@ -111,8 +114,8 @@ def worker(host, port, node):
         node.logger.app_log.info(f"Connected to {this_client}")
         node.logger.app_log.info(f"Current active pool: {node.peers.connection_pool}")
 
-    if not client_instance_worker.banned and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
-        db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, logger)
+    #if not client_instance_worker.banned and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
+        #db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, logger)
 
     while not client_instance_worker.banned and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
         try:
@@ -140,21 +143,18 @@ def worker(host, port, node):
 
                     # send block height, receive block height
                     send(s, "blockheight")
-
-                    db_handler_instance.execute(db_handler_instance.c, 'SELECT max(block_height) FROM transactions')
-                    db_block_height = db_handler_instance.c.fetchone()[0]
-
-                    node.logger.app_log.info(f"Outbound: Sending block height to compare: {db_block_height}")
+                    
+                    node.logger.app_log.info(f"Outbound: Sending block height to compare: {node.hdd_block}")
                     # append zeroes to get static length
-                    send(s, db_block_height)
+                    send(s, node.hdd_block)
 
                     received_block_height = receive(s)  # receive node's block height
                     node.logger.app_log.info(
                         f"Outbound: Node {peer_ip} is at block height: {received_block_height}")
 
-                    if int(received_block_height) < db_block_height:
+                    if int(received_block_height) < node.hdd_block:
                         node.logger.app_log.warning(
-                            f"Outbound: We have a higher block ({db_block_height}) than {peer_ip} ({received_block_height}), sending")
+                            f"Outbound: We have a higher block ({node.hdd_block}) than {peer_ip} ({received_block_height}), sending")
 
                         data = receive(s)  # receive client's last block_hash
 
@@ -163,14 +163,18 @@ def worker(host, port, node):
 
                         # consensus pool 2 (active connection)
                         consensus_blockheight = int(received_block_height)
-                        node.peers.consensus_add(peer_ip, consensus_blockheight, s, node.last_block)
+                        node.peers.consensus_add(peer_ip, consensus_blockheight, s, node.hdd_block)
                         # consensus pool 2 (active connection)
 
-                        try:
-                            db_handler_instance.execute_param(db_handler_instance.h, "SELECT block_height FROM transactions WHERE block_hash = ?;",
-                                                              (data,))
-                            client_block = db_handler_instance.h.fetchone()[0]
-                        except Exception:
+
+
+                        #client_block = db_handler_instance.block_height_from_hash(data)
+                        send(s_local_node, "block_height_from_hash")
+                        send(s_local_node, data)
+                        client_block = receive(s_local_node)
+
+
+                        if not client_block:
                             node.logger.app_log.warning(f"Outbound: Block {data[:8]} of {peer_ip} not found")
                             if node.full_ledger:
                                 send(s, "blocknf")
@@ -180,14 +184,10 @@ def worker(host, port, node):
 
                         else:
 
-                            node.logger.app_log.info(
+                            node.logger.app_log.warning(
                                 f"Outbound: Node is at block {client_block}")  # now check if we have any newer
 
-                            db_handler_instance.execute(db_handler_instance.h,
-                                                        'SELECT block_hash FROM transactions ORDER BY block_height DESC LIMIT 1')
-                            db_block_hash = db_handler_instance.h.fetchone()[0]  # get latest block_hash
-
-                            if db_block_hash == data or not node.egress:
+                            if node.hdd_hash == data or not node.egress:
                                 if not node.egress:
                                     node.logger.app_log.warning(f"Outbound: Egress disabled for {peer_ip}")
                                     time.sleep(int(node.pause))  # reduce CPU usage
@@ -197,20 +197,10 @@ def worker(host, port, node):
                                 send(s, "nonewblk")
 
                             else:
-                                blocks_fetched = []
-                                while sys.getsizeof(
-                                        str(blocks_fetched)) < 500000:  # limited size based on txs in blocks
-                                    # db_handler.execute_param(db_handler.h, ("SELECT block_height, timestamp,address,recipient,amount,signature,public_key,keep,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),(str(int(client_block)),) + (str(int(client_block + 1)),))
-                                    db_handler_instance.execute_param(db_handler_instance.h, (
-                                        "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),
-                                                                      (str(int(client_block)), str(int(client_block + 1)),))
-                                    result = db_handler_instance.h.fetchall()
-                                    if not result:
-                                        break
-                                    blocks_fetched.extend([result])
-                                    client_block = int(client_block) + 1
-
-                                # blocks_send = [[l[1:] for l in group] for _, group in groupby(blocks_fetched, key=itemgetter(0))]  # remove block number
+                                #blocks_fetched = db_handler_instance.blocksync(client_block)
+                                send(s_local_node, "blocksync")
+                                send(s_local_node, data)
+                                blocks_fetched = receive(s_local_node)
 
                                 node.logger.app_log.info(f"Outbound: Selected {blocks_fetched}")
 
@@ -228,23 +218,20 @@ def worker(host, port, node):
 
 
 
-                    elif int(received_block_height) >= db_block_height:
-                        if int(received_block_height) == db_block_height:
+                    elif int(received_block_height) >= node.hdd_block:
+                        if int(received_block_height) == node.hdd_block:
                             node.logger.app_log.info(f"Outbound: We have the same block as {peer_ip} ({received_block_height}), hash will be verified")
                         else:
-                            node.logger.app_log.warning(f"Outbound: We have a lower block ({db_block_height}) than {peer_ip} ({received_block_height}), hash will be verified")
+                            node.logger.app_log.warning(f"Outbound: We have a lower block ({node.hdd_block}) than {peer_ip} ({received_block_height}), hash will be verified")
 
-                        db_handler_instance.execute(db_handler_instance.c, 'SELECT block_hash FROM transactions ORDER BY block_height DESC LIMIT 1')
-                        db_block_hash = db_handler_instance.c.fetchone()[0]  # get latest block_hash
-
-                        node.logger.app_log.info(f"Outbound: block_hash to send: {db_block_hash}")
-                        send(s, db_block_hash)
+                        node.logger.app_log.info(f"Outbound: block_hash to send: {node.hdd_hash}")
+                        send(s, node.hdd_hash)
 
                         #ensure_good_peer_version(host)
 
                         # consensus pool 2 (active connection)
                         consensus_blockheight = int(received_block_height)  # str int to remove leading zeros
-                        node.peers.consensus_add(peer_ip, consensus_blockheight, s, node.last_block)
+                        node.peers.consensus_add(peer_ip, consensus_blockheight, s, node.hdd_block)
                         # consensus pool 2 (active connection)
 
                 except Exception as e:
@@ -259,7 +246,9 @@ def worker(host, port, node):
                 # if max(consensus_blockheight_list) == int(received_block_height):
                 if int(received_block_height) == node.peers.consensus_max:
 
-                    blocknf(node, block_hash_delete, peer_ip, db_handler_instance, hyperblocks=True)
+                    # blocknf(node, block_hash_delete, peer_ip, db_handler_instance, hyperblocks=True)
+                    send(s_local_node, "blocknf_direct")
+                    send(s_local_node, {"block_hash_delete": block_hash_delete, "peer_ip": peer_ip, "hyperblocks": True})
 
                     if node.peers.warning(s, peer_ip, "Rollback", 2):
                         raise ValueError(f"{peer_ip} is banned")
@@ -272,7 +261,9 @@ def worker(host, port, node):
                 # if max(consensus_blockheight_list) == int(received_block_height):
                 if int(received_block_height) == node.peers.consensus_max:
 
-                    blocknf(node, block_hash_delete, peer_ip, db_handler_instance)
+                    #blocknf(node, block_hash_delete, peer_ip, db_handler_instance)
+                    send(s_local_node, "blocknf_direct")
+                    send(s_local_node, {"block_hash_delete": block_hash_delete, "peer_ip": peer_ip, "hyperblocks": False})
 
                     if node.peers.warning(s, peer_ip, "Rollback", 2):
                         raise ValueError(f"{peer_ip} is banned")
@@ -288,10 +279,6 @@ def worker(host, port, node):
                     node.logger.app_log.warning(f"Skipping sync from {peer_ip}, syncing already in progress")
 
                 else:
-                    db_handler_instance.execute(db_handler_instance.c,
-                                                "SELECT timestamp FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")  # or it takes the first
-                    node.last_block_timestamp = quantize_two(db_handler_instance.c.fetchone()[0])
-
                     if int(node.last_block_timestamp) < (time.time() - 600):
                         block_req = node.peers.consensus_most_common
                         node.logger.app_log.warning("Most common block rule triggered")
@@ -315,7 +302,11 @@ def worker(host, port, node):
                                 raise ValueError(f"{peer_ip} is banned")
 
                         else:
-                            digest_block(node, segments, s, peer_ip, db_handler_instance)
+
+                            #digest_block(node, segments, s, peer_ip, db_handler_instance)
+                            send(s_local_node, "digest_direct")
+                            send(s_local_node, {"segments" : segments, "peer_ip" : peer_ip})
+
                             # receive theirs
                     else:
                         send(s, "blocksrj")
@@ -337,7 +328,11 @@ def worker(host, port, node):
                     # send own
                     # receive theirs
                     segments = receive(s)
-                    node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, db_handler_instance.c, True))
+
+                    #node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, node, True))
+                    send(s_local_node, "mempool")
+                    send(s_local_node, segments)
+
                     # receive theirs
                     # Tell the mempool we just send our pool to a peer
                     mp.MEMPOOL.sent(peer_ip)
@@ -358,7 +353,7 @@ def worker(host, port, node):
             print(exc_type, fname, exc_tb.tb_lineno)
             """
 
-            db_handler_instance.close()
+            #db_handler_instance.close()
 
             # remove from active pool
             node.peers.remove_client(this_client)
@@ -374,6 +369,7 @@ def worker(host, port, node):
 
             # properly end the connection
             s.close()
+            s_local_node.close()
             # properly end the connection
             if node.debug:
                 raise  # major debug client

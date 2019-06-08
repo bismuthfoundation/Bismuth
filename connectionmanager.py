@@ -70,7 +70,7 @@ class ConnectionManager (threading.Thread):
 
                 if self.node.peerfile_suggested:  # if it is not empty
                     try:
-                        self.node.peers.peers_dump(self.node.peerfile_suggested, self.node.peers.peer_dict)
+                        self.node.peers.peers_dump(self.node.peerfile_suggested, self.node.peers.peer_dict, strict=False)
                     except Exception as e:
                         self.logger.app_log.warning(f"There was an issue saving peers ({e}), skipped")
                         pass

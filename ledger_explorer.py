@@ -11,7 +11,7 @@ version = config.version
 
 if "testnet" in version:
     port = 2829
-    hyper_path = "static/test.db"
+    hyper_path = "static/ledger_test.db"
 
 def execute(cursor, query):
     """Secure execute for slow nodes"""
