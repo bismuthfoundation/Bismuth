@@ -377,6 +377,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
                 db_handler.staking_rollback(node, db_block_height)
                 # /rollback indices
 
+                node.last_block_timestamp = db_handler.last_block_timestamp()
                 node.last_block_hash = db_handler.last_block_hash()
                 node.last_block = db_block_height - 1
                 node.hdd_hash = db_handler.last_block_hash()
@@ -1703,7 +1704,7 @@ def node_block_init(database):
     node.last_block_hash = database.last_block_hash()
     node.hdd_hash = node.last_block_hash # ram equals drive at this point
 
-    node.last_block_timestamp = database.last_timestamp()
+    node.last_block_timestamp = database.last_block_timestamp()
 
     checkpoint_set(node)
 
