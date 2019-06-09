@@ -242,8 +242,8 @@ def alias_register(alias_desired):
     result = connections.receive(wallet.s)
 
     if result == "Alias free":
-        print("0", keyring.myaddress, "alias_register", alias_desired)
-        send("0", keyring.myaddress, "alias_register", alias_desired)
+        print("0", keyring.myaddress, "alias:register", alias_desired)
+        send("0", keyring.myaddress, "alias:register", alias_desired)
     else:
         messagebox.showinfo("Conflict", "Name already registered")
 

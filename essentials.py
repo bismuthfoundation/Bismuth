@@ -301,7 +301,7 @@ def fee_calculate(openfield: str, operation: str='', block: int=0) -> Decimal:
         fee = Decimal(fee) + Decimal("10")
     if openfield.startswith("alias="):
         fee = Decimal(fee) + Decimal("1")
-    #if operation == "alias_register": #add in the future, careful about forking
+    #if operation == "alias:register": #add in the future, careful about forking
     #    fee = Decimal(fee) + Decimal("1")
     return quantize_eight(fee)
 
