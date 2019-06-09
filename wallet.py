@@ -1831,7 +1831,7 @@ if __name__ == "__main__":
     walletmenu.add_separator()
     # walletmenu.add_command(label="Spending URL QR", command=lambda: qr(url.get()))
     # walletmenu.add_command(label="Reception URL QR", command=lambda: qr(url_r.get()))
-    walletmenu.add_command(label="Alias Registration...", command=alias)
+    walletmenu.add_command(label="Alias Registration...", command=alias, state=DISABLED)
     walletmenu.add_command(label="Show Alias", command=aliases_list)
     walletmenu.add_command(label="Fingerprint...", command=fingerprint)
     walletmenu.add_separator()

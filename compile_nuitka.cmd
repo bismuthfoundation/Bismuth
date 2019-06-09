@@ -12,8 +12,9 @@ robocopy wallet.dist dist\files /MOVE /E
 robocopy commands.dist dist\files /MOVE /E
 robocopy node_stop.dist dist\files /MOVE /E
 
-robocopy nuitka\Cryptodome dist\files\Cryptodome /MIR
-robocopy nuitka\lib dist\lib /MIR
+robocopy C:\Program Files\Python37\Lib\site-packages\Cryptodome dist\files\Cryptodome /MIR
+robocopy C:\Program Files\Python37\tcl dist\lib /MIR
+robocopy C:\Program Files\Python37\Lib\site-packages\coincurve dist\files\coincurve /MIR
 
 mkdir dist\files\static
 copy static\backup.py dist\files\static\backup.py
