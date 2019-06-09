@@ -311,7 +311,7 @@ def worker(host, port, node):
                     # receive theirs
                     segments = receive(s)
 
-                    node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, node, True))
+                    node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, db_handler_instance.c, True))
 
                     # receive theirs
                     # Tell the mempool we just send our pool to a peer
@@ -333,7 +333,7 @@ def worker(host, port, node):
             print(exc_type, fname, exc_tb.tb_lineno)
             """
 
-            #db_handler_instance.close()
+            db_handler_instance.close()
 
             # remove from active pool
             node.peers.remove_client(this_client)
