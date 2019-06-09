@@ -64,9 +64,6 @@ def worker(host, port, node):
 
     try:
 
-        s_local_node = socks.socksocket()
-        s_local_node.connect(("127.0.0.1", node.port))
-
         s = socks.socksocket()
 
         if node.tor:
@@ -114,8 +111,8 @@ def worker(host, port, node):
         node.logger.app_log.info(f"Connected to {this_client}")
         node.logger.app_log.info(f"Current active pool: {node.peers.connection_pool}")
 
-    #if not client_instance_worker.banned and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
-        #db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, logger)
+    if not client_instance_worker.banned and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
+        db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, logger)
 
     while not client_instance_worker.banned and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
         try:
@@ -166,13 +163,7 @@ def worker(host, port, node):
                         node.peers.consensus_add(peer_ip, consensus_blockheight, s, node.hdd_block)
                         # consensus pool 2 (active connection)
 
-
-
-                        #client_block = db_handler_instance.block_height_from_hash(data)
-                        send(s_local_node, "block_height_from_hash")
-                        send(s_local_node, data)
-                        client_block = receive(s_local_node)
-
+                        client_block = db_handler_instance.block_height_from_hash(data)
 
                         if not client_block:
                             node.logger.app_log.warning(f"Outbound: Block {data[:8]} of {peer_ip} not found")
@@ -197,10 +188,7 @@ def worker(host, port, node):
                                 send(s, "nonewblk")
 
                             else:
-                                #blocks_fetched = db_handler_instance.blocksync(client_block)
-                                send(s_local_node, "blocksync")
-                                send(s_local_node, data)
-                                blocks_fetched = receive(s_local_node)
+                                blocks_fetched = db_handler_instance.blocksync(client_block)
 
                                 node.logger.app_log.info(f"Outbound: Selected {blocks_fetched}")
 
@@ -246,9 +234,7 @@ def worker(host, port, node):
                 # if max(consensus_blockheight_list) == int(received_block_height):
                 if int(received_block_height) == node.peers.consensus_max:
 
-                    # blocknf(node, block_hash_delete, peer_ip, db_handler_instance, hyperblocks=True)
-                    send(s_local_node, "blocknf_direct")
-                    send(s_local_node, {"block_hash_delete": block_hash_delete, "peer_ip": peer_ip, "hyperblocks": True})
+                    blocknf(node, block_hash_delete, peer_ip, db_handler_instance, hyperblocks=True)
 
                     if node.peers.warning(s, peer_ip, "Rollback", 2):
                         raise ValueError(f"{peer_ip} is banned")
@@ -261,9 +247,7 @@ def worker(host, port, node):
                 # if max(consensus_blockheight_list) == int(received_block_height):
                 if int(received_block_height) == node.peers.consensus_max:
 
-                    #blocknf(node, block_hash_delete, peer_ip, db_handler_instance)
-                    send(s_local_node, "blocknf_direct")
-                    send(s_local_node, {"block_hash_delete": block_hash_delete, "peer_ip": peer_ip, "hyperblocks": False})
+                    blocknf(node, block_hash_delete, peer_ip, db_handler_instance)
 
                     if node.peers.warning(s, peer_ip, "Rollback", 2):
                         raise ValueError(f"{peer_ip} is banned")
@@ -303,9 +287,7 @@ def worker(host, port, node):
 
                         else:
 
-                            #digest_block(node, segments, s, peer_ip, db_handler_instance)
-                            send(s_local_node, "digest_direct")
-                            send(s_local_node, {"segments" : segments, "peer_ip" : peer_ip})
+                            digest_block(node, segments, s, peer_ip, db_handler_instance)
 
                             # receive theirs
                     else:
@@ -329,9 +311,7 @@ def worker(host, port, node):
                     # receive theirs
                     segments = receive(s)
 
-                    #node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, node, True))
-                    send(s_local_node, "mempool")
-                    send(s_local_node, segments)
+                    node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, node, True))
 
                     # receive theirs
                     # Tell the mempool we just send our pool to a peer
@@ -369,7 +349,7 @@ def worker(host, port, node):
 
             # properly end the connection
             s.close()
-            s_local_node.close()
+
             # properly end the connection
             if node.debug:
                 raise  # major debug client
