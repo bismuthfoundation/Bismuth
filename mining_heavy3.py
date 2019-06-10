@@ -19,7 +19,7 @@ import regnet
 from fork import Fork
 fork = Fork()
 
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 
 print("Mining_Heavy3 v{}".format(__version__))
@@ -148,26 +148,24 @@ def create_heavy3a(file_name):
             f.write(gen.generate(CHUNK_SIZE))
 
 
-def mining_open():
+def mining_open(path):
     """
     Opens the Junction MMapped file
     """
     global F
     global MMAP
     global RND_LEN
-    map = './heavy3a.bin' if os.path.isfile('./heavy3a.bin') else '../CSPRNG/rnd.bin'
-    if not os.path.isfile(map):
-        create_heavy3a('./heavy3a.bin')
-        map = './heavy3a.bin'
+    if not os.path.isfile(path):
+        create_heavy3a(path)
     try:
-        F = open(map, "rb+")
+        F = open(path, "rb+")
         # memory-map the file, size 0 means whole file
         MMAP = mmap.mmap(F.fileno(), 0)
-        RND_LEN = os.path.getsize(map) // 4
+        RND_LEN = os.path.getsize(path) // 4
         if read_int_from_map(MMAP, 0) != 3786993664:
-            raise ValueError("Wrong file: {}".format(map))
+            raise ValueError("Wrong file: {}".format(path))
         if read_int_from_map(MMAP, 1024) != 1742706086:
-            raise ValueError("Wrong file: {}".format(map))
+            raise ValueError("Wrong file: {}".format(path))
     except Exception as e:
         print("Error while loading Junction file: {}".format(e))
         sys.exit()

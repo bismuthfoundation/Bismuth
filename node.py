@@ -1910,6 +1910,7 @@ if __name__ == "__main__":
     node.accept_peers = config.accept_peers
     node.full_ledger = config.full_ledger
     node.trace_db_calls = config.trace_db_calls
+    node.heavy3_path = config.heavy3_path
 
     node.logger.app_log = log.log("node.log", node.debug_level, node.terminal_output)
     node.logger.app_log.warning("Configuration settings loaded")
@@ -1928,7 +1929,7 @@ if __name__ == "__main__":
         node.logger.app_log.warning("Cloning hyperblocks to ledger file")
         shutil.copy(node.hyper_path, node.ledger_path)  # hacked to remove all the endless checks
 
-    mining_heavy3.mining_open()
+    mining_heavy3.mining_open(node.heavy3_path)
     try:
         # create a plugin manager, load all plugin modules and init
         node.plugin_manager = plugins.PluginManager(app_log=node.logger.app_log, init=True)
