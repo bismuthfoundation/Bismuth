@@ -29,3 +29,4 @@ gui_scaling=adapt
 mempool_ram=True
 egress=True
 trace_db_calls=False
+heavy3_path=./heavy3a.bin
