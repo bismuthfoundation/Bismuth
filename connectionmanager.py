@@ -2,6 +2,7 @@ import threading
 import time
 from worker import worker
 
+
 class ConnectionManager (threading.Thread):
     def __init__(self, node, mp):
         threading.Thread.__init__(self, name="ConnectionManagerThread")
@@ -30,7 +31,7 @@ class ConnectionManager (threading.Thread):
                 until_purge -= 1
 
                 # peer management
-            
+
                 if not self.node.is_regnet:
                     # regnet never tries to connect
                     self.node.peers.client_loop(self.node, this_target = worker)
@@ -70,7 +71,7 @@ class ConnectionManager (threading.Thread):
 
                 if self.node.peerfile_suggested:  # if it is not empty
                     try:
-                        self.node.peers.peers_dump(self.node.peerfile_suggested, self.node.peers.peer_dict)
+                        self.node.peers.peers_dump(self.node.peerfile_suggested, self.node.peers.peer_dict, strict=False)
                     except Exception as e:
                         self.logger.app_log.warning(f"There was an issue saving peers ({e}), skipped")
                         pass
