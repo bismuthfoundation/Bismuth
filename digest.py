@@ -383,13 +383,13 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 # quantized vars have to be converted, since Decimal is not json serializable...
                 node.plugin_manager.execute_action_hook('block',
                                                         {'height': block_array.block_height_new, 'diff': diff_save,
-                                                         'sha_hash': block_array.block_hash,
+                                                         'hash': block_array.block_hash,
                                                          'timestamp': float(miner_tx.q_block_timestamp),
                                                          'miner': miner_tx.miner_address, 'ip': peer_ip})
 
                 node.plugin_manager.execute_action_hook('fullblock',
                                                         {'height': block_array.block_height_new, 'diff': diff_save,
-                                                         'sha_hash': block_array.block_hash,
+                                                         'hash': block_array.block_hash,
                                                          'timestamp': float(miner_tx.q_block_timestamp),
                                                          'miner': miner_tx.miner_address, 'ip': peer_ip,
                                                          'transactions': block_transactions})

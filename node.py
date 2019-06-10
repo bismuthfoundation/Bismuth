@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.3.0.0"
+VERSION = "4.3.0.1"  # Post fork candidate
 
 import functools
 import glob
@@ -389,7 +389,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
 
             if skip:
                 rollback = {"timestamp": my_time, "height": db_block_height, "ip": peer_ip,
-                            "sha_hash": db_block_hash, "skipped": True, "reason": reason}
+                            "hash": db_block_hash, "skipped": True, "reason": reason}
                 node.plugin_manager.execute_action_hook('rollback', rollback)
                 node.logger.app_log.info(f"Skipping rollback: {reason}")
             else:
@@ -411,7 +411,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
                             miner = tx[3]
                             height = tx[0]
                     rollback = {"timestamp": my_time, "height": height, "ip": peer_ip, "miner": miner,
-                                "sha_hash": db_block_hash, "tx_count": nb_tx, "skipped": False, "reason": ""}
+                                "hash": db_block_hash, "tx_count": nb_tx, "skipped": False, "reason": ""}
                     node.plugin_manager.execute_action_hook('rollback', rollback)
 
                 except Exception as e:
@@ -1288,7 +1288,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "tokensget":
                     if node.peers.is_allowed(peer_ip, data):
                         tokens.tokens_update(node.index_db, node.ledger_path, "normal", node.logger.app_log,
-                                             node.plugin_manager, trace_db_calls = node.trace_db_calls)
+                                             node.
+                                             _manager, trace_db_calls = node.trace_db_calls)
                         tokens_address = receive(self.request)
 
                         tokens_user = db_handler_instance.tokens_user(tokens_address)
@@ -1585,7 +1586,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     return
 
         if not node.peers.version_allowed(peer_ip, node.version_allow):
-            node.logger.app_log.warning(f"Inbound: Closing connection to old {peer_ip} node: {node.peers.ip_to_mainnet['peer_ip']}")
+            node.logger.app_log.warning(f"Inbound: Closing connection to old {peer_ip} node: {node.peers.ip_to_mainnet[peer_ip]}")
         return
 
 # client thread
@@ -1628,7 +1629,7 @@ def setup_net_type():
     node.index_db = "static/index.db"
 
     if node.is_mainnet:
-        # Allow only 20 and up
+        # Allow only 20 and 21
         if node.version != 'mainnet0020':
             node.version = 'mainnet0020'  # Force in code.
         if "mainnet0020" not in node.version_allow:
@@ -1638,13 +1639,13 @@ def setup_net_type():
             node.logger.app_log.error("Bad mainnet version, check config.txt")
             sys.exit()
         num_ver = just_int_from(node.version)
-        if num_ver <20:
+        if num_ver < 20:
             node.logger.app_log.error("Too low mainnet version, check config.txt")
             sys.exit()
         for allowed in node.version_allow:
             num_ver = just_int_from(allowed)
             if num_ver < 20:
-                node.logger.app_log.error("Too low allowed version, check config.txt")
+                node.logger.app_log.error("Too low allowed version, min 0020: check config.txt")
                 sys.exit()
 
     if "testnet" in node.version or node.is_testnet:

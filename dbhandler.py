@@ -55,6 +55,10 @@ class DbHandler:
         self.conn.text_factory = str
         self.c = self.conn.cursor()
 
+
+        self.SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+        self.SQL_TO_MISC = "INSERT INTO misc VALUES (?,?)"
+
     def pubkeyget(self, address):
         self.execute_param(self.c, "SELECT public_key FROM transactions WHERE address = ? and reward = 0 LIMIT 1", (address,))
         result = self.c.fetchone()[0]
@@ -218,7 +222,7 @@ class DbHandler:
             node.logger.app_log.warning(f"Failed to roll back the alias index below {(height)} due to {e}")
 
     def dev_reward(self,node,block_array,miner_tx,mining_reward,mirror_hash):
-        self.execute_param(self.c, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        self.execute_param(self.c, self.SQL_TO_TRANSACTIONS,
                                  (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Development Reward", str(node.genesis),
                                   str(mining_reward), "0", "0", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
@@ -231,7 +235,7 @@ class DbHandler:
         else:
             self.reward_sum = "8"
 
-        self.execute_param(self.c, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        self.execute_param(self.c, self.SQL_TO_TRANSACTIONS,
                            (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Hypernode Payouts",
                             "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16",
                             self.reward_sum, "0", "0", mirror_hash, "0", "0", "0", "0"))
@@ -242,10 +246,10 @@ class DbHandler:
                                  (block_array.block_height_new, diff_save))
         self.commit(self.conn)
 
-        # db_handler.execute_many(db_handler.c, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", block_transactions)
+        # db_handler.execute_many(db_handler.c, self.SQL_TO_TRANSACTIONS, block_transactions)
 
         for transaction2 in block_transactions:
-            self.execute_param(self.c, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            self.execute_param(self.c, self.SQL_TO_TRANSACTIONS,
                                      (str(transaction2[0]), str(transaction2[1]), str(transaction2[2]),
                                       str(transaction2[3]), str(transaction2[4]), str(transaction2[5]),
                                       str(transaction2[6]), str(transaction2[7]), str(transaction2[8]),
@@ -254,6 +258,30 @@ class DbHandler:
             self.commit(self.conn)
 
     def db_to_drive(self, node):
+
+        def transactions_to_h(data):
+            for x in data:  # we want to save to ledger.db
+                self.execute_param(self.h, self.SQL_TO_TRANSACTIONS,
+                                   (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
+            self.commit(self.hdd)
+
+        def misc_to_h(data):
+            for x in data:  # we want to save to ledger.db from RAM/hyper.db depending on ram conf
+                self.execute_param(self.h, self.SQL_TO_MISC, (x[0], x[1]))
+            self.commit(self.hdd)
+
+        def transactions_to_h2(data):
+            for x in data:
+                self.execute_param(self.h2, self.SQL_TO_TRANSACTIONS,
+                                   (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
+            self.commit(self.hdd2)
+
+        def misc_to_h2(data):
+            for x in data:
+                self.execute_param(self.h2, self.SQL_TO_MISC, (x[0], x[1]))
+            self.commit(self.hdd2)
+
+
         try:
             self.execute(self.c, "SELECT max(block_height) FROM transactions")
             node.last_block = self.c.fetchone()[0]
@@ -266,31 +294,20 @@ class DbHandler:
 
             result1 = self.c.fetchall()
 
-            for x in result1:  # we want to save to ledger.db
-                self.execute_param(self.h, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                                         (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
-            self.commit(self.hdd)
+            if node.is_mainnet or node.ram: #testnet does not use hyperblocks, change this in the future
+                transactions_to_h(result1)
 
             if node.is_mainnet and node.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
-                for x in result1:
-                    self.execute_param(self.h2, "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                                             (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
-                self.commit(self.hdd2)
+                transactions_to_h2(result1)
 
             self.execute_param(self.c, "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
                                      (node.hdd_block,))
             result2 = self.c.fetchall()
 
-            for x in result2:  # we want to save to ledger.db from RAM/hyper.db depending on ram conf
-                self.execute_param(self.h, "INSERT INTO misc VALUES (?,?)", (x[0], x[1]))
-            self.commit(self.hdd)
-
-            # db_handler.execute_many(db_handler.h, "INSERT INTO misc VALUES (?,?)", result2)
-
+            if not node.is_testnet: #testnet does not use hyperblocks, change this in the future
+                misc_to_h(result2)
             if node.is_mainnet and node.ram:  # we want to save to hyper.db from RAM
-                for x in result2:
-                    self.execute_param(self.h2, "INSERT INTO misc VALUES (?,?)", (x[0], x[1]))
-                self.commit(self.hdd2)
+                misc_to_h2(result2)
 
             self.execute(self.h, "SELECT max(block_height) FROM transactions")
             node.hdd_block = self.h.fetchone()[0]

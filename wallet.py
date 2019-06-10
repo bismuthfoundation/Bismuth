@@ -120,7 +120,7 @@ def mempool_get(s):
         mp_tree.grid(sticky=N + S + W + E)
         # table
 
-        for tx in mempool_total:
+        for tx in wallet.mempool_total:
             mp_tree.insert('', 'end', text=datetime.fromtimestamp(float(tx[0])).strftime('%y-%m-%d %H:%M'), values=(tx[1], tx[2], tx[3]))
 
         clear_mempool_b = Button(mempool_window, text="Clear Mempool", command=lambda: mempool_clear(s), height=1, width=20, font=("Tahoma", 8))
@@ -1367,8 +1367,8 @@ def refresh(address, s):
         # network status
 
         connections.send(s, "mpget", 10)  # senders
-        mempool_total = connections.receive(s, 10)
-        print(mempool_total)
+        wallet.mempool_total = connections.receive(s, 10)
+        print(wallet.mempool_total)
 
         # fees_current_var.set("Current Fee: {}".format('%.8f' % float(fee)))
         balance_var.set("Balance: {:.8f} BIS".format(Decimal(balance)))
@@ -1383,7 +1383,7 @@ def refresh(address, s):
         sync_msg_var.set(sync_msg)
 
         hash_var.set("Hash: {}...".format(hash_last[:6]))
-        mempool_count_var.set("Mempool txs: {}".format(len(mempool_total)))
+        mempool_count_var.set("Mempool txs: {}".format(len(wallet.mempool_total)))
 
         connections.send(s, "annverget", 10)
         annverget = connections.receive(s, 10)
@@ -1401,7 +1401,7 @@ def refresh(address, s):
         addlist = connections.receive(s, 10)
         print(addlist)
 
-        table(address, addlist, mempool_total)
+        table(address, addlist, wallet.mempool_total)
         # root.after(1000, refresh)
 
         # canvas bg
