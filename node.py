@@ -1241,8 +1241,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "aliasget":  # all for a single address, no protection against overlapping
                     if node.peers.is_allowed(peer_ip, data):
-                        aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log)  # PREFORK_ALIASES
-                        #aliases.aliases_update(node, db_handler_instance) # POSTFORK_ALIASES
+                        aliases.aliases_update(node, db_handler_instance)
 
                         alias_address = receive(self.request)
                         result = db_handler_instance.aliasget(alias_address)
@@ -1253,8 +1252,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "aliasesget":  # only gets the first one, for multiple addresses
                     if node.peers.is_allowed(peer_ip, data):
-                        aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log)  # PREFORK_ALIASES
-                        #aliases.aliases_update(node, db_handler_instance) # POSTFORK_ALIASES
+                        aliases.aliases_update(node, db_handler_instance)
                         aliases_request = receive(self.request)
                         results = db_handler_instance.aliasesget(aliases_request)
                         send(self.request, results)
@@ -1296,9 +1294,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "addfromalias":
                     if node.peers.is_allowed(peer_ip, data):
 
-                        #aliases.aliases_update(node, db_handler_instance) # POSTFORK_ALIASES
-                        aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log)  # PREFORK_ALIASES
-                        
+                        aliases.aliases_update(node, db_handler_instance)
+
                         alias_address = receive(self.request)
                         address_fetch = db_handler_instance.addfromalias(alias_address)
                         node.logger.app_log.warning(f"Fetched the following alias address: {address_fetch}")
@@ -1693,8 +1690,7 @@ def node_block_init(database):
 
     node.logger.app_log.warning("Status: Indexing aliases")
 
-    aliases.aliases_update(node.index_db, node.ledger_path, "normal", node.logger.app_log) #PREFORK_ALIASES
-    #aliases.aliases_update(node, database) #POSTFORK_ALIASES
+    aliases.aliases_update(node, database)
 
 
 def ram_init(database):
