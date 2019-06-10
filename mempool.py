@@ -19,9 +19,10 @@ import essentials
 from quantizer import *
 from polysign.signerfactory import SignerFactory
 
-__version__ = "0.0.5f"
+__version__ = "0.0.5g"
 
 """
+0.0.5g - Add default param to mergedts for compatibility
 0.0.5f - Using polysign
 0.0.5e - add mergedts timestamp to tx for better handling of late txs
          quicker unfreeze
@@ -47,7 +48,7 @@ Common Sql requests
 # Create mempool table
 SQL_CREATE = "CREATE TABLE IF NOT EXISTS transactions (" \
              "timestamp TEXT, address TEXT, recipient TEXT, amount TEXT, signature TEXT, " \
-             "public_key TEXT, operation TEXT, openfield TEXT, mergedts INTEGER)"
+             "public_key TEXT, operation TEXT, openfield TEXT, mergedts INTEGER(4) not null default (strftime('%s','now')) )"
 
 # Purge old txs that may be stuck
 SQL_PURGE = "DELETE FROM transactions WHERE timestamp <= strftime('%s', 'now', '-1 day')"
@@ -611,6 +612,7 @@ class Mempool:
                         for entry in essentials.execute_param_c(c,
                                                                 "SELECT sum(reward) FROM transactions WHERE recipient = ?",
                                                                 (mempool_address,), self.app_log):
+
                             rewards = quantize_eight(rewards) + quantize_eight(entry[0])
 
                         balance = quantize_eight(credit - debit - fees + rewards - quantize_eight(mempool_amount))
