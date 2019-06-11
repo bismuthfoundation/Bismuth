@@ -58,7 +58,7 @@ class Get:
                 left,right = map(str.strip,line.rstrip("\n").split("="))
                 if "mempool_ram_conf" == left:
                     print("Inconsistent config, param is now mempool_ram in config.txt")
-                    exit()                    
+                    exit()
                 if not left in self.vars:
                     # Warn for unknown param?
                     continue

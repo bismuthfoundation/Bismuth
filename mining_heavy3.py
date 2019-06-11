@@ -19,7 +19,7 @@ import regnet
 from fork import Fork
 fork = Fork()
 
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 
 print("Mining_Heavy3 v{}".format(__version__))
