@@ -189,7 +189,6 @@ def convert_ip_port(ip):
     return ip, port
 
 def node_connect():
-
     keep_trying = True
     while keep_trying:
         for pair in light_ip:
@@ -202,7 +201,7 @@ def node_connect():
                 wallet.s.settimeout(3)
                 wallet.s.connect((connect_ip, int(connect_port)))
 
-                refresh(keyring.myaddress)  # validate the connection
+                refresh(keyring.myaddress, True)  # validate the connection
 
                 app_log.warning("Connection OK")
                 app_log.warning("Status: Wallet connected to {}:{}".format(connect_ip, connect_port))
@@ -220,8 +219,9 @@ def node_connect_once(ip):  # Connect a light-wallet-ip directly from menu
         wallet.s = socks.socksocket()
         wallet.s.settimeout(3)
         wallet.s.connect((connect_ip, int(connect_port)))
-        connections.send(wallet.s, "statusget")
-        result = connections.receive(wallet.s)  # validate the connection
+
+        refresh(keyring.myaddress, True)
+
         app_log.warning("Connection OK")
         app_log.warning("Status: Wallet connected to {}:{}".format(connect_ip, connect_port))
         ip_connected_var.set("{}:{}".format(connect_ip, connect_port))
@@ -1285,7 +1285,7 @@ def table(address, addlist_20, mempool_total):
     # table
 
 
-def refresh(address):
+def refresh(address, raise_errors=False):
 
     s = socks.socksocket()
     s.connect((wallet.ip, int(wallet.port)))
@@ -1433,7 +1433,10 @@ def refresh(address):
 
     except Exception as e:
         app_log.warning(e)
-        node_connect()
+        if raise_errors:
+            raise
+        else:
+            node_connect()
 
 
 def sign():
