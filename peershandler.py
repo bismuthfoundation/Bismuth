@@ -18,7 +18,7 @@ import regnet
 
 from essentials import most_common, most_common_dict, percentage_in
 
-__version__ = "0.0.12"
+__version__ = "0.0.13"
 
 
 # TODO : some config options are  and others without => clean up later on
@@ -145,9 +145,7 @@ class Peers:
                     else:
                         s.connect((ip, port))
                         s.close()
-                    # properly end the connection
-
-                    #peers_pairs[ip] = port
+                        # properly end the connection
 
                     self.app_log.info(f"Inbound: Peer {ip}:{port} saved to peer list")
                     self.peerlist_updated = True
@@ -293,7 +291,6 @@ class Peers:
                         else:
                             s.connect((ip, port))
                             s.close()
-
 
                         self.app_log.warning(f"Connection to {ip}:{port} successful, keeping the peer")
                     except Exception as e:
@@ -548,7 +545,7 @@ class Peers:
                 # self.
                 self.reset_tried()
 
-            if len(self.connection_pool) <= len(self.banlist) \
+            if self.config.nodes_ban_reset and len(self.connection_pool) <= len(self.banlist) \
                     and int(time.time() - self.reset_time) > 60*10:
                 # do not reset too often. 10 minutes here
                 self.app_log.warning(f"Less active connections ({len(self.connection_pool)}) than banlist ({len(self.banlist)}), resetting banlist and tried list")
@@ -561,14 +558,13 @@ class Peers:
             if self.first_run and int(time.time() - self.startup_time) > 60:
                 self.app_log.warning("Status: Testing peers")
                 self.peers_test(self.peerfile)
-                self.peers_test(self.suggested_peerfile,strict=False)
+                self.peers_test(self.suggested_peerfile, strict=False)
                 self.first_run = False
 
             if int(time.time() - self.startup_time) > 15:  # refreshes peers from drive
                 self.peer_dict.update(self.peers_get(self.peerfile))
 
-            self.peers_dump(self.suggested_peerfile,self.peer_dict,strict=False)
-
+            self.peers_dump(self.suggested_peerfile, self.peer_dict, strict=False)
 
         except Exception as e:
             self.app_log.warning(f"Status: Manager run skipped due to error: {e}")

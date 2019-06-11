@@ -52,8 +52,7 @@ class ApiHandler:
             result = getattr(self, method)(socket_handler, db_handler, peers)
             return result
         except AttributeError:
-            raise
-            print('KO')
+            # raise
             self.app_log.warning(f"API Method <{method}> does not exist.")
             return False
 
@@ -77,8 +76,8 @@ class ApiHandler:
         :return: 'ok'
         """
         mp.MEMPOOL.clear()
-        connections.send(socket_handler, 'ok')        
-        
+        connections.send(socket_handler, 'ok')
+
     def api_ping(self, socket_handler, db_handler, peers):
         """
         Void, just to allow the client to keep the socket open (avoids timeout)
@@ -102,7 +101,7 @@ class ApiHandler:
         address = connections.receive(socket_handler)
         # print('api_getaddressinfo', address)
         try:
-            # format check
+            # format check # TODO USE CANONIC FUNCTION
             if not re.match('[abcdef0123456789]{56}', address):
                 self.app_log.info("Bad address format <{}>".format(address))
                 connections.send(socket_handler, info)
@@ -120,7 +119,7 @@ class ApiHandler:
                     info['pubkey'] = base64.b64decode(info['pubkey']).decode('utf-8')
                 except Exception as e:
                     self.app_log.warning(e)
-                    
+
             except Exception as e:
                 self.app_log.warning(e)
 
@@ -159,7 +158,8 @@ class ApiHandler:
             # print("info", info)
             connections.send(socket_handler, info)
         except Exception as e:
-            self.app_log.warning(e)
+            # If we raise, we don't need to log: will be catched and loggued by the caller
+            # self.app_log.warning(e)
             raise
 
     def api_getdiffsafter(self, socket_handler, db_handler, peers):
@@ -270,22 +270,22 @@ class ApiHandler:
                 db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
                 # what is the max block height to consider ?
                 block_height = min(db_handler.h.fetchone()[0], since_height+720)
-                #print("block_height",block_height)
+                # print("block_height",block_height)
                 db_handler.execute_param(db_handler.h,
                                         ('SELECT * FROM transactions WHERE block_height > ? and block_height <= ? and ( '+where_assembled+')'),
                                         (since_height, block_height)+conditions_assembled)
                 info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
-                #print(all)
+                # print(all)
             except Exception as e:
                 self.app_log.warning(e)
                 raise
             # print("info", info)
             connections.send(socket_handler, info)
         except Exception as e:
-            self.app_log.warning(e)
+            # self.app_log.warning(e)
             raise
-            
+
     def api_getaddresssince(self, socket_handler, db_handler, peers):
         """
         Returns the full transactions following a given block_height (will not include the given height) for the given address, with at least minirmations confirmations,
@@ -318,8 +318,8 @@ class ApiHandler:
                 raise
             connections.send(socket_handler, {'last': block_height, 'minconf': minirmations, 'transactions': info})
         except Exception as e:
-            self.app_log.warning(e)
-            raise       
+            # self.app_log.warning(e)
+            raise
 
     def _get_balance(self, db_handler, address, minconf=1):
         """
@@ -343,10 +343,10 @@ class ApiHandler:
             if not debit:
                 debit = 0
             # keep as float
-            #balance = '{:.8f}'.format(credit - debit)
+            # balance = '{:.8f}'.format(credit - debit)
             balance = credit - debit
         except Exception as e:
-            self.app_log.warning(e)
+            # self.app_log.warning(e)
             raise
         return balance
 
@@ -369,7 +369,7 @@ class ApiHandler:
             # TODO: Better to use a single sql query with all addresses listed?
             for address in addresses:
                 balance += self._get_balance(db_handler, address, minconf)
-            #print('api_getbalance', addresses, minconf,':', balance)
+            # print('api_getbalance', addresses, minconf,':', balance)
             connections.send(socket_handler, balance)
         except Exception as e:
             raise
@@ -392,7 +392,7 @@ class ApiHandler:
             if not credit:
                 credit = 0
         except Exception as e:
-            self.app_log.warning(e)
+            # self.app_log.warning(e)
             raise
         return credit
 
@@ -417,7 +417,7 @@ class ApiHandler:
             print('api_getreceived', addresses, minconf,':', received)
             connections.send(socket_handler, received)
         except Exception as e:
-            self.app_log.warning(e)
+            # self.app_log.warning(e)
             raise
 
     def api_listreceived(self, socket_handler, db_handler, peers):
@@ -446,7 +446,7 @@ class ApiHandler:
             print('api_listreceived', addresses, minconf,':', received)
             connections.send(socket_handler, received)
         except Exception as e:
-            self.app_log.warning(e)
+            # self.app_log.warning(e)
             raise
 
     def api_listbalance(self, socket_handler, db_handler, peers):
@@ -473,12 +473,12 @@ class ApiHandler:
             print('api_listbalance', addresses, minconf,':', balances)
             connections.send(socket_handler, balances)
         except Exception as e:
-            self.app_log.warning(e)
+            # self.app_log.warning(e)
             raise
 
     def api_gettransaction(self, socket_handler, db_handler, peers):
         """
-        Returns the full transaction matching a tx id. Takes txid anf format as params (json output if format is True)  
+        Returns the full transaction matching a tx id. Takes txid anf format as params (json output if format is True)
         :param socket_handler:
         :param db_handler:
         :param peers:
@@ -488,7 +488,7 @@ class ApiHandler:
         try:
             # get the txid
             transaction_id = connections.receive(socket_handler)
-            # and format
+            # and format
             format = connections.receive(socket_handler)
             # raw tx details
             db_handler.execute_param(db_handler.h,
@@ -500,7 +500,7 @@ class ApiHandler:
                 print('api_gettransaction', format, raw)
                 return
 
-            # current block height, needed for confirmations #
+            # current block height, needed for confirmations #
             db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
             block_height = db_handler.h.fetchone()[0]
             transaction['txid'] = transaction_id
@@ -527,7 +527,7 @@ class ApiHandler:
             print('api_gettransaction', format, transaction)
             connections.send(socket_handler, transaction)
         except Exception as e:
-            self.app_log.warning(e)
+            # self.app_log.warning(e)
             raise
 
     def api_gettransactionbysignature(self, socket_handler, db_handler, peers):
@@ -554,7 +554,7 @@ class ApiHandler:
                 print('api_gettransactionbysignature', format, raw)
                 return
 
-            # current block height, needed for confirmations #
+            # current block height, needed for confirmations
             db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
             block_height = db_handler.h.fetchone()[0]
             transaction['signature'] = signature
@@ -581,7 +581,7 @@ class ApiHandler:
             print('api_gettransactionbysignature', format, transaction)
             connections.send(socket_handler, transaction)
         except Exception as e:
-            self.app_log.warning(e)
+            # self.app_log.warning(e)
             raise
 
     def api_getpeerinfo(self, socket_handler, db_handler, peers):
@@ -601,61 +601,61 @@ class ApiHandler:
         except Exception as e:
             self.app_log.warning(e)
 
-def api_gettransaction_for_recipients(self, socket_handler, db_handler, peers):
-        """
-        Warning: this is currently very slow
-        Returns the full transaction matching a tx id for a list of recipient addresses. 
-        Takes txid anf format as params (json output if format is True)        
-        :param socket_handler:
-        :param db_handler:
-        :param peers:
-        :return:
-        """
-        transaction = {}
-        try:
-            # get the txid
-            transaction_id = connections.receive(socket_handler)
-            # then the recipient list
-            addresses = connections.receive(socket_handler)
-            # and format
-            format = connections.receive(socket_handler)
-            recipients = json.dumps(addresses).replace("[", "(").replace(']', ')')  # format as sql
-            # raw tx details
-            db_handler.execute_param(db_handler.h,
-                                    "SELECT * FROM transactions WHERE recipient IN {} AND signature LIKE ?".format(recipients),
-                                    (transaction_id + '%', ))
-            raw = db_handler.h.fetchone()
-            if not format:
-                connections.send(socket_handler, raw)
-                print('api_gettransaction_for_recipients', format, raw)
-                return
+    def api_gettransaction_for_recipients(self, socket_handler, db_handler, peers):
+            """
+            Warning: this is currently very slow
+            Returns the full transaction matching a tx id for a list of recipient addresses.
+            Takes txid and format as params (json output if format is True)
+            :param socket_handler:
+            :param db_handler:
+            :param peers:
+            :return:
+            """
+            transaction = {}
+            try:
+                # get the txid
+                transaction_id = connections.receive(socket_handler)
+                # then the recipient list
+                addresses = connections.receive(socket_handler)
+                # and format
+                format = connections.receive(socket_handler)
+                recipients = json.dumps(addresses).replace("[", "(").replace(']', ')')  # format as sql
+                # raw tx details
+                db_handler.execute_param(db_handler.h,
+                                        "SELECT * FROM transactions WHERE recipient IN {} AND signature LIKE ?".format(recipients),
+                                        (transaction_id + '%', ))
+                raw = db_handler.h.fetchone()
+                if not format:
+                    connections.send(socket_handler, raw)
+                    print('api_gettransaction_for_recipients', format, raw)
+                    return
 
-            # current block height, needed for confirmations #
-            db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
-            block_height = db_handler.h.fetchone()[0]
-            transaction['txid'] = transaction_id
-            transaction['time'] = raw[1]
-            transaction['hash'] = raw[5]
-            transaction['address'] = raw[2]
-            transaction['recipient'] = raw[3]
-            transaction['amount'] = raw[4]
-            transaction['fee'] = raw[8]
-            transaction['reward'] = raw[9]
-            transaction['operation']= raw[10]
-            transaction['openfield'] = raw[11]
-            transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
-            transaction['blockhash'] = raw[7]
-            transaction['blockheight'] = raw[0]
-            transaction['confirmations'] = block_height - raw[0]
-            # Get more info on the block the tx is in.
-            db_handler.execute_param(db_handler.h,
-                                    "SELECT timestamp, recipient FROM transactions WHERE block_height= ? AND reward > 0",
-                                    (raw[0],))
-            block_data = db_handler.h.fetchone()
-            transaction['blocktime'] = block_data[0]
-            transaction['blockminer'] = block_data[1]
-            print('api_gettransaction_for_recipients', format, transaction)
-            connections.send(socket_handler, transaction)
-        except Exception as e:
-            self.app_log.warning(e)
-            raise
+                # current block height, needed for confirmations #
+                db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
+                block_height = db_handler.h.fetchone()[0]
+                transaction['txid'] = transaction_id
+                transaction['time'] = raw[1]
+                transaction['hash'] = raw[5]
+                transaction['address'] = raw[2]
+                transaction['recipient'] = raw[3]
+                transaction['amount'] = raw[4]
+                transaction['fee'] = raw[8]
+                transaction['reward'] = raw[9]
+                transaction['operation']= raw[10]
+                transaction['openfield'] = raw[11]
+                transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
+                transaction['blockhash'] = raw[7]
+                transaction['blockheight'] = raw[0]
+                transaction['confirmations'] = block_height - raw[0]
+                # Get more info on the block the tx is in.
+                db_handler.execute_param(db_handler.h,
+                                        "SELECT timestamp, recipient FROM transactions WHERE block_height= ? AND reward > 0",
+                                        (raw[0],))
+                block_data = db_handler.h.fetchone()
+                transaction['blocktime'] = block_data[0]
+                transaction['blockminer'] = block_data[1]
+                print('api_gettransaction_for_recipients', format, transaction)
+                connections.send(socket_handler, transaction)
+            except Exception as e:
+                # self.app_log.warning(e)
+                raise
