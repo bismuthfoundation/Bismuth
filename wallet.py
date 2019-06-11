@@ -50,6 +50,7 @@ class Keys:
         self.keyfile = None
 
 
+
 # Wallet needs a version for itself
 __version__ = '0.8.4'
 
@@ -84,7 +85,6 @@ class Wallet():
         self.block_height_old = None
         self.mempool_total = None
         self.stats_timestamp = None
-
 
 def mempool_clear(s):
     connections.send(s, "mpclear")
@@ -185,7 +185,6 @@ def convert_ip_port(ip):
         ip, port = ip.split(':')
     return ip, port
 
-
 def node_connect():
     keep_trying = True
     while keep_trying:
@@ -194,6 +193,7 @@ def node_connect():
                 connect_ip, connect_port = convert_ip_port(pair)
                 wallet.ip = connect_ip
                 app_log.warning("Status: Attempting to connect to {}:{} out of {}".format(connect_ip, connect_port, light_ip))
+
                 wallet.s = socks.socksocket()
                 wallet.s.settimeout(3)
                 wallet.s.connect((connect_ip, int(connect_port)))
@@ -207,8 +207,6 @@ def node_connect():
                 break
             except Exception as e:
                 app_log.warning("Status: Cannot connect to {}:{}".format(connect_ip, connect_port))
-                time.sleep(1)
-
 
 def node_connect_once(ip):  # Connect a light-wallet-ip directly from menu
     try:
@@ -1113,8 +1111,6 @@ def tokens():
 
     token_box.bind('<Double-1>', callback)
 
-    # callback
-
     token_name_var = StringVar()
     token_name = Entry(tokens_main, textvariable=token_name_var, width=80)
     token_name.grid(row=2, column=0, sticky=E, padx=15, pady=(5, 5))
@@ -1652,7 +1648,6 @@ if __name__ == "__main__":
     light_ip = get_best_ipport_to_use(light_ip_conf)
     # light_ip.insert(0,node_ip)
     # light_ip = "127.0.0.1:8150"
-
     print(f"Connectiong to {light_ip}")
 
     root = Tk()

@@ -30,7 +30,6 @@ class Node:
         self.is_regnet = False
         self.is_mainnet = False
 
-        self.port = None
         self.hyper_recompress = True
         self.hyper_path = None
         self.ledger_path = None
@@ -58,8 +57,10 @@ class Node:
         self.terminal_output = None
         self.egress = None
         self.genesis = None
+
+        self.last_block_timestamp = None
         self.last_block_ago = None
-        self.last_block_timestamp = 0
+
         self.accept_peers = True
         self.difficulty = None
         self.ledger_temp = None

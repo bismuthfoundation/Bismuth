@@ -317,8 +317,6 @@ class DbHandler:
 
 
         try:
-            self.execute(self.c, "SELECT max(block_height) FROM transactions")
-            node.last_block = self.c.fetchone()[0]
 
             node.logger.app_log.warning(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
 
@@ -328,23 +326,20 @@ class DbHandler:
 
             result1 = self.c.fetchall()
 
-            if node.is_mainnet or node.ram: #testnet does not use hyperblocks, change this in the future
-                transactions_to_h(result1)
-
-            if node.is_mainnet and node.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
+            transactions_to_h(result1)
+            if node.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
                 transactions_to_h2(result1)
 
             self.execute_param(self.c, "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
                                      (node.hdd_block,))
             result2 = self.c.fetchall()
 
-            if not node.is_testnet: #testnet does not use hyperblocks, change this in the future
-                misc_to_h(result2)
-            if node.is_mainnet and node.ram:  # we want to save to hyper.db from RAM
+            misc_to_h(result2)
+            if node.ram:  # we want to save to hyper.db from RAM
                 misc_to_h2(result2)
 
-            self.execute(self.h, "SELECT max(block_height) FROM transactions")
-            node.hdd_block = self.h.fetchone()[0]
+            node.hdd_block = node.last_block
+            node.hdd_hash = node.last_block_hash
 
             node.logger.app_log.warning(f"Chain: {len(result1)} txs moved to HDD")
         except Exception as e:
