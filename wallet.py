@@ -45,7 +45,7 @@ class Keys:
         self.private_key_readable = None
         self.encrypted = None
         self.unlocked = None
-        self.public_key_hashed = None
+        self.public_key_b64encoded = None
         self.myaddress = None
         self.keyfile = None
 
@@ -332,7 +332,7 @@ def keys_load_dialog():
         print(wallet_load)
         wallet_load = keys_untar(wallet_load)[0]
 
-    keyring.key, keyring.public_key_readable, keyring.private_key_readable, keyring.encrypted, keyring.unlocked, keyring.public_key_hashed, keyring.myaddress, keyring.keyfile = essentials.keys_load_new(wallet_load)  # upgrade later, remove blanks
+    keyring.key, keyring.public_key_readable, keyring.private_key_readable, keyring.encrypted, keyring.unlocked, keyring.public_key_b64encoded, keyring.myaddress, keyring.keyfile = essentials.keys_load_new(wallet_load)  # upgrade later, remove blanks
 
     encryption_button_refresh()
 
@@ -512,7 +512,7 @@ def encrypt_fn(destroy_this):
             ciphertext_export = base64.b64encode(ciphertext).decode()
             essentials.keys_save(ciphertext_export, keyring.public_key_readable, keyring.myaddress, keyring.keyfile)
             # encrypt_b.configure(text="Encrypted", state=DISABLED)
-            keyring.key, keyring.public_key_readable, keyring.private_key_readable, keyring.encrypted, keyring.unlocked, keyring.public_key_hashed, keyring.myaddress, keyring.keyfile = essentials.keys_load_new(keyring.keyfile.name)
+            keyring.key, keyring.public_key_readable, keyring.private_key_readable, keyring.encrypted, keyring.unlocked, keyring.public_key_b64encoded, keyring.myaddress, keyring.keyfile = essentials.keys_load_new(keyring.keyfile.name)
             encryption_button_refresh()
         finally:
             notbusy(destroy_this)
@@ -585,9 +585,9 @@ def send_confirm(amount_input, recipient_input, operation_input, openfield_input
 
         connections.send(wallet.s, "pubkeyget")
         connections.send(wallet.s, recipient_input)
-        target_public_key_hashed = connections.receive(wallet.s)
+        target_public_key_b64encoded = connections.receive(wallet.s)
 
-        recipient_key = RSA.importKey(base64.b64decode(target_public_key_hashed).decode("utf-8"))
+        recipient_key = RSA.importKey(base64.b64decode(target_public_key_b64encoded).decode("utf-8"))
 
         # openfield_input = str(target_public_key.encrypt(openfield_input.encode("utf-8"), 32))
 
@@ -668,8 +668,8 @@ def send(amount_input, recipient_input, operation_input, openfield_input):
 
         if verifier.verify(h, signature):
             app_log.warning("Client: The signature is valid, proceeding to save transaction, signature, new txhash and the public key to mempool")
-            # print(str(timestamp), str(address), str(recipient_input), '%.8f' % float(amount_input),str(signature_enc), str(public_key_hashed), str(keep_input), str(openfield_input))
-            tx_submit = str(tx_timestamp), str(keyring.myaddress), str(recipient_input), '%.8f' % float(amount_input), str(signature_enc.decode("utf-8")), str(keyring.public_key_hashed.decode("utf-8")), str(operation_input), str(openfield_input)  # float kept for compatibility
+            # print(str(timestamp), str(address), str(recipient_input), '%.8f' % float(amount_input),str(signature_enc), str(public_key_b64encoded), str(keep_input), str(openfield_input))
+            tx_submit = str(tx_timestamp), str(keyring.myaddress), str(recipient_input), '%.8f' % float(amount_input), str(signature_enc.decode("utf-8")), str(keyring.public_key_b64encoded.decode("utf-8")), str(operation_input), str(openfield_input)  # float kept for compatibility
             try:
                 connections.send(wallet.s, "mpinsert")
                 connections.send(wallet.s, tx_submit)
@@ -1640,7 +1640,7 @@ if __name__ == "__main__":
 
     essentials.keys_check(app_log, "wallet.der")
 
-    keyring.key, keyring.public_key_readable, keyring.private_key_readable, keyring.encrypted, keyring.unlocked, keyring.public_key_hashed, keyring.myaddress, keyring.keyfile = essentials.keys_load(private_key_load, public_key_load)
+    keyring.key, keyring.public_key_readable, keyring.private_key_readable, keyring.encrypted, keyring.unlocked, keyring.public_key_b64encoded, keyring.myaddress, keyring.keyfile = essentials.keys_load(private_key_load, public_key_load)
     print("Keyfile: {}".format(keyring.keyfile))
 
     light_ip_conf = light_ip

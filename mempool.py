@@ -501,9 +501,9 @@ class Mempool:
                         mempool_amount = '%.8f' % (quantize_eight(transaction[3]))  # convert scientific notation
                         mempool_amount_float = float(transaction[3])
                         mempool_signature_enc = str(transaction[4])[:684]
-                        mempool_public_key_hashed = str(transaction[5])[:1068]
-                        if "b'" == mempool_public_key_hashed[:2]:
-                            mempool_public_key_hashed = transaction[5][2:1070]
+                        mempool_public_key_b64encoded = str(transaction[5])[:1068]
+                        if "b'" == mempool_public_key_b64encoded[:2]:
+                            mempool_public_key_b64encoded = transaction[5][2:1070]
                         mempool_operation = str(transaction[6])[:30]
                         mempool_openfield = str(transaction[7])[:100000]
 
@@ -530,7 +530,7 @@ class Mempool:
                         buffer = str((mempool_timestamp, mempool_address, mempool_recipient, mempool_amount,
                                       mempool_operation, mempool_openfield)).encode("utf-8")
                         #  Will raise if error
-                        SignerFactory.verify_bis_signature(mempool_signature_enc, mempool_public_key_hashed,
+                        SignerFactory.verify_bis_signature(mempool_signature_enc, mempool_public_key_b64encoded,
                                                            buffer,
                                                            mempool_address)
 
@@ -632,7 +632,7 @@ class Mempool:
                         # Pfew! we can finally insert into mempool - all is str, type converted and enforced above
                         self.execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?)",
                                      (mempool_timestamp, mempool_address, mempool_recipient, mempool_amount,
-                                      mempool_signature_enc, mempool_public_key_hashed, mempool_operation,
+                                      mempool_signature_enc, mempool_public_key_b64encoded, mempool_operation,
                                       mempool_openfield, int(time_now)))
                         mempool_result.append("Mempool updated with a received transaction from {}".format(peer_ip))
                         mempool_result.append("Success")

@@ -246,13 +246,13 @@ def keys_load_dialog():
     global private_key_readable
     global encrypted
     global unlocked
-    global public_key_hashed
+    global public_key_b64encoded
     global myaddress
     global private_key_load
     global public_key_load
     wallet_load = filedialog.askopenfilename(multiple=False, initialdir="", title="Select private key")
 
-    key, _, private_key_readable, encrypted, unlocked, public_key_hashed, myaddress, keyfile = essentials.keys_load_new(wallet_load)  # upgrade later, remove blanks
+    key, _, private_key_readable, encrypted, unlocked, public_key_b64encoded, myaddress, keyfile = essentials.keys_load_new(wallet_load)  # upgrade later, remove blanks
 
     encryption_button_refresh()
 
@@ -280,7 +280,7 @@ def keys_backup():
             root.filename = root.filename + ".tar.gz"
 
         der_files = glob.glob("*.der")
-        
+
         with tarfile.open(root.filename, "w:gz") as tar:
             for der_file in der_files:
                 tar.add(der_file, arcname=der_file)
@@ -408,7 +408,7 @@ def lock_fn(button):
 
 
 def encrypt_fn(destroy_this):
-    global key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_hashed, myaddress
+    global key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, myaddress
     password = password_var_enc.get()
     password = password_var_con.get()
 
@@ -420,7 +420,7 @@ def encrypt_fn(destroy_this):
 
         # encrypt_b.configure(text="Encrypted", state=DISABLED)
 
-        key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_hashed, myaddress, keyfile = essentials.keys_load(private_key_load, public_key_load)
+        key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, myaddress, keyfile = essentials.keys_load(private_key_load, public_key_load)
         encryption_button_refresh()
 
         destroy_this.destroy()
@@ -499,12 +499,12 @@ def sendirm(amount_input, recipient_input, operation_input, openfield_input):
         """
         connections.send(s, "pubkeyget", 10)
         connections.send(s, recipient_input, 10)
-        target_public_key_hashed = connections.receive(s, 10)
+        target_public_key_b64encoded = connections.receive(s, 10)
         """
         # This will freeze, but let say it's ok, we're waiting for a feedback.
-        target_public_key_hashed = async_client.connection.command("pubkeyget", recipient_input)
+        target_public_key_b64encoded = async_client.connection.command("pubkeyget", recipient_input)
 
-        recipient_key = RSA.importKey(base64.b64decode(target_public_key_hashed).decode("utf-8"))
+        recipient_key = RSA.importKey(base64.b64decode(target_public_key_b64encoded).decode("utf-8"))
 
         # openfield_input = str(target_public_key.encrypt(openfield_input.encode("utf-8"), 32))
 
@@ -591,8 +591,8 @@ def send(amount_input, recipient_input, operation_input, openfield_input):
 
             app_log.warning("Client: The signature is valid, proceeding to save transaction, signature, new txhash and the public key to mempool")
 
-            # print(str(timestamp), str(address), str(recipient_input), '%.8f' % float(amount_input),str(signature_enc), str(public_key_hashed), str(keep_input), str(openfield_input))
-            tx_submit = str(tx_timestamp), str(myaddress), str(recipient_input), '%.8f' % float(amount_input), str(signature_enc.decode("utf-8")), str(public_key_hashed.decode("utf-8")), str(operation_input), str(openfield_input)  # float kept for compatibility
+            # print(str(timestamp), str(address), str(recipient_input), '%.8f' % float(amount_input),str(signature_enc), str(public_key_b64encoded), str(keep_input), str(openfield_input))
+            tx_submit = str(tx_timestamp), str(myaddress), str(recipient_input), '%.8f' % float(amount_input), str(signature_enc.decode("utf-8")), str(public_key_b64encoded.decode("utf-8")), str(operation_input), str(openfield_input)  # float kept for compatibility
 
             while True:
                 """
@@ -1043,13 +1043,13 @@ def token_issue(token, amount, window):
 
 def tokens():
     tokens_main = Frame (tab_tokens, relief='ridge', borderwidth=0)
-    tokens_main.grid (row=0, column=0, pady=5, padx=5, sticky=N + W + E + S)														
+    tokens_main.grid (row=0, column=0, pady=5, padx=5, sticky=N + W + E + S)
     #tokens_main.title("Tokens")
     token_box = Listbox (tokens_main, width=100)
     token_box.grid (row=0, pady=0)
 
     scrollbar_v = Scrollbar(tokens_main, command=token_box.yview)
-    scrollbar_v.grid(row=0, column=1, sticky=N + S + E)											
+    scrollbar_v.grid(row=0, column=1, sticky=N + S + E)
 
     """
     connections.send(s, "tokensget", 10)
@@ -1422,7 +1422,7 @@ def hyperlink_BISGit():
 def hyperlink_bct():
     url = "https://bitcointalk.org/index.php?topic=1896497.0"
     webbrowser.open(url, new=1)
-	
+
 def support_collection(sync_msg_var, version_var):
     sup_col = Toplevel()
     sup_col.title("Collection of Basic Information")
@@ -1515,20 +1515,20 @@ def connection_thread():
     except Exception as e:
         print("ect", e)
 
-		
+
 def restart_loop():
     loop = threading.Thread(target=connection_thread)
     loop.daemon = True
     loop.start()
 
-	
+
 def benchmark_lightip(app_log):
     global light_ip
     global rebench_timer
     #benchmark light_ip-list
     light_ip = time_measure(light_ip, app_log)
     rebench_timer = time.time()
-    
+
 
 
 if __name__ == "__main__":
@@ -1539,7 +1539,7 @@ if __name__ == "__main__":
     global private_key_readable
     global encrypted
     global unlocked
-    global public_key_hashed
+    global public_key_b64encoded
     global myaddress
     global private_key_load
     global public_key_load
@@ -1575,7 +1575,7 @@ if __name__ == "__main__":
     version = config.version
     gui_scaling = config.gui_scaling
 
-	
+
     if "testnet" in version:
         port = 2829
         light_ip = ["127.0.0.1"]
@@ -1586,11 +1586,11 @@ if __name__ == "__main__":
     essentials.keys_check(app_log, "wallet.der")
     essentials.db_check(app_log)
 
-    key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_hashed, myaddress, keyfile = essentials.keys_load(private_key_load, public_key_load)
+    key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, myaddress, keyfile = essentials.keys_load(private_key_load, public_key_load)
 
     #benchmark light_ip-list
     benchmark_lightip(app_log)
-    
+
     # Build TK INTERFACE
 
     root = Tk()
@@ -1599,7 +1599,7 @@ if __name__ == "__main__":
     # root.geometry("1310x700") #You want the size of the app to be 500x500
     root.resizable(0, 0)  # Don't allow resizing in the x or y direction / resize
     # root['bg']="black"
-    
+
     with PIL.Image.open("graphics/icon.jpg") as img_icon:
         photo_icon = PIL.ImageTk.PhotoImage(img_icon)
     root.tk.call('wm', 'iconphoto', root._w, photo_icon, )
@@ -1710,7 +1710,7 @@ if __name__ == "__main__":
         if str(nbtabs.index(nbtabs.select())) == "4":
             tokens()
 
-    nbtabs.bind('<<NotebookTabChanged>>', click_on_tab_tokens)	
+    nbtabs.bind('<<NotebookTabChanged>>', click_on_tab_tokens)
 
     # tab_statistics statistics
     # tab_statistics = ttk.Frame(nbtabs)
@@ -2037,14 +2037,14 @@ if __name__ == "__main__":
     # logo
 
     # / Build TK INTERFACE
-    
+
     # Run the threaded ioloop that handles the connection and refresh in the background
     loop = threading.Thread(target=connection_thread)
     loop.daemon = True
     loop.start()
     # let the object take a coffee and wake up.
     time.sleep(0.1)
-  
+
     s = None  # Temp hack
     refresh_auto()
 

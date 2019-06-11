@@ -19,7 +19,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
     """node param for imports"""
 
     tokens_operation_present = False
-    
+
     class Transaction:
         def __init__(self):
             self.start_time_tx = 0
@@ -29,7 +29,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             self.received_recipient = None
             self.received_amount = 0
             self.received_signature_enc = None
-            self.received_public_key_hashed = None
+            self.received_public_key_b64encoded = None
             self.received_operation = None
             self.received_openfield = None
 
@@ -48,7 +48,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             self.failed_cause = ''
             self.block_count = 0
             self.transaction_list_converted = []
-            
+
             self.mining_reward = None
             self.mirror_hash = None
             self.start_time_block = quantize_two(time.time())
@@ -91,7 +91,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
         buffer = str((tx.received_timestamp, tx.received_address, tx.received_recipient, tx.received_amount,
                       tx.received_operation, tx.received_openfield)).encode("utf-8")
         # Will raise if error - also includes reconstruction of address from pubkey to make sure it matches
-        SignerFactory.verify_bis_signature(tx.received_signature_enc, tx.received_public_key_hashed, buffer,
+        SignerFactory.verify_bis_signature(tx.received_signature_enc, tx.received_public_key_b64encoded, buffer,
                                            tx.received_address)
         node.logger.app_log.info(f"Valid signature from {tx.received_address} "
                                  f"to {tx.received_recipient} amount {tx.received_amount}")
@@ -128,7 +128,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 raise ValueError(f"Empty signature from {peer_ip}")
 
     def sort_transactions(block):
-        for tx_index, transaction in enumerate(block):            
+        for tx_index, transaction in enumerate(block):
 
             tx.start_time_tx = quantize_two(time.time())
             tx.q_received_timestamp = quantize_two(transaction[0])
@@ -137,7 +137,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             tx.received_recipient = str(transaction[2])[:56]
             tx.received_amount = '%.8f' % (quantize_eight(transaction[3]))
             tx.received_signature_enc = str(transaction[4])[:684]
-            tx.received_public_key_hashed = str(transaction[5])[:1068]
+            tx.received_public_key_b64encoded = str(transaction[5])[:1068]
             tx.received_operation = str(transaction[6])[:30]
             tx.received_openfield = str(transaction[7])[:100000]
 
@@ -149,7 +149,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             if tx_index == block_instance.tx_count - 1:  # faster than comparing the whole tx
                 if not address_is_rsa(tx.received_recipient):
                     # Compare address rather than sig, as sig could be made up
-                    raise ValueError("Coinbase (Mining) transaction only supports legacy RSA Bismuth addresses")                
+                    raise ValueError("Coinbase (Mining) transaction only supports legacy RSA Bismuth addresses")
 
                 # recognize the last transaction as the mining reward transaction
                 miner_tx.q_block_timestamp = tx.q_received_timestamp
@@ -161,7 +161,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                                tx.received_recipient,
                                                tx.received_amount,
                                                tx.received_signature_enc,
-                                               tx.received_public_key_hashed,
+                                               tx.received_public_key_b64encoded,
                                                tx.received_operation,
                                                tx.received_openfield))
             transaction_validate()
@@ -172,14 +172,14 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
         # Cache for multiple tx from same address
         balances = {}
-        
+
         for tx_index, transaction in enumerate(block):
             db_timestamp = '%.2f' % quantize_two(transaction[0])
             db_address = str(transaction[1])[:56]
             db_recipient = str(transaction[2])[:56]
             db_amount = '%.8f' % quantize_eight(transaction[3])
             db_signature = str(transaction[4])[:684]
-            db_public_key_hashed = str(transaction[5])[:1068]
+            db_public_key_b64encoded = str(transaction[5])[:1068]
             db_operation = str(transaction[6])[:30]
             db_openfield = str(transaction[7])[:100000]
 
@@ -239,7 +239,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                      f"{len(block_transactions)} transactions in it")
             block_transactions.append((str(block_instance.block_height_new), str(db_timestamp), str(db_address),
                                        str(db_recipient), str(db_amount), str(db_signature),
-                                       str(db_public_key_hashed), str(block_instance.block_hash), str(fee),
+                                       str(db_public_key_b64encoded), str(block_instance.block_hash), str(fee),
                                        str(reward), str(db_operation), str(db_openfield)))
             try:
                 mp.MEMPOOL.delete_transaction(db_signature)
@@ -248,7 +248,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             except:
                 # tx was not or is no more in the local mempool
                 pass
-            
+
     def process_blocks(block_data):
         for block in block_data:
 
@@ -416,11 +416,11 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
         # no need to loose any time with banned peers
         raise ValueError("Cannot accept blocks from a banned peer")
         # since we raise, it will also drop the connection, it's fine since he's banned.
-    
+
     tx = Transaction()
     miner_tx = MinerTransaction()
     block_instance = Block()
-        
+
     if not node.db_lock.locked():
 
         node.db_lock.acquire()

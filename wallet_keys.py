@@ -21,8 +21,8 @@ def read():
     if (len(public_key_readable)) != 271 and (len(public_key_readable)) != 799:
         raise ValueError("Invalid public key length: {}".format(len(public_key_readable)))
 
-    public_key_hashed = base64.b64encode(public_key_readable.encode("utf-8")).decode("utf-8")
+    public_key_b64encoded = base64.b64encode(public_key_readable.encode("utf-8")).decode("utf-8")
     address = hashlib.sha224(public_key_readable.encode("utf-8")).hexdigest()
     # import keys
 
-    return key, private_key_readable, public_key_readable, public_key_hashed, address
+    return key, private_key_readable, public_key_readable, public_key_b64encoded, address

@@ -1307,8 +1307,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "pubkeyget":
                     if node.peers.is_allowed(peer_ip, data):
                         pub_key_address = receive(self.request)
-                        target_public_key_hashed = db_handler_instance.pubkeyget(pub_key_address)
-                        send(self.request, target_public_key_hashed)
+                        target_public_key_b64encoded = db_handler_instance.pubkeyget(pub_key_address)
+                        send(self.request, target_public_key_b64encoded)
 
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for pubkeyget command")
@@ -1348,7 +1348,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         tx_remote_key = RSA.importKey(remote_tx_privkey)
                         remote_tx_pubkey = tx_remote_key.publickey().exportKey().decode("utf-8")
 
-                        remote_tx_pubkey_hashed = base64.b64encode(remote_tx_pubkey.encode('utf-8')).decode("utf-8")
+                        remote_tx_pubkey_b64encoded = base64.b64encode(remote_tx_pubkey.encode('utf-8')).decode("utf-8")
 
                         remote_tx_address = hashlib.sha224(remote_tx_pubkey.encode("utf-8")).hexdigest()
                         # derive remaining data
@@ -1367,7 +1367,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         # insert to mempool, where everything will be verified
                         mempool_data = ((str(remote_tx_timestamp), str(remote_tx_address), str(remote_tx_recipient),
                                          '%.8f' % quantize_eight(remote_tx_amount), str(remote_signature_enc),
-                                         str(remote_tx_pubkey_hashed), str(remote_tx_operation),
+                                         str(remote_tx_pubkey_b64encoded), str(remote_tx_operation),
                                          str(remote_tx_openfield)))
 
                         node.logger.app_log.info(mp.MEMPOOL.merge(mempool_data, peer_ip, db_handler_instance.c, True, True))
@@ -1767,12 +1767,12 @@ def load_keys():
 
     essentials.keys_check(node.logger.app_log, "wallet.der")
 
-    node.keys.key, node.keys.public_key_readable, node.keys.private_key_readable, _, _, node.keys.public_key_hashed, node.keys.address, node.keys.keyfile = essentials.keys_load(
+    node.keys.key, node.keys.public_key_readable, node.keys.private_key_readable, _, _, node.keys.public_key_b64encoded, node.keys.address, node.keys.keyfile = essentials.keys_load(
         "privkey.der", "pubkey.der")
 
     if node.is_regnet:
         regnet.PRIVATE_KEY_READABLE = node.keys.private_key_readable
-        regnet.PUBLIC_KEY_HASHED = node.keys.public_key_hashed
+        regnet.PUBLIC_KEY_B64ENCODED = node.keys.public_key_b64encoded
         regnet.ADDRESS = node.keys.address
         regnet.KEY = node.keys.key
 
@@ -1830,8 +1830,8 @@ def verify(db_handler):
             db_recipient = str(row[3])[:56]
             db_amount = '%.8f' % (quantize_eight(row[4]))
             db_signature_enc = str(row[5])[:684]
-            db_public_key_hashed = str(row[6])[:1068]
-            db_public_key = RSA.importKey(base64.b64decode(db_public_key_hashed))
+            db_public_key_b64encoded = str(row[6])[:1068]
+            db_public_key = RSA.importKey(base64.b64decode(db_public_key_b64encoded))
             db_operation = str(row[10])[:30]
             db_openfield = str(row[11])  # no limit for backward compatibility
 

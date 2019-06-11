@@ -63,7 +63,7 @@ TX_PER_BLOCK = 2
 ADDRESS = 'This is a fake address placeholder for regtest mode only'
 KEY = None
 PRIVATE_KEY_READABLE = 'matching priv key'
-PUBLIC_KEY_HASHED = 'matching pub key b64'
+PUBLIC_KEY_B64ENCODED = 'matching pub key b64'
 
 DIGEST_BLOCK = None
 
@@ -121,7 +121,7 @@ def generate_one_block(blockhash, mempool_txs, node, db_handler):
                     if signer.verify(hash, signature):
                         node.logger.app_log.warning("Signature valid")
                         block_send.append((str(block_timestamp), str(ADDRESS[:56]), str(ADDRESS[:56]), '%.8f' % float(0),
-                                           str(signature_enc.decode("utf-8")), str(PUBLIC_KEY_HASHED.decode("utf-8")),
+                                           str(signature_enc.decode("utf-8")), str(PUBLIC_KEY_B64ENCODED.decode("utf-8")),
                                            "0", str(nonce)))  # mining reward tx
                         node.logger.app_log.warning("Block to send: {}".format(block_send))
                     # calc hash

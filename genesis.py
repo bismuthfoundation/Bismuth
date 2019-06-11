@@ -33,13 +33,13 @@ else:
     print("Your address: {}".format(address))
     print("Your private key:\n {}".format(private_key_readable))
     print("Your public key:\n {}".format(public_key_readable))
-    
+
     with open("privkey.der", "a") as f:
         f.write(str(private_key_readable))
 
     with open("pubkey.der", "a") as f:
         f.write(str(public_key_readable))
-    
+
     with open("address.txt", "a") as f:
         f.write("{}\n".format(address))
 
@@ -53,7 +53,7 @@ address = hashlib.sha224(public_key_readable.encode("utf-8")).hexdigest()
 print("Your address: {}".format(address))
 print("Your private key:\n {}".format(private_key_readable))
 print("Your public key:\n {}".format(public_key_readable))
-public_key_hashed = base64.b64encode(public_key_readable)
+public_key_b64encoded = base64.b64encode(public_key_readable)
 # import keys
 
 timestamp = str(time.time())
@@ -77,7 +77,7 @@ else:
         conn = sqlite3.connect('static/ledger.db')
         cursor = conn.cursor()
         cursor.execute("CREATE TABLE transactions (block_height INTEGER, timestamp, address, recipient, amount, signature, public_key, block_hash, fee, reward, operation, openfield)")
-        cursor.execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", ("1", timestamp, 'genesis', address, '0', str(signature_enc), public_key_hashed, block_hash, 0, 1, 1, 'genesis'))  # Insert a row of data
+        cursor.execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", ("1", timestamp, 'genesis', address, '0', str(signature_enc), public_key_b64encoded, block_hash, 0, 1, 1, 'genesis'))  # Insert a row of data
         conn.commit()  # Save (commit) the changes
 
         mempool = sqlite3.connect('mempool.db')

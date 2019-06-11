@@ -21,7 +21,7 @@ ledger_path = config.ledger_path
 hyper_path = config.hyper_path
 
 
-key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_hashed, address, keyfile = essentials.keys_load("privkey.der", "pubkey.der")
+key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address, keyfile = essentials.keys_load("privkey.der", "pubkey.der")
 
 if encrypted:
     key, private_key_readable = essentials.keys_unlock(private_key_readable)
@@ -139,7 +139,7 @@ if verifier.verify(h, signature):
         print("Mempool: Sending more than owned")
 
     else:
-        tx_submit = (str (timestamp), str (address), str (recipient_input), '%.8f' % float (amount_input), str (signature_enc.decode ("utf-8")), str (public_key_hashed.decode("utf-8")), str (operation_input), str (openfield_input))
+        tx_submit = (str (timestamp), str (address), str (recipient_input), '%.8f' % float (amount_input), str (signature_enc.decode ("utf-8")), str (public_key_b64encoded.decode("utf-8")), str (operation_input), str (openfield_input))
         connections.send (s, "mpinsert", 10)
         connections.send (s, tx_submit, 10)
         reply = connections.receive (s, 10)

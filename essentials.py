@@ -129,7 +129,7 @@ def ledger_balance3(address, cache, db_handler):
     return cache[address]
 
 
-def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, public_key_hashed) -> Union[bool, tuple]:
+def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, public_key_b64encoded) -> Union[bool, tuple]:
     if not key:
         raise BaseException("The wallet is locked, you need to provide a decrypted key")
     try:
@@ -139,9 +139,9 @@ def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, p
         signer = SignerFactory.from_private_key(key.exportKey().decode("utf-8"), SignerType.RSA)
         signature_enc = signer.sign_buffer_for_bis(buffer)
         # Extra: recheck - Raises if Error
-        SignerFactory.verify_bis_signature(signature_enc, public_key_hashed, buffer, address)
+        SignerFactory.verify_bis_signature(signature_enc, public_key_b64encoded, buffer, address)
         full_tx = str(timestamp), str(address), str(recipient), '%.8f' % float(amount), \
-                  str(signature_enc.decode("utf-8")), str(public_key_hashed.decode("utf-8")), \
+                  str(signature_enc.decode("utf-8")), str(public_key_b64encoded.decode("utf-8")), \
                   str(operation), str(openfield)
         return full_tx
     except:
@@ -214,13 +214,13 @@ def keys_load(privkey_filename: str= "privkey.der", pubkey_filename: str= "pubke
         if len(public_key_readable) not in (271, 799):
             raise ValueError("Invalid public key length: {}".format(len(public_key_readable)))
 
-        public_key_hashed = base64.b64encode(public_key_readable.encode('utf-8'))
+        public_key_b64encoded = base64.b64encode(public_key_readable.encode('utf-8'))
         address = hashlib.sha224(public_key_readable.encode('utf-8')).hexdigest()
 
         print("Upgrading wallet")
         keys_save(private_key_readable, public_key_readable, address, keyfile)
 
-        return key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_hashed, address, keyfile
+        return key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address, keyfile
 
 
 def keys_unlock(private_key_encrypted: str) -> tuple:
@@ -256,9 +256,9 @@ def keys_load_new(keyfile="wallet.der"):
     if len(public_key_readable) not in (271, 799):
         raise ValueError("Invalid public key length: {}".format(len(public_key_readable)))
 
-    public_key_hashed = base64.b64encode(public_key_readable.encode('utf-8'))
+    public_key_b64encoded = base64.b64encode(public_key_readable.encode('utf-8'))
 
-    return key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_hashed, address, keyfile
+    return key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address, keyfile
 
 
 # Dup code, not pretty, but would need address module to avoid dup - Belongs to polysign module.
