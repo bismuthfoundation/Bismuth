@@ -8,6 +8,7 @@ import essentials
 from quantizer import *
 import functools
 from fork import Fork
+import sys
 
 
 def sql_trace_callback(log, id, statement):
@@ -55,9 +56,13 @@ class DbHandler:
         self.conn.text_factory = str
         self.c = self.conn.cursor()
 
-
         self.SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
         self.SQL_TO_MISC = "INSERT INTO misc VALUES (?,?)"
+
+    def last_block_hash(self):
+        self.execute(self.c, "SELECT block_hash FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
+        result = self.c.fetchone()[0]
+        return result
 
     def pubkeyget(self, address):
         self.execute_param(self.c, "SELECT public_key FROM transactions WHERE address = ? and reward = 0 LIMIT 1", (address,))
@@ -125,6 +130,30 @@ class DbHandler:
             results.append(result)
         return results
 
+    def block_height_from_hash(self, data):
+        try:
+            self.execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?;",(data,))
+            result = self.h.fetchone()[0]
+        except:
+            result = None
+
+        return result
+
+    def blocksync(self, block):
+        blocks_fetched = []
+        while sys.getsizeof(
+                str(blocks_fetched)) < 500000:  # limited size based on txs in blocks
+            # db_handler.execute_param(db_handler.h, ("SELECT block_height, timestamp,address,recipient,amount,signature,public_key,keep,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),(str(int(client_block)),) + (str(int(client_block + 1)),))
+            self.execute_param(self.h, (
+                "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),
+                                              (str(int(block)), str(int(block + 1)),))
+            result = self.h.fetchall()
+            if not result:
+                break
+            blocks_fetched.extend([result])
+            block = int(block) + 1
+        return blocks_fetched
+
     def block_height_max(self):
         self.h.execute("SELECT max(block_height) FROM transactions")
         return self.h.fetchone()[0]
@@ -146,15 +175,15 @@ class DbHandler:
         self.execute_param(self.c, "SELECT * FROM transactions WHERE block_height >= ?;", (block_height,))
         backup_data = self.c.fetchall()
 
-        self.execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height)) #this belongs to rollback_to
-        self.commit(self.conn) #this belongs to rollback_to
+        self.execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height)) #this belongs to rollback_under
+        self.commit(self.conn) #this belongs to rollback_under
 
-        self.execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,)) #this belongs to rollback_to
-        self.commit(self.conn)  #this belongs to rollback_to
+        self.execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,)) #this belongs to rollback_under
+        self.commit(self.conn)  #this belongs to rollback_under
 
         return backup_data
 
-    def rollback_to(self, block_height):
+    def rollback_under(self, block_height):
         self.h.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height,))
         self.commit(self.hdd)
 
@@ -166,6 +195,11 @@ class DbHandler:
 
         self.h2.execute("DELETE FROM misc WHERE block_height >= ?", (block_height,))
         self.commit(self.hdd2)
+
+    def rollback_to(self, block_height):
+        # We don'tt need node to have the logger
+        self.logger.app_log.error("rollback_to is deprecated, use rollback_under")
+        self.rollback_under(block_height)
 
     def tokens_rollback(self, node, height):
         """Rollback Token index
