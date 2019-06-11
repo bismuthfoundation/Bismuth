@@ -1,3 +1,7 @@
+"""
+Deprecated, main code changes made it incompatible
+"""
+
 # add manual refresh, objectify
 
 # icons created using http://www.winterdrache.de/freeware/png2ico/
@@ -118,13 +122,6 @@ def mempool_get(s):
 def recover():
     result = recovery.recover(key)
     messagebox.showinfo("Recovery Result", result)
-
-
-def address_validate(address):
-    if re.match('[abcdef0123456789]{56}', address):
-        return True
-    else:
-        return False
 
 
 def create_url_clicked(app_log, command, recipient, amount, operation, openfield):
@@ -568,7 +565,7 @@ def send(amount_input, recipient_input, operation_input, openfield_input):
 
     # alias check
 
-    if not address_validate(recipient_input):
+    if not essentials.address_validate(recipient_input):
         messagebox.showerror("Invalid Address", "Invalid address format")
     else:
 

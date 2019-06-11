@@ -20,11 +20,24 @@ from typing import Union
 from polysign.signer import SignerType
 from polysign.signerfactory import SignerFactory
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
-RE_RSA_ADDRESS = re.compile(r"[abcdef0123456789]{56}")
-# TODO: improve that ECDSA one
-RE_ECDSA_ADDRESS = re.compile(r"^Bis")
+"""
+For temp. code compatibility, dup code moved to polysign module
+"""
+
+
+def address_validate(address:str) -> bool:
+    return SignerFactory.address_is_valid(address)
+
+
+def address_is_rsa(address: str) -> bool:
+    return SignerFactory.address_is_rsa(address)
+
+
+"""
+End compatibility
+"""
 
 
 def format_raw_tx(raw: list) -> dict:
@@ -130,6 +143,7 @@ def ledger_balance3(address, cache, db_handler):
 
 
 def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, public_key_b64encoded) -> Union[bool, tuple]:
+    # TODO: move, make use of polysign module
     if not key:
         raise BaseException("The wallet is locked, you need to provide a decrypted key")
     try:
@@ -149,6 +163,7 @@ def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, p
 
 
 def keys_check(app_log, keyfile_name: str) -> None:
+    # TODO: move, make use of polysign module
     # key maintenance
     if os.path.isfile("privkey.der") is True:
         app_log.warning("privkey.der found")
@@ -259,39 +274,6 @@ def keys_load_new(keyfile="wallet.der"):
     public_key_b64encoded = base64.b64encode(public_key_readable.encode('utf-8'))
 
     return key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address, keyfile
-
-
-# Dup code, not pretty, but would need address module to avoid dup - Belongs to polysign module.
-
-def address_validate(address:str) -> bool:
-    if RE_RSA_ADDRESS.match(address):
-        return True  # RSA
-    elif RE_ECDSA_ADDRESS.match(address):
-        if 100 > len(address) > 50:
-            return True  # SignerED25519
-        elif len(address) > 30:
-            return True  # SignerECDSA
-    return False
-
-
-def address_is_rsa(address: str) -> bool:
-    """Returns wether the given address is a legacy RSA one"""
-    return RE_RSA_ADDRESS.match(address)
-
-
-# Dup code, not pretty - belong to polysign
-def validate_pem(public_key: str) -> None:
-    # verify pem as cryptodome does
-    pem_data = base64.b64decode(public_key).decode("utf-8")
-    regex = re.compile("\s*-----BEGIN (.*)-----\s+")
-    match = regex.match(pem_data)
-    if not match:
-        raise ValueError("Not a valid PEM pre boundary")
-    marker = match.group(1)
-    regex = re.compile("-----END (.*)-----\s*$")
-    match = regex.search(pem_data)
-    if not match or match.group(1) != marker:
-        raise ValueError("Not a valid PEM post boundary")
 
 
 def fee_calculate(openfield: str, operation: str='', block: int=0) -> Decimal:

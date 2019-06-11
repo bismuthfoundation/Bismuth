@@ -2,12 +2,13 @@
 
 # icons created using http://www.winterdrache.de/freeware/png2ico/
 
-import threading
+import ast
 import csv
 import glob
 import os
 import platform
 import tarfile
+import threading
 import time
 import webbrowser
 from datetime import datetime
@@ -15,8 +16,8 @@ from decimal import *
 # from operator import itemgetter
 from tkinter import *
 from tkinter import filedialog, messagebox, ttk
-import ast
 
+import requests
 import socks
 from Cryptodome.Cipher import AES, PKCS1_OAEP
 from Cryptodome.Hash import SHA
@@ -26,13 +27,12 @@ from Cryptodome.Signature import PKCS1_v1_5
 
 import connections
 import essentials
-import log
 import lwbench
 import options
 import recovery
-import requests
 from bisurl import *
 from essentials import fee_calculate
+from polysign.signerfactory import SignerFactory
 from quantizer import quantize_eight
 from simplecrypt import encrypt, decrypt
 from tokensv2 import *
@@ -50,9 +50,8 @@ class Keys:
         self.keyfile = None
 
 
-
 # Wallet needs a version for itself
-__version__ = '0.8.4'
+__version__ = '0.8.5'
 
 # upgrade wallet location after nuitka-required "files" folder introduction
 if os.path.exists("../wallet.der") and not os.path.exists("wallet.der") and "Windows" in platform.system():
@@ -140,13 +139,6 @@ def mempool_get(s):
 def recover():
     result = recovery.recover(keyring.key)
     messagebox.showinfo("Recovery Result", result)
-
-
-def address_validate(address):
-    if re.match('[abcdef0123456789]{56}', address):
-        return True
-    else:
-        return False
 
 
 def create_url_clicked(app_log, command, recipient, amount, operation, openfield):
@@ -647,7 +639,7 @@ def send(amount_input, recipient_input, operation_input, openfield_input):
     except:
         messagebox.showerror("Invalid Amount", "Amount must be a number")
 
-    if not address_validate(recipient_input):
+    if not SignerFactory.address_is_valid(recipient_input):
         messagebox.showerror("Invalid Address", "Invalid address format")
     else:
 

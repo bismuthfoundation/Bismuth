@@ -4,19 +4,19 @@ API Command handler module for Bismuth nodes
 Needed for Json-RPC server or other third party interaction
 """
 
-import re
-import sqlite3
 import base64
+import json
+import os
+import sys
+import threading
+
 # modular handlers will need access to the database methods under some form, so it needs to be modular too.
 # Here, I just duplicated the minimum needed code from node, further refactoring with classes will follow.
-import connections, peershandler
-import threading
-import os, sys
-#import math
+import connections
 import mempool as mp
-import json
+from polysign.signerfactory import SignerFactory
 
-__version__ = "0.0.6"
+__version__ = "0.0.7"
 
 
 class ApiHandler:
@@ -101,8 +101,8 @@ class ApiHandler:
         address = connections.receive(socket_handler)
         # print('api_getaddressinfo', address)
         try:
-            # format check # TODO USE CANONIC FUNCTION
-            if not re.match('[abcdef0123456789]{56}', address):
+            # format check
+            if not SignerFactory.address_is_valid(address):
                 self.app_log.info("Bad address format <{}>".format(address))
                 connections.send(socket_handler, info)
                 return

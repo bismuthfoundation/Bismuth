@@ -56,6 +56,26 @@ class SignerFactory:
 
         raise ValueError("Unsupported Address type")
 
+
+    @classmethod
+    def address_is_valid(cls, address: str) -> bool:
+        if RE_RSA_ADDRESS.match(address):
+            # RSA, 56 hex
+            return True
+        elif RE_ECDSA_ADDRESS.match(address):
+            if 50 < len(address) < 60:
+                # ED25519, around 54
+                return True
+            if 30 < len(address) < 50:
+                # ecdsa, around 37
+                return True
+        return False
+
+    @classmethod
+    def address_is_rsa(cls, address: str) -> bool:
+        """Returns wether the given address is a legacy RSA one"""
+        return RE_RSA_ADDRESS.match(address)
+
     @classmethod
     def from_seed(cls, seed: str='', signer_type: SignerType=SignerType.RSA,
                   subtype: SignerSubType=SignerSubType.MAINNET_REGULAR) -> Signer:

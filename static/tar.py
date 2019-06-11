@@ -106,10 +106,6 @@ def balance_differences():
             check = '> Ko'
             tar_obj.errors += 1
 
-        """
-        if address.lower() != address or len(address) != 56 and (balance1 or balance2) != 0:
-            print (f"{address} > wrong recipient")
-        """
         if not address_validate(address) and (balance1 or balance2) != 0:
             print (f"{address} > wrong recipient")
 
