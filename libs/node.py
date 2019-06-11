@@ -3,7 +3,8 @@ import queue
 import sys
 import platform
 
-class Node():
+
+class Node:
     def platform(self):
         if "Linux" in platform.system():
             return True
@@ -14,8 +15,10 @@ class Node():
         self.app_version = None
         self.startup_time = None
         self.version_allow = None
-        self.hdd_block = None #interferes with block flows, careful
-        self.last_block = None #interferes with block flows, careful
+        self.hdd_block = None  # in ram mode, this differs from node.last_block
+        self.hdd_hash = None  # in ram mode, this differs from node.last_block_hash
+        self.last_block_hash = None  # in ram mode, this differs from node.hdd_hash
+        self.last_block = None  # in ram mode, this differs from node.hdd_block
         self.plugin_manager = None
         self.peers = None
         self.IS_STOPPING = False
