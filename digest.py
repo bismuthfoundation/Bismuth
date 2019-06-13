@@ -340,7 +340,8 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
             process_transactions(block)
 
-
+            node.last_block = block_instance.block_height_new
+            node.last_block_hash = block_instance.block_hash
             # end for block
 
             # save current diff (before the new block)
@@ -406,10 +407,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             # /whole block validation
             # NEW: returns new block sha_hash
 
-            # after all is done, cleanly update values for node object
-            node.last_block = block_instance.block_height_new
-            node.last_block_hash = block_instance.block_hash
-
 
     # digestion begins here
     if node.peers.is_banned(peer_ip):
@@ -452,6 +449,10 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             node.logger.app_log.warning(f"Chain processing failed: {e}")
             node.logger.app_log.info(f"Received data dump: {data}")
             block_instance.failed_cause = str(e)
+
+            node.last_block = db_handler.get_last_block() #get actual data from database on exception
+            node.last_block_hash = db_handler.last_block_hash() #get actual data from database on exception
+
             # Temp
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]

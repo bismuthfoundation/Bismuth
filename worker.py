@@ -268,7 +268,7 @@ def worker(host, port, node):
 
                     #ensure_good_peer_version(host)
 
-                    if int(received_block_height) >= block_req:
+                    if int(received_block_height) >= block_req and int(received_block_height) > node.last_block:
                         try:  # they claim to have the longest chain, things must go smooth or ban
                             node.logger.app_log.warning(f"Confirming to sync from {peer_ip}")
 
@@ -287,7 +287,7 @@ def worker(host, port, node):
                             # receive theirs
                     else:
                         send(s, "blocksrj")
-                        node.logger.app_log.warning(f"Inbound: Distant peer {peer_ip} is at {received_block_height}, should be at least {block_req}")
+                        node.logger.app_log.warning(f"Inbound: Distant peer {peer_ip} is at {received_block_height}, should be at least {max(block_req,node.last_block+1)}")
 
                 sendsync(s, peer_ip, "Block found", node)
 
