@@ -60,14 +60,11 @@ if os.path.exists("../wallet.der") and not os.path.exists("wallet.der") and "Win
 # upgrade wallet location after nuitka-required "files" folder introduction
 
 
-"""nuitka
 import PIL.Image, PIL.ImageTk, pyqrcode
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 matplotlib.use('TkAgg')
-from matplotlib.figure import Figure3
-"""
-
+from matplotlib.figure import Figure
 
 class Wallet():
     def __init__(self):
@@ -684,7 +681,6 @@ def send(amount_input, recipient_input, operation_input, openfield_input):
 
 
 def qr(address):
-    """nuitka
     address_qr = pyqrcode.create(address)
     address_qr.png('address_qr.png')
 
@@ -705,7 +701,6 @@ def qr(address):
     button = Button(top, text="Dismiss", command=top.destroy)
     button.pack()
     # popup
-    """
 
 
 def msg_dialogue(address):
@@ -851,7 +846,6 @@ def refresh_auto():
 
 
 def stats():
-    """nuitka
 
     stats_window = Toplevel()
     stats_window.title("Node Statistics")
@@ -868,7 +862,7 @@ def stats():
 
     def chart_fill():
         print("Filling the chart")
-        f.clear()
+        #f.clear()
 
         rows = 4
         columns = 2
@@ -931,15 +925,15 @@ def stats():
 
     def update():
         print("Statistics update triggered")
-        stats_address = statusget[0]
-        stats_nodes_count = statusget[1]
-        stats_nodes_list = statusget[2]
-        stats_thread_count = statusget[3]
-        stats_uptime = statusget[4]
-        stats_consensus = statusget[5]
-        stats_consensus_percentage = statusget[6]
-        stats_version = statusget[7]
-        stats_diff = statusget[8]
+        stats_address = wallet.statusget[0]
+        stats_nodes_count = wallet.statusget[1]
+        stats_nodes_list = wallet.statusget[2]
+        stats_thread_count = wallet.statusget[3]
+        stats_uptime = wallet.statusget[4]
+        stats_consensus = wallet.statusget[5]
+        stats_consensus_percentage = wallet.statusget[6]
+        stats_version = wallet.statusget[7]
+        stats_diff = wallet.statusget[8]
 
         stats_address_label_var.set("Node Address: {}".format(stats_address))
         stats_nodes_count_label_var.set("Number of Nodes: {}".format(stats_nodes_count))
@@ -1033,7 +1027,6 @@ def stats():
             print("Statistics window closed, disabling auto-refresh ({})".format(e))
 
     refresh_stats_auto()
-    """
 
 
 def csv_export(s):
@@ -1244,8 +1237,8 @@ def refresh(address, raise_errors=False):
         server_timestamp_var.set("GMT: {}".format(time.strftime("%H:%M:%S", time.gmtime(int(float(wallet.stats_timestamp))))))
 
         # data for charts
-        """
-        block_height = statusget[8][7]  # move chart only if the block height changes, returned from diff 7
+
+        block_height = wallet.statusget[8][7]  # move chart only if the block height changes, returned from diff 7
         try:
             block_height_old
         except:
@@ -1254,24 +1247,23 @@ def refresh(address, raise_errors=False):
         if block_height_old != block_height or not stats_nodes_count_list:  # or if list is empty
             print("Chart update in progress")
 
-            stats_nodes_count_list.append(statusget[1])
-            stats_thread_count_list.append(statusget[3])
-            stats_consensus_list.append(statusget[5])
-            stats_consensus_percentage_list.append(statusget[6])
+            stats_nodes_count_list.append(wallet.statusget[1])
+            stats_thread_count_list.append(wallet.statusget[3])
+            stats_consensus_list.append(wallet.statusget[5])
+            stats_consensus_percentage_list.append(wallet.statusget[6])
 
-            stats_diff_list_0.append(statusget[8][0])
-            stats_diff_list_1.append(statusget[8][1])
-            stats_diff_list_2.append(statusget[8][2])
-            stats_diff_list_3.append(statusget[8][3])
-            stats_diff_list_4.append(statusget[8][4])
-            stats_diff_list_5.append(statusget[8][5])
-            stats_diff_list_6.append(statusget[8][6])
+            stats_diff_list_0.append(wallet.statusget[8][0])
+            stats_diff_list_1.append(wallet.statusget[8][1])
+            stats_diff_list_2.append(wallet.statusget[8][2])
+            stats_diff_list_3.append(wallet.statusget[8][3])
+            stats_diff_list_4.append(wallet.statusget[8][4])
+            stats_diff_list_5.append(wallet.statusget[8][5])
+            stats_diff_list_6.append(wallet.statusget[8][6])
 
             block_height_old = block_height
         else:
             print("Chart update skipped, block hasn't moved")
         # data for charts
-        """
 
         connections.send(wallet.s, "balanceget")
         connections.send(wallet.s, address)  # change address here to view other people's transactions
@@ -1495,12 +1487,11 @@ def click_on_tab_tokens(event):
 
 
 def themes(theme):
-    """nuitka
 
     # global photo_bg, photo_main
     global photo_main
 
-    if theme == "Barebone" or None:
+    if theme == "Barebone" or not theme:
         # canvas_bg.delete("all")
         canvas_main.delete("all")
 
@@ -1518,7 +1509,7 @@ def themes(theme):
 
     with open("theme", "w") as theme_file:
         theme_file.write(theme)
-    """
+
 
 
 def encryption_button_refresh():
@@ -1650,12 +1641,12 @@ if __name__ == "__main__":
 
     # root['bg']="black"
 
-    """nuitka
+
     root.resizable(0, 0)  # Don't allow resizing in the x or y direction / resize #nuitka
     img_icon = PIL.Image.open("graphics/icon.jpg") #nuitka
     photo_icon = PIL.ImageTk.PhotoImage(img_icon) #nuitka
     root.tk.call('wm', 'iconphoto', root._w, photo_icon, ) #nuitka
-    """
+
 
     if gui_scaling == "adapt":
         dpi_value = root.winfo_fpixels('1i')
@@ -2059,13 +2050,13 @@ if __name__ == "__main__":
     # logo_hash_decoded = base64.b64decode(icons.logo_hash)
     # logo = PhotoImage(data="graphics/logo.png")
 
-    """nuitka
+
     logo_img = PIL.Image.open("graphics/logo.png")
     logo = PIL.ImageTk.PhotoImage(logo_img)
 
     Label(frame_logo, image=logo).grid(column=0, row=0)
     # logo
-    """
+
     node_connect()
     refresh_auto()
 
