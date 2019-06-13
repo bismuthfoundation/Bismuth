@@ -198,7 +198,7 @@ def node_connect():
                 keep_trying = False
                 break
             except Exception as e:
-                app_log.warning(f"Status: Cannot connect to {connect_ip}:{connect_port} because {e}"
+                app_log.warning(f"Status: Cannot connect to {connect_ip}:{connect_port} because {e}")
 
 
 def node_connect_once(ip):  # Connect a light-wallet-ip directly from menu
@@ -216,7 +216,7 @@ def node_connect_once(ip):  # Connect a light-wallet-ip directly from menu
         app_log.warning("Status: Wallet connected to {}:{}".format(connect_ip, connect_port))
         ip_connected_var.set("{}:{}".format(connect_ip, connect_port))
     except Exception as e:
-        app_log.warning(f"Status: Cannot connect to {connect_ip}:{connect_port} because {e}"
+        app_log.warning(f"Status: Cannot connect to {connect_ip}:{connect_port} because {e}")
         node_connect()
 
 
