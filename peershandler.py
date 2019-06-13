@@ -126,7 +126,8 @@ class Peers:
                         s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
 
                     if strict:
-                        s.connect((ip, port))
+                        print(ip,port)
+                        s.connect((ip, int(port)))
                         connections.send(s, "getversion")
                         versiongot = connections.receive(s, timeout=1)
                         if versiongot == "*":
@@ -134,22 +135,23 @@ class Peers:
                         self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
                         s.close()
                     else:
-                        s.connect((ip, port))
+                        s.connect((ip, int(port)))
                         s.close()
                         # properly end the connection
 
-                    self.app_log.info(f"Inbound: Peer {ip}:{port} saved to peer list")
+                    peers_pairs[ip] = port
+                    self.app_log.info(f"Inbound: Peer {ip}:{port} saved to peers")
                     self.peerlist_updated = True
 
                 else:
-                    self.app_log.info("Distant peer already in peer list")
+                    self.app_log.info("Distant peer already in peers")
 
-            except:
-                self.app_log.info("Inbound: Distant peer not connectible")
+            except Exception as e:
+                self.app_log.info(f"Inbound: Distant peer not connectible ({e})")
                 pass
 
         if self.peerlist_updated:
-            self.app_log.warning("Peerlist updated")
+            self.app_log.warning(f"{file} peerlist updated with {peers_pairs}")
             with open(f"{file}.tmp", "w") as peer_file:
                 json.dump(peers_pairs, peer_file)
             shutil.move(f"{file}.tmp",file)
@@ -272,7 +274,7 @@ class Peers:
                             s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
 
                         if strict:
-                            s.connect((ip, port))
+                            s.connect((ip, int(port)))
                             connections.send(s, "getversion")
                             versiongot = connections.receive(s, timeout=1)
                             if versiongot == "*":
@@ -280,7 +282,7 @@ class Peers:
                             self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
                             s.close()
                         else:
-                            s.connect((ip, port))
+                            s.connect((ip, int(port)))
                             s.close()
 
                         self.app_log.warning(f"Connection to {ip}:{port} successful, keeping the peer")
@@ -366,6 +368,8 @@ class Peers:
 
                             if ip not in self.peer_dict.keys():
                                 self.peer_dict[ip] = port
+                                self.app_log.info(f"Inbound: Peer {ip}:{port} saved to peers")
+
 
                         except:
                             pass

@@ -509,14 +509,19 @@ def sequencing_check(db_handler):
                         conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2B"))
                     c2 = conn2.cursor()
                     node.logger.app_log.warning(
-                        f"Status: Chain {chain} difficulty sequencing error at: {row[0]} {row[0]} instead of {y}")
-                    c2.execute("DELETE FROM transactions WHERE block_height >= ?", row[0],)
+                        f"Status: Chain {chain} difficulty sequencing error at: {row[0]}. {row[0]} instead of {y}")
+                    c2.execute("DELETE FROM transactions WHERE block_height >= ?", (row[0],))
                     conn2.commit()
-                    c2.execute("DELETE FROM misc WHERE block_height >= ?", row[0],)
+                    c2.execute("DELETE FROM misc WHERE block_height >= ?", (row[0],))
                     conn2.commit()
 
                     db_handler.execute_param(conn2, (
                         'DELETE FROM transactions WHERE address = "Development Reward" AND block_height <= ?'),
+                                             (-row[0],))
+                    conn2.commit()
+
+                    db_handler.execute_param(conn2, (
+                        'DELETE FROM transactions WHERE address = "Hypernode Payouts" AND block_height <= ?'),
                                              (-row[0],))
                     conn2.commit()
                     conn2.close()
