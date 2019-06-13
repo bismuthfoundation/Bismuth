@@ -556,6 +556,7 @@ class Peers:
                 self.peer_dict.update(self.peers_get(self.peerfile))
 
             self.peers_dump(self.suggested_peerfile, self.peer_dict, strict=False)
+            self.peers_dump(self.peerfile, self.peer_dict, strict=True)
 
         except Exception as e:
             self.app_log.warning(f"Status: Manager run skipped due to error: {e}")
