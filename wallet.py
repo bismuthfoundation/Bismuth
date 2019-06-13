@@ -672,7 +672,7 @@ def send(amount_input, recipient_input, operation_input, openfield_input):
                 else:
                     messagebox.showerror("Error", "There was a problem with transaction processing. Full message: {}".format(reply))
             except Exception as e:
-                messagebox.showerror(f"Error, {e}")
+                messagebox.showerror("Error", f"{e}")
                 pass
             t = threading.Thread(target=refresh, args=(gui_address_t.get(),))
             t.start()
