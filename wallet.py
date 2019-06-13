@@ -37,6 +37,23 @@ from quantizer import quantize_eight
 from simplecrypt import encrypt, decrypt
 from tokensv2 import *
 
+class Statistics:
+    def __init__(self):
+        self.stats_nodes_count_list = []
+        self.stats_thread_count_list = []
+        self.stats_consensus_list = []
+        self.stats_consensus_percentage_list = []
+        self.stats_diff_list_0 = []
+        self.stats_diff_list_1 = []
+        self.stats_diff_list_2 = []
+        self.stats_diff_list_3 = []
+        self.stats_diff_list_4 = []
+        self.stats_diff_list_5 = []
+        self.stats_diff_list_6 = []
+
+        self.block_height_old = None
+        self.block_height = None
+
 
 class Keys:
     def __init__(self):
@@ -862,6 +879,7 @@ def stats():
 
     def chart_fill():
         print("Filling the chart")
+        print(statistics.stats_consensus_percentage_list)
         #f.clear()
 
         rows = 4
@@ -869,54 +887,54 @@ def stats():
 
         # f.remove(first)
         first = f.add_subplot(rows, columns, 1)
-        first.plot((range(len(stats_nodes_count_list))), (stats_nodes_count_list))
+        first.plot((range(len(statistics.stats_nodes_count_list))), (statistics.stats_nodes_count_list))
         first.ticklabel_format(useOffset=False)
 
         first_2 = f.add_subplot(rows, columns, 1)
-        first_2.plot((range(len(stats_thread_count_list))), (stats_thread_count_list))
+        first_2.plot((range(len(statistics.stats_thread_count_list))), (statistics.stats_thread_count_list))
         first_2.ticklabel_format(useOffset=False)
         first.legend(('Nodes', 'Threads'), loc='best', shadow=True)
 
         second = f.add_subplot(rows, columns, 2)
-        second.plot((range(len(stats_consensus_list))), (stats_consensus_list))
+        second.plot((range(len(statistics.stats_consensus_list))), (statistics.stats_consensus_list))
         second.legend(('Consensus Block',), loc='best', shadow=True)
         second.ticklabel_format(useOffset=False)
 
         third = f.add_subplot(rows, columns, 3)
-        third.plot((range(len(stats_consensus_percentage_list))), (stats_consensus_percentage_list))
+        third.plot((range(len(statistics.stats_consensus_percentage_list))), (statistics.stats_consensus_percentage_list))
         third.legend(('Consensus Level',), loc='best', shadow=True)
         third.ticklabel_format(useOffset=False)
 
         fourth = f.add_subplot(rows, columns, 4)
-        fourth.plot((range(len(stats_diff_list_2))), (stats_diff_list_2))
+        fourth.plot((range(len(statistics.stats_diff_list_2))), (statistics.stats_diff_list_2))
         fourth.legend(('Time To Generate Block',), loc='best', shadow=True)
         fourth.ticklabel_format(useOffset=False)
 
         fifth = f.add_subplot(rows, columns, 5)
-        fifth.plot((range(len(stats_diff_list_0))), (stats_diff_list_0))
+        fifth.plot((range(len(statistics.stats_diff_list_0))), (statistics.stats_diff_list_0))
         fifth.ticklabel_format(useOffset=False)
 
         fifth_2 = f.add_subplot(rows, columns, 5)
-        fifth_2.plot((range(len(stats_diff_list_1))), (stats_diff_list_1))
+        fifth_2.plot((range(len(statistics.stats_diff_list_1))), (statistics.stats_diff_list_1))
         fifth_2.ticklabel_format(useOffset=False)
 
         fifth_3 = f.add_subplot(rows, columns, 5)
-        fifth_3.plot((range(len(stats_diff_list_3))), (stats_diff_list_3))
+        fifth_3.plot((range(len(statistics.stats_diff_list_3))), (statistics.stats_diff_list_3))
         fifth_3.ticklabel_format(useOffset=False)
         fifth.legend(('Diff 1', 'Diff 2', 'Diff Current',), loc='best', shadow=True)
 
         sixth = f.add_subplot(rows, columns, 6)
-        sixth.plot((range(len(stats_diff_list_4))), (stats_diff_list_4))
+        sixth.plot((range(len(statistics.stats_diff_list_4))), (statistics.stats_diff_list_4))
         sixth.legend(('Block Time',), loc='best', shadow=True)
         sixth.ticklabel_format(useOffset=False)
 
         seventh = f.add_subplot(rows, columns, 7)
-        seventh.plot((range(len(stats_diff_list_5))), (stats_diff_list_5))
+        seventh.plot((range(len(statistics.stats_diff_list_5))), (statistics.stats_diff_list_5))
         seventh.legend(('Hashrate',), loc='best', shadow=True)
         seventh.ticklabel_format(useOffset=False)
 
         eigth = f.add_subplot(rows, columns, 8)
-        eigth.plot((range(len(stats_diff_list_6))), (stats_diff_list_6))
+        eigth.plot((range(len(statistics.stats_diff_list_6))), (statistics.stats_diff_list_6))
         eigth.legend(('Difficulty Adjustment',), loc='best', shadow=True)
         eigth.ticklabel_format(useOffset=False)
 
@@ -925,35 +943,35 @@ def stats():
 
     def update():
         print("Statistics update triggered")
-        stats_address = wallet.statusget[0]
-        stats_nodes_count = wallet.statusget[1]
-        stats_nodes_list = wallet.statusget[2]
-        stats_thread_count = wallet.statusget[3]
-        stats_uptime = wallet.statusget[4]
-        stats_consensus = wallet.statusget[5]
-        stats_consensus_percentage = wallet.statusget[6]
-        stats_version = wallet.statusget[7]
-        stats_diff = wallet.statusget[8]
+        statistics.stats_address = wallet.statusget[0]
+        statistics.stats_nodes_count = wallet.statusget[1]
+        statistics.stats_nodes_list = wallet.statusget[2]
+        statistics.stats_thread_count = wallet.statusget[3]
+        statistics.stats_uptime = wallet.statusget[4]
+        statistics.stats_consensus = wallet.statusget[5]
+        statistics.stats_consensus_percentage = wallet.statusget[6]
+        statistics.stats_version = wallet.statusget[7]
+        statistics.stats_diff = wallet.statusget[8]
 
-        stats_address_label_var.set("Node Address: {}".format(stats_address))
-        stats_nodes_count_label_var.set("Number of Nodes: {}".format(stats_nodes_count))
+        stats_address_label_var.set("Node Address: {}".format(statistics.stats_address))
+        stats_nodes_count_label_var.set("Number of Nodes: {}".format(statistics.stats_nodes_count))
         stats_nodes_list_text_var.delete(0, END)
-        for entry in stats_nodes_list:
+        for entry in statistics.stats_nodes_list:
             stats_nodes_list_text_var.insert(END, entry)
         stats_nodes_list_text_var.grid(row=2, column=0, sticky=E, padx=15, pady=(0, 0))
 
-        stats_thread_count_var.set("Number of Threads: {}".format(stats_thread_count))
-        stats_uptime_var.set("Uptime: {:.2f} hours".format(stats_uptime / 60 / 60))
-        stats_consensus_var.set("Consensus Block: {}".format(stats_consensus))
-        stats_consensus_consensus_percentage_var.set("Consensus Level: {:.2f}%".format(stats_consensus_percentage))
-        stats_version_var.set("Node: {}".format(stats_version))
-        stats_diff_var_0.set("Difficulty 1: {}".format(stats_diff[0]))
-        stats_diff_var_1.set("Difficulty 2: {}".format(stats_diff[1]))
-        stats_diff_var_2.set("Time to Generate Block: {}".format(stats_diff[2]))
-        stats_diff_var_3.set("Current Block Difficulty: {}".format(stats_diff[3]))
-        stats_diff_var_4.set("Block Time: {}".format(stats_diff[4]))
-        stats_diff_var_5.set("Hashrate: {}".format(stats_diff[5]))
-        stats_diff_var_6.set("Difficulty Adjustment: {}".format(stats_diff[6]))
+        stats_thread_count_var.set("Number of Threads: {}".format(statistics.stats_thread_count))
+        stats_uptime_var.set("Uptime: {:.2f} hours".format(statistics.stats_uptime / 60 / 60))
+        stats_consensus_var.set("Consensus Block: {}".format(statistics.stats_consensus))
+        stats_consensus_consensus_percentage_var.set("Consensus Level: {:.2f}%".format(statistics.stats_consensus_percentage))
+        stats_version_var.set("Node: {}".format(statistics.stats_version))
+        stats_diff_var_0.set("Difficulty 1: {}".format(statistics.stats_diff[0]))
+        stats_diff_var_1.set("Difficulty 2: {}".format(statistics.stats_diff[1]))
+        stats_diff_var_2.set("Time to Generate Block: {}".format(statistics.stats_diff[2]))
+        stats_diff_var_3.set("Current Block Difficulty: {}".format(statistics.stats_diff[3]))
+        stats_diff_var_4.set("Block Time: {}".format(statistics.stats_diff[4]))
+        stats_diff_var_5.set("Hashrate: {}".format(statistics.stats_diff[5]))
+        stats_diff_var_6.set("Difficulty Adjustment: {}".format(statistics.stats_diff[6]))
 
     stats_address_label_var = StringVar()
     stats_address_label = Label(stats_window, textvariable=stats_address_label_var)
@@ -1238,29 +1256,28 @@ def refresh(address, raise_errors=False):
 
         # data for charts
 
-        block_height = wallet.statusget[8][7]  # move chart only if the block height changes, returned from diff 7
-        try:
-            block_height_old
-        except:
-            block_height_old = block_height  # init
+        statistics.block_height = wallet.statusget[8][7]  # move chart only if the block height changes, returned from diff 7
 
-        if block_height_old != block_height or not stats_nodes_count_list:  # or if list is empty
+        if not statistics.block_height_old:
+            statistics.block_height_old = statistics.block_height  # init
+
+        if statistics.block_height_old < statistics.block_height or not statistics.stats_nodes_count_list:  # or if list is empty
             print("Chart update in progress")
 
-            stats_nodes_count_list.append(wallet.statusget[1])
-            stats_thread_count_list.append(wallet.statusget[3])
-            stats_consensus_list.append(wallet.statusget[5])
-            stats_consensus_percentage_list.append(wallet.statusget[6])
+            statistics.stats_nodes_count_list.append(wallet.statusget[1])
+            statistics.stats_thread_count_list.append(wallet.statusget[3])
+            statistics.stats_consensus_list.append(wallet.statusget[5])
+            statistics.stats_consensus_percentage_list.append(wallet.statusget[6])
 
-            stats_diff_list_0.append(wallet.statusget[8][0])
-            stats_diff_list_1.append(wallet.statusget[8][1])
-            stats_diff_list_2.append(wallet.statusget[8][2])
-            stats_diff_list_3.append(wallet.statusget[8][3])
-            stats_diff_list_4.append(wallet.statusget[8][4])
-            stats_diff_list_5.append(wallet.statusget[8][5])
-            stats_diff_list_6.append(wallet.statusget[8][6])
+            statistics.stats_diff_list_0.append(wallet.statusget[8][0])
+            statistics.stats_diff_list_1.append(wallet.statusget[8][1])
+            statistics.stats_diff_list_2.append(wallet.statusget[8][2])
+            statistics.stats_diff_list_3.append(wallet.statusget[8][3])
+            statistics.stats_diff_list_4.append(wallet.statusget[8][4])
+            statistics.stats_diff_list_5.append(wallet.statusget[8][5])
+            statistics.stats_diff_list_6.append(wallet.statusget[8][6])
 
-            block_height_old = block_height
+            statistics.block_height_old = statistics.block_height
         else:
             print("Chart update skipped, block hasn't moved")
         # data for charts
@@ -1583,19 +1600,10 @@ def notbusy(an_item=None):
 if __name__ == "__main__":
     keyring = Keys()
     wallet = Wallet()
+    statistics = Statistics()
 
     # data for charts
-    stats_nodes_count_list = []
-    stats_thread_count_list = []
-    stats_consensus_list = []
-    stats_consensus_percentage_list = []
-    stats_diff_list_0 = []
-    stats_diff_list_1 = []
-    stats_diff_list_2 = []
-    stats_diff_list_3 = []
-    stats_diff_list_4 = []
-    stats_diff_list_5 = []
-    stats_diff_list_6 = []
+
     # data for charts
 
     if os.path.exists("privkey.der"):
@@ -1686,7 +1694,7 @@ if __name__ == "__main__":
     frame_support.grid(row=98, column=98, pady=5, padx=5, sticky=W + N)
 
     # frame_mainstats = Frame(tab_main, relief = 'ridge', borderwidth = 4)
-    # frame_mainstats.grid(row=5, column=1, sticky=W + E + N, pady=5, padx=5)
+    # frame_mainstatistics.grid(row=5, column=1, sticky=W + E + N, pady=5, padx=5)
 
     # tab_transactions transactions
     tab_transactions = ttk.Frame(nbtabs)
