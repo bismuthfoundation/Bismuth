@@ -126,7 +126,6 @@ class Peers:
                         s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
 
                     if strict:
-                        print(ip,port)
                         s.connect((ip, int(port)))
                         connections.send(s, "getversion")
                         versiongot = connections.receive(s, timeout=1)
