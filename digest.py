@@ -450,7 +450,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             node.logger.app_log.info(f"Received data dump: {data}")
             block_instance.failed_cause = str(e)
 
-            node.last_block = db_handler.get_last_block() #get actual data from database on exception
+            node.last_block = db_handler.block_max_ram() #get actual data from database on exception
             node.last_block_hash = db_handler.last_block_hash() #get actual data from database on exception
 
             # Temp
