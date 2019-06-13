@@ -198,7 +198,8 @@ def node_connect():
                 keep_trying = False
                 break
             except Exception as e:
-                app_log.warning("Status: Cannot connect to {}:{}".format(connect_ip, connect_port))
+                app_log.warning(f"Status: Cannot connect to {connect_ip}:{connect_port} because {e}"
+
 
 def node_connect_once(ip):  # Connect a light-wallet-ip directly from menu
     try:
@@ -215,7 +216,7 @@ def node_connect_once(ip):  # Connect a light-wallet-ip directly from menu
         app_log.warning("Status: Wallet connected to {}:{}".format(connect_ip, connect_port))
         ip_connected_var.set("{}:{}".format(connect_ip, connect_port))
     except Exception as e:
-        app_log.warning("Status: Cannot connect to {}:{}".format(connect_ip, connect_port))
+        app_log.warning(f"Status: Cannot connect to {connect_ip}:{connect_port} because {e}"
         node_connect()
 
 
@@ -1231,13 +1232,13 @@ def table(address, addlist_20, mempool_total):
 
 def refresh(address, raise_errors=False):
 
-    s = socks.socksocket()
-    s.connect((wallet.ip, int(wallet.port)))
+    wallet.s = socks.socksocket()
+    wallet.s.connect((wallet.ip, int(wallet.port)))
 
     # print "refresh triggered"
     try:
-        connections.send(s, "statusget")
-        wallet.statusget = connections.receive(s)
+        connections.send(wallet.s, "statusget")
+        wallet.statusget = connections.receive(wallet.s)
         wallet.status_version = wallet.statusget[7]
         wallet.stats_timestamp = wallet.statusget[9]
         server_timestamp_var.set("GMT: {}".format(time.strftime("%H:%M:%S", time.gmtime(int(float(wallet.stats_timestamp))))))
@@ -1272,9 +1273,9 @@ def refresh(address, raise_errors=False):
         # data for charts
         """
 
-        connections.send(s, "balanceget")
-        connections.send(s, address)  # change address here to view other people's transactions
-        stats_account = connections.receive(s)
+        connections.send(wallet.s, "balanceget")
+        connections.send(wallet.s, address)  # change address here to view other people's transactions
+        stats_account = connections.receive(wallet.s)
         balance = stats_account[0]
         credit = stats_account[1]
         debit = stats_account[2]
@@ -1285,15 +1286,15 @@ def refresh(address, raise_errors=False):
 
         # 0000000011"statusget"
         # 0000000011"blocklast"
-        connections.send(s, "blocklast")
-        block_get = connections.receive(s)
+        connections.send(wallet.s, "blocklast")
+        block_get = connections.receive(wallet.s)
         bl_height = block_get[0]
         db_timestamp_last = block_get[1]
         hash_last = block_get[7]
 
         # check difficulty
-        connections.send(s, "diffget")
-        diff = connections.receive(s)
+        connections.send(wallet.s, "diffget")
+        diff = connections.receive(wallet.s)
         # check difficulty
 
         print(diff)
@@ -1310,8 +1311,8 @@ def refresh(address, raise_errors=False):
             sync_msg_label.config(fg='green')
 
         # network status
-        connections.send(s, "mpget")  # senders
-        wallet.mempool_total = connections.receive(s)
+        connections.send(wallet.s, "mpget")  # senders
+        wallet.mempool_total = connections.receive(wallet.s)
         print(wallet.mempool_total)
 
         # fees_current_var.set("Current Fee: {}".format('%.8f' % float(fee)))
@@ -1329,8 +1330,8 @@ def refresh(address, raise_errors=False):
         hash_var.set("Hash: {}...".format(hash_last[:6]))
         mempool_count_var.set("Mempool txs: {}".format(len(wallet.mempool_total)))
 
-        connections.send(s, "annverget")
-        annverget = connections.receive(s)
+        connections.send(wallet.s, "annverget")
+        annverget = connections.receive(wallet.s)
         version_var.set("Node: {}/{}".format(wallet.status_version, annverget))
 
         # if status_version != annverget:
@@ -1339,10 +1340,10 @@ def refresh(address, raise_errors=False):
         #    version_color = "green"
         # version_var_label.config (fg=version_color)
 
-        connections.send(s, "addlistlim")
-        connections.send(s, address)
-        connections.send(s, "20")
-        addlist = connections.receive(s)
+        connections.send(wallet.s, "addlistlim")
+        connections.send(wallet.s, address)
+        connections.send(wallet.s, "20")
+        addlist = connections.receive(wallet.s)
         print(addlist)
 
         table(address, addlist, wallet.mempool_total)
@@ -1361,8 +1362,8 @@ def refresh(address, raise_errors=False):
         # photo_main.resize (width_main,height_main)
 
         # canvas bg
-        connections.send(s, "annget")
-        annget = connections.receive(s)
+        connections.send(wallet.s, "annget")
+        annget = connections.receive(wallet.s)
         ann_var_text.config(state=NORMAL)
         ann_var_text.delete('1.0', END)
         ann_var_text.insert(INSERT, annget)
