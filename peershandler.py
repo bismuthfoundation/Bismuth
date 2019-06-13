@@ -35,7 +35,6 @@ class Peers:
         self.app_log = app_log
         self.config = config
         self.logstats = logstats
-
         self.peersync_lock = threading.Lock()
         self.startup_time = time.time()
         self.reset_time = self.startup_time
@@ -108,14 +107,6 @@ class Peers:
         if ip not in self.ip_to_mainnet:
             return True
         return self.ip_to_mainnet[ip] in version_allow
-
-    def peer_dump(self, file, peer):
-        """saves single peer to drive"""
-        with open(file, "r") as peer_file:
-            peers_pairs = json.load(peer_file)
-            peers_pairs[peer] = self.config.port #make this dynamic once
-        with open(file, "w") as peer_file:
-            json.dump(peers_pairs, peer_file)
 
     def peers_dump(self, file, peerdict, strict=True):
         """Validates then adds a peer to the peer list on disk"""

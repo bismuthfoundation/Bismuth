@@ -12,13 +12,12 @@ import mempool as mp
 from difficulty import *
 from libs import client
 
-def sendsync(sdef, peer_ip, status, provider, node):
+def sendsync(sdef, peer_ip, status, node):
     """ Save peer_ip to peerlist and send `sendsync`
 
     :param sdef: socket object
     :param peer_ip: IP of peer synchronization has been completed with
     :param status: Status synchronization was completed in/as
-    :param provider: Provided a valid block
 
     Log the synchronization status
     Save peer IP to peers list if applicable
@@ -29,10 +28,6 @@ def sendsync(sdef, peer_ip, status, provider, node):
     """
 
     node.logger.app_log.info(f"Outbound: Synchronization with {peer_ip} finished after: {status}, sending new sync request")
-
-    if provider:
-        node.logger.app_log.info(f"Outbound: Saving peer {peer_ip}")
-        node.peers.peer_dump(node.peerfile, peer_ip)
 
     time.sleep(Decimal(node.pause))
     while node.db_lock.locked():
@@ -239,7 +234,7 @@ def worker(host, port, node):
                     if node.peers.warning(s, peer_ip, "Rollback", 2):
                         raise ValueError(f"{peer_ip} is banned")
 
-                sendsync(s, peer_ip, "Block not found", False, node)
+                sendsync(s, peer_ip, "Block not found", node)
 
             elif data == "blocknf":  # one of the possible outcomes
                 block_hash_delete = receive(s)
@@ -252,7 +247,7 @@ def worker(host, port, node):
                     if node.peers.warning(s, peer_ip, "Rollback", 2):
                         raise ValueError(f"{peer_ip} is banned")
 
-                sendsync(s, peer_ip, "Block not found", False, node)
+                sendsync(s, peer_ip, "Block not found", node)
 
             elif data == "blocksfnd":
                 node.logger.app_log.info(f"Outbound: Node {peer_ip} has the block(s)")  # node should start sending txs in this step
@@ -294,7 +289,7 @@ def worker(host, port, node):
                         send(s, "blocksrj")
                         node.logger.app_log.warning(f"Inbound: Distant peer {peer_ip} is at {received_block_height}, should be at least {block_req}")
 
-                sendsync(s, peer_ip, "Block found", True, node)
+                sendsync(s, peer_ip, "Block found", node)
 
                 # block_hash validation end
 
@@ -316,7 +311,7 @@ def worker(host, port, node):
                     # receive theirs
                     # Tell the mempool we just send our pool to a peer
                     mp.MEMPOOL.sent(peer_ip)
-                sendsync(s, peer_ip, "No new block", True, node)
+                sendsync(s, peer_ip, "No new block", node)
 
             elif data == "hyperlane":
                 pass
