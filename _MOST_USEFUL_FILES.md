@@ -51,7 +51,7 @@ Web part of the zircodice casino.
 
 ## Bismuth Core API
 
-https://github.com/EggPool/BismuthAPI
+https://github.com/bismuthfoundation/BismuthAPI
 
 ## Bismuth plugins
 https://github.com/bismuthfoundation/BismuthPlugins
