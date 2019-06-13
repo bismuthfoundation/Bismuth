@@ -284,7 +284,7 @@ class Peers:
                             s.connect((ip, int(port)))
                             s.close()
 
-                        self.app_log.warning(f"Connection to {ip}:{port} successful, keeping the peer")
+                        self.app_log.info(f"Connection to {ip}:{port} successful, keeping the peer")
                     except Exception as e:
                         if self.config.purge and not self.is_testnet:
                             # remove from peerfile if not connectible
