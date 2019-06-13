@@ -519,6 +519,11 @@ def sequencing_check(db_handler):
                         'DELETE FROM transactions WHERE address = "Development Reward" AND block_height <= ?'),
                                              (-row[0],))
                     conn2.commit()
+
+                    db_handler.execute_param(conn2, (
+                        'DELETE FROM transactions WHERE address = "Hypernode Payouts" AND block_height <= ?'),
+                                             (-row[0],))
+                    conn2.commit()
                     conn2.close()
 
                     # rollback indices
