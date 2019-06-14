@@ -8,7 +8,7 @@
 
 # BEWARE: check onfigure_firewall to activate.
 
-VERSION="0.1.0"
+VERSION="0.1.1"
 
 create_swap() {
 	if [ -d /swapfile ]; then
@@ -107,7 +107,7 @@ download_node() {
     cd /root/Bismuth
     wget https://gist.githubusercontent.com/EggPool/e7ad9baa2b32e4d7d3ba658a40b6d643/raw/934598c7ff815180b913d6549bd2d9688e016855/node_sentinel.py
     echo "Installing PIP requirements"
-    pip3 install setuptools
+    pip3 install setuptools ipwhois
     pip3 install -r requirements-node.txt
 }
 
