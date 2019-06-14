@@ -6,7 +6,7 @@
 # or one liner : curl https://raw.githubusercontent.com/bismuthfoundation/Bismuth/master/auto-install/bis-node-alone-install.sh|bash
 # Setup a regular Bismuth node alone on a fresh Ubuntu 18 install.
 
-# BEWARE: check onfigure_firewall to activate.
+# BEWARE: check configure_firewall to activate.
 
 VERSION="0.1.1"
 
