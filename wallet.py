@@ -186,7 +186,7 @@ def convert_ip_port(ip):
     :param some_port: default port
     :return: (ip, port)
     """
-    port = 5658  # default
+    port = 5658  # default
     if ':' in ip:
         ip, port = ip.split(':')
     return ip, port
@@ -356,7 +356,7 @@ def keys_load_dialog():
     sender_address.insert(INSERT, keyring.myaddress)
     sender_address.config(state=DISABLED)
 
-    t = threading.Thread(target=refresh,args=(keyring.myaddress,))
+    t = threading.Thread(target=refresh,args=(keyring.myaddress, False, True,))
     t.start()
 
 
@@ -374,14 +374,14 @@ def keys_backup():
 
 def watch():
     address = gui_address_t.get()
-    t = threading.Thread(target=refresh,args=(address,))
+    t = threading.Thread(target=refresh,args=(address, False, True,))
     t.start()
 
 
 def unwatch():
     gui_address_t.delete(0, END)
     gui_address_t.insert(INSERT, keyring.myaddress)
-    t = threading.Thread(target=refresh,args=(keyring.myaddress,))
+    t = threading.Thread(target=refresh,args=(keyring.myaddress, False, True,))
     t.start()
 
 
@@ -689,7 +689,7 @@ def send(amount_input, recipient_input, operation_input, openfield_input):
             except Exception as e:
                 messagebox.showerror("Error", f"{e}")
                 pass
-            t = threading.Thread(target=refresh, args=(gui_address_t.get(),))
+            t = threading.Thread(target=refresh, args=(gui_address_t.get(), False, True,))
             t.start()
 
         else:
@@ -857,7 +857,7 @@ def msg_dialogue(address):
 
 
 def refresh_auto():
-    t = threading.Thread(target=refresh, args=(gui_address_t.get(),))
+    t = threading.Thread(target=refresh, args=(gui_address_t.get(), False, True,))
     root.after(0, t.start())
     root.after(30000, refresh_auto)
 
@@ -1101,14 +1101,10 @@ def tokens():
     scrollbar_v.grid(row=0, column=1, sticky=N + S + E)
 
     try:
-        tokens_s = socks.socksocket()
-        tokens_s.connect((wallet.ip, int(wallet.port)))
+        connections.send(wallet.s, "tokensget")
+        connections.send(wallet.s, gui_address_t.get())
 
-        connections.send(tokens_s, "tokensget")
-        connections.send(tokens_s, gui_address_t.get())
-
-        tokens_results = connections.receive(tokens_s)
-        tokens_s.close()
+        tokens_results = connections.receive(wallet.s)
 
         print(tokens_results)
         for pair in tokens_results:
@@ -1246,15 +1242,23 @@ def table(address, addlist_20, mempool_total):
         wallet.tx_tree.tag_configure("sent", background='chocolate1')
 
 
-def refresh(address, raise_errors=False):
+def refresh(address, raise_errors = False, threaded = False):
 
-    wallet.s = socks.socksocket()
-    wallet.s.connect((wallet.ip, int(wallet.port)))
+    if threaded:
+        print("threaded")
+
+        s = socks.socksocket()
+        s.connect((wallet.ip, int(wallet.port)))
+    else:
+        print("non-threaded")
+
+        s = wallet.s
+
 
     # print "refresh triggered"
     try:
-        connections.send(wallet.s, "statusget")
-        wallet.statusget = connections.receive(wallet.s)
+        connections.send(s, "statusget")
+        wallet.statusget = connections.receive(s)
         wallet.status_version = wallet.statusget[7]
         wallet.stats_timestamp = wallet.statusget[9]
         server_timestamp_var.set("GMT: {}".format(time.strftime("%H:%M:%S", time.gmtime(int(float(wallet.stats_timestamp))))))
@@ -1287,9 +1291,9 @@ def refresh(address, raise_errors=False):
             print("Chart update skipped, block hasn't moved")
         # data for charts
 
-        connections.send(wallet.s, "balanceget")
-        connections.send(wallet.s, address)  # change address here to view other people's transactions
-        stats_account = connections.receive(wallet.s)
+        connections.send(s, "balanceget")
+        connections.send(s, address)  # change address here to view other people's transactions
+        stats_account = connections.receive(s)
         balance = stats_account[0]
         credit = stats_account[1]
         debit = stats_account[2]
@@ -1300,15 +1304,15 @@ def refresh(address, raise_errors=False):
 
         # 0000000011"statusget"
         # 0000000011"blocklast"
-        connections.send(wallet.s, "blocklast")
-        block_get = connections.receive(wallet.s)
+        connections.send(s, "blocklast")
+        block_get = connections.receive(s)
         bl_height = block_get[0]
         db_timestamp_last = block_get[1]
         hash_last = block_get[7]
 
         # check difficulty
-        connections.send(wallet.s, "diffget")
-        diff = connections.receive(wallet.s)
+        connections.send(s, "diffget")
+        diff = connections.receive(s)
         # check difficulty
 
         print(diff)
@@ -1325,8 +1329,8 @@ def refresh(address, raise_errors=False):
             sync_msg_label.config(fg='green')
 
         # network status
-        connections.send(wallet.s, "mpget")  # senders
-        wallet.mempool_total = connections.receive(wallet.s)
+        connections.send(s, "mpget")  # senders
+        wallet.mempool_total = connections.receive(s)
         print(wallet.mempool_total)
 
         # fees_current_var.set("Current Fee: {}".format('%.8f' % float(fee)))
@@ -1344,8 +1348,8 @@ def refresh(address, raise_errors=False):
         hash_var.set("Hash: {}...".format(hash_last[:6]))
         mempool_count_var.set("Mempool txs: {}".format(len(wallet.mempool_total)))
 
-        connections.send(wallet.s, "annverget")
-        annverget = connections.receive(wallet.s)
+        connections.send(s, "annverget")
+        annverget = connections.receive(s)
         version_var.set("Node: {}/{}".format(wallet.status_version, annverget))
 
         # if status_version != annverget:
@@ -1354,10 +1358,10 @@ def refresh(address, raise_errors=False):
         #    version_color = "green"
         # version_var_label.config (fg=version_color)
 
-        connections.send(wallet.s, "addlistlim")
-        connections.send(wallet.s, address)
-        connections.send(wallet.s, "20")
-        addlist = connections.receive(wallet.s)
+        connections.send(s, "addlistlim")
+        connections.send(s, address)
+        connections.send(s, "20")
+        addlist = connections.receive(s)
         print(addlist)
 
         table(address, addlist, wallet.mempool_total)
@@ -1376,8 +1380,8 @@ def refresh(address, raise_errors=False):
         # photo_main.resize (width_main,height_main)
 
         # canvas bg
-        connections.send(wallet.s, "annget")
-        annget = connections.receive(wallet.s)
+        connections.send(s, "annget")
+        annget = connections.receive(s)
         ann_var_text.config(state=NORMAL)
         ann_var_text.delete('1.0', END)
         ann_var_text.insert(INSERT, annget)
@@ -1462,7 +1466,7 @@ def hyperlink_BE():
 
 
 def hyperlink_BISGit():
-    url = "https://github.com/hclivess/Bismuth/releases"
+    url = "https://github.com/bismuthfoundation/Bismuth/releases"
     webbrowser.open(url, new=1)
 
 
