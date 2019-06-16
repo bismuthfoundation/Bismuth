@@ -879,7 +879,6 @@ def stats():
 
     def chart_fill():
         print("Filling the chart")
-        print(statistics.stats_consensus_percentage_list)
         #f.clear()
 
         rows = 4
@@ -1102,9 +1101,15 @@ def tokens():
     scrollbar_v.grid(row=0, column=1, sticky=N + S + E)
 
     try:
-        connections.send(wallet.s, "tokensget")
-        connections.send(wallet.s, gui_address_t.get())
-        tokens_results = connections.receive(wallet.s)
+        tokens_s = socks.socksocket()
+        tokens_s.connect((wallet.ip, int(wallet.port)))
+
+        connections.send(tokens_s, "tokensget")
+        connections.send(tokens_s, gui_address_t.get())
+
+        tokens_results = connections.receive(tokens_s)
+        tokens_s.close()
+
         print(tokens_results)
         for pair in tokens_results:
             token = pair[0]
