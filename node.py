@@ -436,7 +436,6 @@ def sequencing_check(db_handler):
 
     node.logger.app_log.warning(f"Status: Testing chain sequencing, starting with block {sequencing_last}")
 
-
     chains_to_check = [node.ledger_path, node.hyper_path]
 
     for chain in chains_to_check:
@@ -572,13 +571,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             self.request.close()
             node.logger.app_log.info(f"IP {peer_ip} banned, disconnected")
 
-
         timeout_operation = 120  # timeout
         timer_operation = time.time()  # start counting
 
         while not client_instance.banned and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
             try:
-
 
                 # Failsafe
                 if self.request == -1:

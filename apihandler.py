@@ -16,7 +16,7 @@ import os, sys
 import mempool as mp
 import json
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
 
 class ApiHandler:
@@ -77,8 +77,8 @@ class ApiHandler:
         :return: 'ok'
         """
         mp.MEMPOOL.clear()
-        connections.send(socket_handler, 'ok')        
-        
+        connections.send(socket_handler, 'ok')
+
     def api_ping(self, socket_handler, db_handler, peers):
         """
         Void, just to allow the client to keep the socket open (avoids timeout)
@@ -132,7 +132,7 @@ class ApiHandler:
     def api_getblocksince(self, socket_handler, db_handler, peers):
         """
         Returns the full blocks and transactions following a given block_height
-        Returns at most transactions from 10 blocks (the most recent ones if it truncates)
+        Returns at most transactions from 50 blocks (the most recent ones if it truncates)
         Used by the json-rpc server to poll and be notified of tx and new blocks.
         :param socket_handler:
         :param db_handler:
@@ -147,12 +147,12 @@ class ApiHandler:
             try:
                 db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
                 # what is the min block height to consider ?
-                block_height = max(db_handler.h.fetchone()[0]-11, since_height)
+                block_height = max(db_handler.h.fetchone()[0]-51, since_height)
                 #print("block_height",block_height)
                 db_handler.execute_param(db_handler.h,
                                         ('SELECT * FROM transactions WHERE block_height > ?;'),
                                         (block_height, ))
-                info = db_handler.db_handler.h.fetchall()
+                info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
                 #print(all)
             except Exception as e:
@@ -188,7 +188,7 @@ class ApiHandler:
                 db_handler.execute_param(db_handler.h,
                                         'SELECT * FROM transactions WHERE block_height > ? and block_height <= ? and openfield like ?',
                                         (since_height, block_height, where_openfield_like) )
-                info = db_handler.db_handler.h.fetchall()
+                info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
                 #print("info", info)
             except Exception as e:
@@ -245,7 +245,7 @@ class ApiHandler:
                 db_handler.execute_param(db_handler.h,
                                         ('SELECT * FROM transactions WHERE block_height > ? and block_height <= ? and ( '+where_assembled+')'),
                                         (since_height, block_height)+conditions_assembled)
-                info = db_handler.db_handler.h.fetchall()
+                info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
                 #print(all)
             except Exception as e:
@@ -256,10 +256,10 @@ class ApiHandler:
         except Exception as e:
             print(e)
             raise
-            
+
     def api_getaddresssince(self, socket_handler, db_handler, peers):
         """
-        Returns the full transactions following a given block_height (will not include the given height) for the given address, with at least minirmations confirmations,
+        Returns the full transactions following a given block_height (will not include the given height) for the given address, with at least min_confirmations confirmations,
         as well as last considered block.
         Returns at most transactions from 720 blocks at a time (the most *older* ones if it truncates) so about 12 hours worth of data.
 
@@ -271,26 +271,26 @@ class ApiHandler:
         info = []
         # get the last known block
         since_height = int(connections.receive(socket_handler))
-        minirmations = int(connections.receive(socket_handler))
+        min_confirmations = int(connections.receive(socket_handler))
         address = str(connections.receive(socket_handler))
-        print('api_getaddresssince', since_height, minirmations, address)
+        print('api_getaddresssince', since_height, min_confirmations, address)
         try:
             try:
                 db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
                 # what is the max block height to consider ?
-                block_height = min(db_handler.h.fetchone()[0] - minirmations, since_height+720)
+                block_height = min(db_handler.h.fetchone()[0] - min_confirmations, since_height+720)
                 db_handler.execute_param(db_handler.h,
                                         ('SELECT * FROM transactions WHERE block_height > ? AND block_height <= ? '
                                          'AND ((address = ?) OR (recipient = ?)) ORDER BY block_height ASC'),
                                         (since_height, block_height, address, address))
-                info = db_handler.db_handler.h.fetchall()
+                info = db_handler.h.fetchall()
             except Exception as e:
                 print("Exception api_getaddresssince:".format(e))
                 raise
-            connections.send(socket_handler, {'last': block_height, 'minconf': minirmations, 'transactions': info})
+            connections.send(socket_handler, {'last': block_height, 'minconf': min_confirmations, 'transactions': info})
         except Exception as e:
             print(e)
-            raise       
+            raise
 
     def _get_balance(self, db_handler, address, minconf=1):
         """
@@ -446,7 +446,7 @@ class ApiHandler:
 
     def api_gettransaction(self, socket_handler, db_handler, peers):
         """
-        Returns the full transaction matching a tx id. Takes txid anf format as params (json output if format is True)  
+        Returns the full transaction matching a tx id. Takes txid anf format as params (json output if format is True)
         :param socket_handler:
         :param db_handler:
         :param peers:
@@ -570,8 +570,8 @@ class ApiHandler:
 def api_gettransaction_for_recipients(self, socket_handler, db_handler, peers):
         """
         Warning: this is currently very slow
-        Returns the full transaction matching a tx id for a list of recipient addresses. 
-        Takes txid anf format as params (json output if format is True)        
+        Returns the full transaction matching a tx id for a list of recipient addresses.
+        Takes txid anf format as params (json output if format is True)
         :param socket_handler:
         :param db_handler:
         :param peers:
