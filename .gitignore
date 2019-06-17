@@ -15,9 +15,11 @@ wallet.der
 address.txt
 mempool.db
 ledger.db
+index.db
 static/regmode.
 static/regmode.*
 static/index_reg.*
 heavy3a.bin
 /theme
 config_custom.txt
+sequencing_last
