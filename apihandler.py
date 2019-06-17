@@ -129,10 +129,9 @@ class ApiHandler:
         except Exception as e:
             self.app_log.warning(e)
 
-    def api_getblocksafter(self, socket_handler, db_handler, peers):
+    def api_getblockrange(self, socket_handler, db_handler, peers):
         """
-        Returns the full blocks and transactions following a given block_height
-        Returns at most transactions from 10 blocks (the older ones if it truncates)
+        Returns full blocks and transactions from a block range, maximum of 10 entries
         :param socket_handler:
         :param db_handler:
         :param peers:
@@ -144,7 +143,6 @@ class ApiHandler:
         #print('api_getblocksafter', since_height)
         try:
             try:
-                db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
                 db_handler.execute_param(db_handler.h,
                                         ('SELECT * FROM transactions WHERE block_height >= ? AND block_height < ?;'),
                                         (since_height, since_height+10,))
@@ -163,8 +161,11 @@ class ApiHandler:
 
     def api_getblocksince(self, socket_handler, db_handler, peers):
         """
-        Returns the full blocks and transactions following a given block_height
-        Returns at most transactions from 10 blocks (the most recent ones if it truncates)
+        Returns full blocks and transactions following a given block_height.
+        Given block_height should not be lower than the last 10 blocks.
+        If given block_height is lower than the most recent block -10,
+        last 10 blocks will be returned.
+
         **Used by the json-rpc server to poll and be notified of tx and new blocks** DO NOT REMOVE!!!.
         :param socket_handler:
         :param db_handler:
@@ -195,11 +196,9 @@ class ApiHandler:
             print(e)
             raise
 
-    def api_getdiffsafter(self, socket_handler, db_handler, peers):
+    def api_getdiffrange(self, socket_handler, db_handler, peers):
         """
-        Returns block heights and diffs following a given block_height
-        Returns at most transactions from 10 blocks (the most recent ones if it truncates)
-        Used by the json-rpc server to poll and be notified of tx and new blocks.
+        Returns block numbers and difficuly from a block range, maximum of 10 entries
         :param socket_handler:
         :param db_handler:
         :param peers:
@@ -210,7 +209,6 @@ class ApiHandler:
         since_height = connections.receive(socket_handler)
         try:
             try:
-                db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM misc")
                 db_handler.execute_param(db_handler.h,
                                         ('SELECT * FROM misc WHERE block_height >= ? AND block_height < ?;'),
                                         (since_height, since_height+10,))

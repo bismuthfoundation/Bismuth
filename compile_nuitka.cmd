@@ -5,7 +5,7 @@ mkdir dist
 python -m nuitka --follow-imports commands.py --windows-icon=graphics\icon.ico --standalone --show-progress -j 8 --recurse-all
 python -m nuitka --follow-imports node.py --windows-icon=graphics\icon.ico --standalone --show-progress -j 8 --recurse-all
 python -m nuitka --follow-imports node_stop.py --windows-icon=graphics\icon.ico --standalone --show-progress -j 8 --recurse-all
-python -m nuitka --follow-imports wallet.py --windows-icon=graphics\icon.ico --standalone --show-progress -j 8 --recurse-all --plugin-enable=tk-inter --plugin-enable=numpy
+python -m nuitka --follow-imports wallet.py --windows-icon=graphics\icon.ico --standalone --show-progress -j 8 --recurse-all --plugin-enable=tk-inter=numpy=matplotlib
 
 robocopy "C:\Program Files\Python37\Lib\site-packages\matplotlib\mpl-data" dist\matplotlib\mpl-data /MIR
 robocopy node.dist dist\files /MOVE /E

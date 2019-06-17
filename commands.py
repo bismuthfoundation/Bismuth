@@ -210,6 +210,14 @@ def blocklastjson(socket):
     print(json.dumps(response))
     #get last block
 
+def api_getblocksince(socket, arg1=None):
+    #get last block
+    connections.send(s, "api_getblocksince")
+    if arg1:
+        connections.send(s, arg1)
+    response = connections.receive(s)
+    print(json.dumps(response))
+    #get last block
 
 def keygen(socket):
     #generate address
@@ -502,6 +510,12 @@ elif command == "addlistlimmirjson":
 
 elif command == "listlim":
     listlim(s, arg1)
+
+elif command == "api_getblocksince":
+    try:
+        api_getblocksince(s, int(arg1))
+    except:
+        api_getblocksince(s)
 
 elif command == "stop":
     stop(s)
