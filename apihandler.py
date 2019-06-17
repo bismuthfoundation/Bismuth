@@ -132,8 +132,7 @@ class ApiHandler:
     def api_getblocksafter(self, socket_handler, db_handler, peers):
         """
         Returns the full blocks and transactions following a given block_height
-        Returns at most transactions from 10 blocks (the most recent ones if it truncates)
-        Used by the json-rpc server to poll and be notified of tx and new blocks.
+        Returns at most transactions from 10 blocks (the older ones if it truncates)
         :param socket_handler:
         :param db_handler:
         :param peers:
@@ -160,6 +159,40 @@ class ApiHandler:
         except Exception as e:
             # If we raise, we don't need to log: will be catched and loggued by the caller
             # self.app_log.warning(e)
+            raise
+
+    def api_getblocksince(self, socket_handler, db_handler, peers):
+        """
+        Returns the full blocks and transactions following a given block_height
+        Returns at most transactions from 10 blocks (the most recent ones if it truncates)
+        **Used by the json-rpc server to poll and be notified of tx and new blocks** DO NOT REMOVE!!!.
+        :param socket_handler:
+        :param db_handler:
+        :param peers:
+        :return:
+        """
+        info = []
+        # get the last known block
+        since_height = connections.receive(socket_handler)
+        # print('api_getblocksince', since_height)
+        try:
+            try:
+                db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
+                # what is the min block height to consider ?
+                block_height = max(db_handler.h.fetchone()[0]-11, since_height)
+                db_handler.execute_param(db_handler.h,
+                                        ('SELECT * FROM transactions WHERE block_height > ?;'),
+                                        (block_height, ))
+                info = db_handler.h.fetchall()
+                # it's a list of tuples, send as is.
+                #print(all)
+            except Exception as e:
+                print(e)
+                raise
+            # print("info", info)
+            connections.send(socket_handler, info)
+        except Exception as e:
+            print(e)
             raise
 
     def api_getdiffsafter(self, socket_handler, db_handler, peers):

@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.3.0.0"
+VERSION = "4.3.0.3"  # Post fork candidate 3
 
 import functools
 import glob
@@ -22,8 +22,8 @@ import sqlite3
 import tarfile
 import threading
 
-import aliases # PREFORK_ALIASES
-#import aliasesv2 as aliases # POSTFORK_ALIASES
+import aliases  # PREFORK_ALIASES
+# import aliasesv2 as aliases # POSTFORK_ALIASES
 
 # Bis specific modules
 import apihandler
