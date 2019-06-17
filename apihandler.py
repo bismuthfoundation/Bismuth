@@ -161,6 +161,10 @@ class ApiHandler:
 
     def api_getblocksince(self, socket_handler, db_handler, peers):
         """
+        Returns the full blocks and transactions following a given block_height
+        Returns at most transactions from 10 blocks (the most recent ones if it truncates)
+        Used by the json-rpc server to poll and be notified of tx and new blocks.
+
         Returns full blocks and transactions following a given block_height.
         Given block_height should not be lower than the last 10 blocks.
         If given block_height is lower than the most recent block -10,
