@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.3.0.1"  # Post fork candidate
+VERSION = "4.3.0.2"  # Post fork candidate 2
 
 import functools
 import glob
@@ -54,6 +54,7 @@ appname = "Bismuth"
 appauthor = "Bismuth Foundation"
 
 # nodes_ban_reset=config.nodes_ban_reset
+
 
 def sql_trace_callback(log, id, statement):
     line = f"SQL[{id}] {statement}"
@@ -2019,7 +2020,6 @@ if __name__ == "__main__":
         raise
 
     node.logger.app_log.warning("Status: Bismuth loop running.")
-
 
     while True:
         if node.IS_STOPPING:
