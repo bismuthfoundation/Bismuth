@@ -132,10 +132,9 @@ class ApiHandler:
 
     def api_getblockrange(self, socket_handler, db_handler, peers):
         """
-        Returns full blocks and transactions from a block range, maximum of 10 entries
+        Returns full blocks and transactions from a block range, maximum of 50 entries
         :param socket_handler:
         :param db_handler:
-        :param peers:
         :return:
         """
 
@@ -151,32 +150,33 @@ class ApiHandler:
             return return_list
 
 
-        info = []
         # get the last known block
-        since_height = connections.receive(socket_handler)
-        #print('api_getblocksafter', since_height)
+        start_block = connections.receive(socket_handler)
+        limit = connections.receive(socket_handler)
+
+        if limit > 50:
+            limit = 50
+
         try:
             try:
                 db_handler.execute_param(db_handler.h,
-                                        ('SELECT * FROM transactions WHERE block_height >= ? AND block_height < ?;'),
-                                        (since_height, since_height+10,))
+                                        ('SELECT * FROM transactions WHERE block_height >= ? LIMIT ?;'),
+                                        (start_block, limit,))
                 raw_txs = db_handler.h.fetchall()
 
                 db_handler.execute_param(db_handler.h,
-                                        ('SELECT difficulty FROM misc WHERE block_height >= ? AND block_height < ?;'),
-                                        (since_height, since_height+10,))
+                                        ('SELECT difficulty FROM misc WHERE block_height >= ? LIMIT ?;'),
+                                        (start_block, limit,))
                 raw_diffs = db_handler.h.fetchall()
 
-                info = format_raw_txs_diffs(raw_txs, raw_diffs)
+                reply = format_raw_txs_diffs(raw_txs, raw_diffs)
 
             except Exception as e:
                 self.app_log.warning(e)
                 raise
-            # print("info", info)
-            connections.send(socket_handler, info)
+            connections.send(socket_handler, reply)
         except Exception as e:
-            # If we raise, we don't need to log: will be catched and loggued by the caller
-            # self.app_log.warning(e)
+            self.app_log.warning(e)
             raise
 
     def api_getblocksince(self, socket_handler, db_handler, peers):
