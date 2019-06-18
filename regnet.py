@@ -8,6 +8,7 @@ import os
 import sqlite3
 import sys
 import time
+import functools
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Hash import SHA
 from Cryptodome.Signature import PKCS1_v1_5
@@ -69,7 +70,9 @@ DIGEST_BLOCK = None
 
 # because of compatibility - huge node refactor wanted.
 
-
+def sql_trace_callback(log, id, statement):
+    line = f"SQL[{id}] {statement}"
+    log.warning(line)
 
 def generate_one_block(blockhash, mempool_txs, node, db_handler):
     try:
@@ -168,14 +171,14 @@ def init(app_log, trace_db_calls=False):
     # create empty index db
     with sqlite3.connect(REGNET_DB) as source_db:
         if trace_db_calls:
-            upgrade.set_trace_callback(functools.partial(sql_trace_callback,app_log,"REGNET-INIT"))
+            source_db.set_trace_callback(functools.partial(sql_trace_callback,app_log,"REGNET-INIT"))
         for request in SQL_LEDGER:
             source_db.execute(request)
         source_db.commit()
     # create empty reg db
     with sqlite3.connect(REGNET_INDEX) as source_db:
         if trace_db_calls:
-            upgrade.set_trace_callback(functools.partial(sql_trace_callback,app_log,"REGNET-INIT-INDEX"))
+            source_db.set_trace_callback(functools.partial(sql_trace_callback,app_log,"REGNET-INIT-INDEX"))
         for request in SQL_INDEX:
             source_db.execute(request)
         source_db.commit()
