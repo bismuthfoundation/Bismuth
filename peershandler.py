@@ -129,10 +129,16 @@ class Peers:
                         s.connect((ip, int(port)))
                         connections.send(s, "getversion")
                         versiongot = connections.receive(s, timeout=1)
+
                         if versiongot == "*":
-                            raise ValueError("Peer busy")
+                            raise ValueError("peer busy")
+
+                        if versiongot not in self.config.version_allow:
+                            raise ValueError(f"cannot save {ip}, incompatible protocol version {versiongot} not in {self.config.version_allow}")
+
                         self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
                         s.close()
+
                     else:
                         s.connect((ip, int(port)))
                         s.close()

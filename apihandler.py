@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import threading
+from essentials import format_raw_tx
 
 # modular handlers will need access to the database methods under some form, so it needs to be modular too.
 # Here, I just duplicated the minimum needed code from node, further refactoring with classes will follow.
@@ -137,6 +138,19 @@ class ApiHandler:
         :param peers:
         :return:
         """
+
+        def format_raw_txs_diffs(list_of_txs, list_of_diffs: list):
+            """Takes raw list if transactions, difficulties. Returns a formatted list of dicts"""
+            from essentials import format_raw_tx
+            return_list = []
+            for transaction in zip(list_of_txs, list_of_diffs):
+                transaction_formatted = format_raw_tx(transaction[0])
+                transaction_formatted['difficulty'] = transaction[1][0]
+                return_list.append(transaction_formatted)
+
+            return return_list
+
+
         info = []
         # get the last known block
         since_height = connections.receive(socket_handler)
@@ -146,9 +160,15 @@ class ApiHandler:
                 db_handler.execute_param(db_handler.h,
                                         ('SELECT * FROM transactions WHERE block_height >= ? AND block_height < ?;'),
                                         (since_height, since_height+10,))
-                info = db_handler.h.fetchall()
-                # it's a list of tuples, send as is.
-                #print(all)
+                raw_txs = db_handler.h.fetchall()
+
+                db_handler.execute_param(db_handler.h,
+                                        ('SELECT difficulty FROM misc WHERE block_height >= ? AND block_height < ?;'),
+                                        (since_height, since_height+10,))
+                raw_diffs = db_handler.h.fetchall()
+
+                info = format_raw_txs_diffs(raw_txs, raw_diffs)
+
             except Exception as e:
                 self.app_log.warning(e)
                 raise
@@ -200,33 +220,7 @@ class ApiHandler:
             print(e)
             raise
 
-    def api_getdiffrange(self, socket_handler, db_handler, peers):
-        """
-        Returns block numbers and difficuly from a block range, maximum of 10 entries
-        :param socket_handler:
-        :param db_handler:
-        :param peers:
-        :return:
-        """
-        info = []
-        # get the last known block
-        since_height = connections.receive(socket_handler)
-        try:
-            try:
-                db_handler.execute_param(db_handler.h,
-                                        ('SELECT * FROM misc WHERE block_height >= ? AND block_height < ?;'),
-                                        (since_height, since_height+10,))
-                info = db_handler.h.fetchall()
-                # it's a list of tuples, send as is.
-                #print(all)
-            except Exception as e:
-                self.app_log.warning(e)
-                raise
-            # print("info", info)
-            connections.send(socket_handler, info)
-        except Exception as e:
-            self.app_log.warning(e)
-            raise
+
 
     def api_getblockswhereoflike(self, socket_handler, db_handler, peers):
         """
