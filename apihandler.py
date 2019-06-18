@@ -323,7 +323,7 @@ class ApiHandler:
 
     def api_getaddresssince(self, socket_handler, db_handler, peers):
         """
-        Returns the full transactions following a given block_height (will not include the given height) for the given address, with at least minirmations confirmations,
+        Returns the full transactions following a given block_height (will not include the given height) for the given address, with at least min_confirmations confirmations,
         as well as last considered block.
         Returns at most transactions from 720 blocks at a time (the most *older* ones if it truncates) so about 12 hours worth of data.
 
@@ -335,14 +335,14 @@ class ApiHandler:
         info = []
         # get the last known block
         since_height = int(connections.receive(socket_handler))
-        minirmations = int(connections.receive(socket_handler))
+        min_confirmations = int(connections.receive(socket_handler))
         address = str(connections.receive(socket_handler))
-        print('api_getaddresssince', since_height, minirmations, address)
+        print('api_getaddresssince', since_height, min_confirmations, address)
         try:
             try:
                 db_handler.execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
                 # what is the max block height to consider ?
-                block_height = min(db_handler.h.fetchone()[0] - minirmations, since_height+720)
+                block_height = min(db_handler.h.fetchone()[0] - min_confirmations, since_height+720)
                 db_handler.execute_param(db_handler.h,
                                         ('SELECT * FROM transactions WHERE block_height > ? AND block_height <= ? '
                                          'AND ((address = ?) OR (recipient = ?)) ORDER BY block_height ASC'),
@@ -351,7 +351,7 @@ class ApiHandler:
             except Exception as e:
                 print("Exception api_getaddresssince:".format(e))
                 raise
-            connections.send(socket_handler, {'last': block_height, 'minconf': minirmations, 'transactions': info})
+            connections.send(socket_handler, {'last': block_height, 'minconf': min_confirmations, 'transactions': info})
         except Exception as e:
             # self.app_log.warning(e)
             raise
