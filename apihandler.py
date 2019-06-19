@@ -132,25 +132,60 @@ class ApiHandler:
 
     def api_getblockrange(self, socket_handler, db_handler, peers):
         """
-        Returns full blocks and transactions from a block range, maximum of 50 entries
+        Returns full blocks and transactions from a block range, maximum of 50 entries.
+        Includes function format_raw_txs_diffs for formatting. Useful for big data / nosql storage.
         :param socket_handler:
-        :param db_handler:
+        :param db_handler: (UNUSED)
+        :param peers: (UNUSED)
         :return:
         """
 
         def format_raw_txs_diffs(list_of_txs, list_of_diffs: list):
-            """Takes raw list if transactions, difficulties. Returns a formatted list of dicts"""
-            from essentials import format_raw_tx
-            return_list = []
+            """
+            Takes raw list if transactions, difficulties. Returns a formatted list of dicts.
+            Reorganizes parameters to a quickly accessible json.
+            Unnecessary data are removed.
+            """
+
+            blocks_dict = {}
+            height_old = None
+            height = None
+
             for transaction in zip(list_of_txs, list_of_diffs):
+                block_dict = {}
+                tx_list = []
+
+                if height != height_old: #this can be likely improved
+                    block_dict.clear()
+                    del tx_list[:]
+
+                height_old = height
+
                 transaction_formatted = format_raw_tx(transaction[0])
-                transaction_formatted['difficulty'] = transaction[1][0]
-                return_list.append(transaction_formatted)
 
-            return return_list
+                height = transaction_formatted["block_height"]
+                del transaction_formatted["block_height"]
 
+                #del transaction_formatted["signature"]
+                #del transaction_formatted["pubkey"]
 
-        # get the last known block
+                if transaction_formatted["reward"] != 0: #if mining tx
+                    del transaction_formatted["address"]
+                    del transaction_formatted["amount"]
+
+                    transaction_formatted['difficulty'] = transaction[1][0]
+                    block_dict['mining_tx'] = transaction_formatted
+
+                else: #do not duplicate
+                    del transaction_formatted["block_hash"]
+                    del transaction_formatted["reward"]
+                    tx_list.append(transaction_formatted)
+
+                block_dict['transactions'] = tx_list
+                blocks_dict[height] = block_dict
+
+            return blocks_dict
+
         start_block = connections.receive(socket_handler)
         limit = connections.receive(socket_handler)
 
@@ -158,26 +193,22 @@ class ApiHandler:
             limit = 50
 
         try:
-            try:
-                db_handler.execute_param(db_handler.h,
-                                        ('SELECT * FROM transactions WHERE block_height >= ? LIMIT ?;'),
-                                        (start_block, limit,))
-                raw_txs = db_handler.h.fetchall()
+            db_handler.execute_param(db_handler.h,
+                                    ('SELECT * FROM transactions WHERE block_height >= ? AND block_height < ?;'),
+                                    (start_block, start_block+limit,))
+            raw_txs = db_handler.h.fetchall()
 
-                db_handler.execute_param(db_handler.h,
-                                        ('SELECT difficulty FROM misc WHERE block_height >= ? LIMIT ?;'),
-                                        (start_block, limit,))
-                raw_diffs = db_handler.h.fetchall()
+            db_handler.execute_param(db_handler.h,
+                                    ('SELECT difficulty FROM misc WHERE block_height >= ? AND block_height < ?;'),
+                                    (start_block, start_block+limit,))
+            raw_diffs = db_handler.h.fetchall()
 
-                reply = format_raw_txs_diffs(raw_txs, raw_diffs)
+            reply = json.dumps(format_raw_txs_diffs(raw_txs, raw_diffs))
 
-            except Exception as e:
-                self.app_log.warning(e)
-                raise
-            connections.send(socket_handler, reply)
         except Exception as e:
             self.app_log.warning(e)
             raise
+        connections.send(socket_handler, reply)
 
     def api_getblocksince(self, socket_handler, db_handler, peers):
         """
@@ -219,8 +250,6 @@ class ApiHandler:
         except Exception as e:
             print(e)
             raise
-
-
 
     def api_getblockswhereoflike(self, socket_handler, db_handler, peers):
         """
