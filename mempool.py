@@ -529,10 +529,15 @@ class Mempool:
                         # Then more cpu heavy tests
                         buffer = str((mempool_timestamp, mempool_address, mempool_recipient, mempool_amount,
                                       mempool_operation, mempool_openfield)).encode("utf-8")
+
                         #  Will raise if error
-                        SignerFactory.verify_bis_signature(mempool_signature_enc, mempool_public_key_b64encoded,
-                                                           buffer,
-                                                           mempool_address)
+                        try:
+                            SignerFactory.verify_bis_signature(mempool_signature_enc, mempool_public_key_b64encoded,
+                                                               buffer,
+                                                               mempool_address)
+                        except:
+                            mempool_result.append("Mempool: Attempt to spend from a wrong address")
+                            continue
 
                         # Only now, process the tests requiring db access
                         mempool_in = self.sig_check(mempool_signature_enc)
