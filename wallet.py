@@ -94,7 +94,7 @@ class Wallet():
         self.block_height_old = None
         self.mempool_total = None
         self.stats_timestamp = None
-        self.timeout = 6
+        self.timeout = 9
         self.first_run = True
         self.nbtabs = None
 

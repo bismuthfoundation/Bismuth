@@ -140,50 +140,45 @@ class ApiHandler:
         :return:
         """
 
-        def format_raw_txs_diffs(list_of_txs, list_of_diffs: list):
+        def format_raw_txs_diffs(list_of_txs: list, list_of_diffs: list):
             """
             Takes raw list if transactions, difficulties. Returns a formatted list of dicts.
             Reorganizes parameters to a quickly accessible json.
             Unnecessary data are removed.
             """
 
+            i = 0
             blocks_dict = {}
-            height_old = None
-            height = None
+            block_dict = {}
 
-            for transaction in zip(list_of_txs, list_of_diffs):
-                block_dict = {}
-                tx_list = []
+            for transaction in list_of_txs:
 
-                if height != height_old: #this can be likely improved
-                    block_dict.clear()
-                    del tx_list[:]
-
-                height_old = height
-
-                transaction_formatted = format_raw_tx(transaction[0])
+                transaction_formatted = format_raw_tx(transaction)
 
                 height = transaction_formatted["block_height"]
+                block_dict['transactions'] = []
+
                 del transaction_formatted["block_height"]
 
-                #del transaction_formatted["signature"]
-                #del transaction_formatted["pubkey"]
+                del transaction_formatted["signature"] # optional
+                del transaction_formatted["pubkey"] # optional
 
-                if transaction_formatted["reward"] != 0: #if mining tx
-                    del transaction_formatted["address"]
-                    del transaction_formatted["amount"]
-
-                    transaction_formatted['difficulty'] = transaction[1][0]
-                    block_dict['mining_tx'] = transaction_formatted
-
-                else: #do not duplicate
+                if transaction_formatted["reward"] == 0:  # if normal tx
                     del transaction_formatted["block_hash"]
                     del transaction_formatted["reward"]
-                    tx_list.append(transaction_formatted)
+                    block_dict['transactions'].append(transaction_formatted)
 
-                block_dict['transactions'] = tx_list
-                blocks_dict[height] = block_dict
+                elif transaction_formatted["reward"] != 0: #if mining tx (end of block)
+                    del transaction_formatted["address"]
+                    del transaction_formatted["amount"]
+                    transaction_formatted['difficulty'] = list_of_diffs[i][0]
+                    block_dict['mining_tx'] = transaction_formatted
+                    blocks_dict[height] = dict(block_dict) #mutable assignment workaround
 
+                    block_dict.clear()
+                    i += 1
+
+            print(blocks_dict)
             return blocks_dict
 
         start_block = connections.receive(socket_handler)
