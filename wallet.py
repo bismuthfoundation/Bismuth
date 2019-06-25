@@ -889,7 +889,7 @@ def msg_dialogue(address):
 
 def keepalive():
     try:
-        connections.send(wallet.s, "aliasget") #some lighter function should be added to node.py
+        connections.send(wallet.s, "aliasget") #some lighter function should be added to node.py (api_ping)
         connections.send(wallet.s, "test")  # keep non-threaded connection alive
         reply = connections.receive(wallet.s, timeout=wallet.timeout)
         asterisk_check(reply)
