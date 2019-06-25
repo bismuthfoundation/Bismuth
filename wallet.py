@@ -1213,9 +1213,9 @@ def tokens():
             balance = pair[1]
             token_box.insert(END, (token, ":", balance))
     except Exception as e:
-        messagebox.showerror("Error", f"There was an issue fetching tokens: {e}")
-        wallet.connected = False
+        connection_invalidate()
         node_connect()
+        messagebox.showerror("Error", f"There was an issue fetching tokens: {e}")
 
     token_box.bind('<Double-1>', callback)
 
@@ -1357,7 +1357,7 @@ def table(address, addlist_20, mempool_total):
         wallet.tx_tree.tag_configure("sent", background='chocolate1')
 
 
-def refresh(address,reconnect=False):
+def refresh(address):
 
     # app_log.warning "refresh triggered"
     try:
@@ -1533,9 +1533,9 @@ def refresh(address,reconnect=False):
 
     except Exception as e:
         app_log.warning(e)
-        if reconnect:
-            connection_invalidate()
-            node_connect()
+
+        connection_invalidate()
+        node_connect()
 
     finally:
         skin_up()
