@@ -1,6 +1,7 @@
 import base64, hashlib, json
 from Cryptodome.PublicKey import RSA
 
+
 def generate():
     # generate key pair and an address
     key = RSA.generate(4096)
@@ -9,6 +10,7 @@ def generate():
     public_key_readable = key.publickey().exportKey().decode("utf-8")
     address = hashlib.sha224(public_key_readable.encode("utf-8")).hexdigest()  # hashed public key
     return private_key_readable, public_key_readable, address
+
 
 def read():
     # import keys

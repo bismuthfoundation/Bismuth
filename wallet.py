@@ -20,6 +20,9 @@ from tkinter import (DISABLED, END, INSERT, LEFT, NORMAL, NW, WORD, BooleanVar,
                      Listbox, Menu, N, S, Scrollbar, StringVar, Text, Tk,
                      Toplevel, W, filedialog, messagebox, ttk)
 
+import PIL.Image
+import PIL.ImageTk
+import pyqrcode
 import requests
 import socks
 from Cryptodome.Cipher import AES, PKCS1_OAEP
@@ -40,6 +43,8 @@ from quantizer import quantize_eight
 from simplecrypt import encrypt, decrypt
 from tokensv2 import *
 
+#import matplotlib
+#matplotlib.use('TkAgg')
 # from tkinter import filedialog, messagebox, ttk
 
 
@@ -62,6 +67,7 @@ class Statistics:
         self.block_height = None
 '''
 
+
 class Keys:
     def __init__(self):
         self.key = None
@@ -76,11 +82,6 @@ class Keys:
 
 # Wallet needs a version for itself
 __version__ = '0.8.6'
-
-import PIL.Image, PIL.ImageTk, pyqrcode
-#import matplotlib
-
-#matplotlib.use('TkAgg')
 
 
 class Wallet():
@@ -103,7 +104,7 @@ class Wallet():
         self.timeout = 9
         self.first_run = True
         self.nbtabs = None
-        
+
         self.reconnect = False
         self.connected = False
 
@@ -111,17 +112,18 @@ class Wallet():
 def mempool_clear(s):
     connections.send(s, "mpclear")
 
+
 def connection_invalidate():
     wallet.connected = False
     wallet.port = None
     wallet.ip = None
+
 
 def asterisk_check(data):
     if data in ["*"]:
         app_log.warning(f"Received {data} instead of data, reconnecting")
         connection_invalidate()
         node_connect()
-
 
 
 def mempool_get(s):
@@ -264,7 +266,6 @@ def replace_regex(string, replace):
 
 
 def alias_register(alias_desired):
-
 
     with wallet.socket_wait:
         connections.send(wallet.s, "aliascheck")
@@ -421,8 +422,6 @@ def aliases_list():
     top12.title("Your aliases")
     aliases_box = Text(top12, width=100)
     aliases_box.grid(row=0, pady=0)
-
-
 
     with wallet.socket_wait:
         connections.send(wallet.s, "aliasget")
@@ -625,7 +624,6 @@ def send_confirm(amount_input, recipient_input, operation_input, openfield_input
     top10.title("Confirm")
 
     if alias_cb_var.get():  # alias check
-    
 
         with wallet.socket_wait:
             connections.send(wallet.s, "addfromalias")
@@ -637,8 +635,6 @@ def send_confirm(amount_input, recipient_input, operation_input, openfield_input
     # encr check
     if encrypt_var.get():
         # get recipient's public key
-
-    
 
         with wallet.socket_wait:
             connections.send(wallet.s, "pubkeyget")
@@ -732,14 +728,13 @@ def send(amount_input, recipient_input, operation_input, openfield_input):
             # app_log.warning(str(timestamp), str(address), str(recipient_input), '%.8f' % float(amount_input),str(signature_enc), str(public_key_b64encoded), str(keep_input), str(openfield_input))
             tx_submit = str(tx_timestamp), str(keyring.myaddress), str(recipient_input), '%.8f' % float(amount_input), str(signature_enc.decode("utf-8")), str(keyring.public_key_b64encoded.decode("utf-8")), str(operation_input), str(openfield_input)  # float kept for compatibility
             try:
-            
 
                 with wallet.socket_wait:
                     connections.send(wallet.s, "mpinsert")
                     connections.send(wallet.s, tx_submit)
                     reply = connections.receive(wallet.s, timeout=wallet.timeout)
                 asterisk_check(reply)
-                    
+
                 app_log.warning("Client: {}".format(reply))
                 if reply[-1] == "Success":
                     messagebox.showinfo("OK", "Transaction accepted to mempool")
@@ -748,7 +743,7 @@ def send(amount_input, recipient_input, operation_input, openfield_input):
             except Exception as e:
                 messagebox.showerror("Error", f"{e}")
                 pass
-        
+
             t_send = threading.Thread(target=refresh, args=(gui_address_t.get(),))
             t_send.start()
 
@@ -782,7 +777,6 @@ def qr(address):
 
 def msg_dialogue(address):
 
-
     with wallet.socket_wait:
         connections.send(wallet.s, "addlist")
         connections.send(wallet.s, keyring.myaddress)
@@ -795,10 +789,8 @@ def msg_dialogue(address):
         for x in addlist:
             if x[11].startswith(("msg=", "bmsg=", "enc=msg=", "enc=bmsg=")) and x[3] == address:
                 # app_log.warning(x[11])
-            
 
                 with wallet.socket_wait:
-
                     connections.send(wallet.s, "aliasget")
                     connections.send(wallet.s, x[2])
                     msg_address = connections.receive(wallet.s, timeout=wallet.timeout)[0][0]
@@ -851,12 +843,9 @@ def msg_dialogue(address):
                 msg_received.insert(INSERT, ((time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(Decimal(x[1])))) + " From " + replace_regex(msg_address, "alias=") + ": " + msg_received_digest) + "\n")
 
     def msg_sent_get(addlist):
-
         for x in addlist:
             if x[11].startswith(("msg=", "bmsg=", "enc=msg=", "enc=bmsg=")) and x[2] == address:
                 # app_log.warning(x[11])
-
-            
 
                 with wallet.socket_wait:
                     connections.send(wallet.s, "aliasget")
@@ -931,8 +920,6 @@ def msg_dialogue(address):
 
 def keepalive():
     try:
-    
-
         with wallet.socket_wait:
             connections.send(wallet.s, "aliasget") #some lighter function should be added to node.py (api_ping)
             connections.send(wallet.s, "test")  # keep non-threaded connection alive
@@ -1137,7 +1124,6 @@ def stats():
 
 def csv_export(s):
 
-
     with wallet.socket_wait:
         connections.send(s, "addlist")  # senders
         connections.send(s, keyring.myaddress)
@@ -1166,7 +1152,6 @@ def token_transfer(token, amount, window):
     send_confirm(0, recipient.get(), "token:transfer", "{}:{}".format(token, amount))
 
 
-
 def token_issue(token, amount, window):
     operation.delete(0, END)
     operation.insert(0, "token:issue")
@@ -1177,7 +1162,6 @@ def token_issue(token, amount, window):
     window.destroy()
     wallet.nbtabs.select(tab_send)
     send_confirm(0, recipient.get(), "token:issue", "{}:{}".format(token, amount))
-
 
 
 def tokens():
@@ -1198,8 +1182,6 @@ def tokens():
     scrollbar_v.grid(row=0, column=1, sticky=N + S + E)
 
     try:
-    
-
         with wallet.socket_wait:
             connections.send(wallet.s, "tokensget")
             connections.send(wallet.s, gui_address_t.get())
@@ -1245,9 +1227,6 @@ def tokens():
 
     issue = Button(tokens_main, text="Issue", command=lambda: token_issue(token_name_var.get(), token_amount_var.get(), tokens_main))
     issue.grid(row=5, column=0, sticky=W + E, padx=5)
-
-
-
     # cancel = Button (tokens_main, text="Cancel", command=tokens_main.destroy)
     # cancel.grid (row=6, column=0, sticky=W + E, padx=5)
 
@@ -1302,7 +1281,7 @@ def table(address, addlist_20, mempool_total):
         reclist_addressess.append(tx[3])  # append recipient
 
     if resolve_var.get():
-    
+
         with wallet.socket_wait:
             connections.send(wallet.s, "aliasesget")  # senders
             connections.send(wallet.s, addlist_addressess)
@@ -1320,7 +1299,6 @@ def table(address, addlist_20, mempool_total):
 
     # bind local address to local alias
     if resolve_var.get():
-    
         with wallet.socket_wait:
             connections.send(wallet.s, "aliasesget")  # local
             connections.send(wallet.s, [gui_address_t.get()])
@@ -1358,7 +1336,6 @@ def table(address, addlist_20, mempool_total):
 
 
 def refresh(address):
-
     # app_log.warning "refresh triggered"
     try:
 
@@ -1539,6 +1516,7 @@ def refresh(address):
 
     finally:
         skin_up()
+
 
 def sign():
     def verify_this():
@@ -1759,10 +1737,6 @@ if __name__ == "__main__":
     keyring = Keys()
     wallet = Wallet()
     #statistics = Statistics()
-
-    # data for charts
-
-    # data for charts
 
     if os.path.exists("privkey.der"):
         private_key_load = "privkey.der"
@@ -2081,7 +2055,6 @@ if __name__ == "__main__":
     server_timestamp_label = Label(frame_bottom, textvariable=server_timestamp_var)
     server_timestamp_label.grid(row=0, column=9, sticky=S + E, padx=5)
 
-
     encode_var = BooleanVar()
     alias_cb_var = BooleanVar()
     msg_var = BooleanVar()
@@ -2216,7 +2189,6 @@ if __name__ == "__main__":
 
     Label(frame_logo, image=logo).grid(column=0, row=0)
     # logo
-
 
     node_connect()
     refresh_auto()

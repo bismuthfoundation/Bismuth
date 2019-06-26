@@ -15,6 +15,7 @@ import tokensv2 as tokens
 
 fork = Fork()
 
+
 def digest_block(node, data, sdef, peer_ip, db_handler):
     """node param for imports"""
 
@@ -52,7 +53,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             self.mining_reward = None
             self.mirror_hash = None
             self.start_time_block = quantize_two(time.time())
-
 
     def fork_reward_check():
         # fork handling
@@ -143,7 +143,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
             if tx.received_operation in ["token:issue","token:transfer"]:
                 tokens_operation_present = True  # update on change
-
 
             # if transaction == block[-1]:
             if tx_index == block_instance.tx_count - 1:  # faster than comparing the whole tx
@@ -407,7 +406,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             # /whole block validation
             # NEW: returns new block sha_hash
 
-
     # digestion begins here
     if node.peers.is_banned(peer_ip):
         # no need to loose any time with banned peers
@@ -463,7 +461,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             raise ValueError("Chain: digestion aborted")
 
         finally:
-
 
             db_handler.db_to_drive(node)
 
