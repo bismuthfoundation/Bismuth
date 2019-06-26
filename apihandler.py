@@ -569,7 +569,10 @@ class ApiHandler:
             transaction['reward'] = raw[9]
             transaction['operation']= raw[10]
             transaction['openfield'] = raw[11]
-            transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
+            try:
+                transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
+            except:
+                transaction['pubkey'] = raw[6]  # support new pubkey schemes
             transaction['blockhash'] = raw[7]
             transaction['blockheight'] = raw[0]
             transaction['confirmations'] = block_height - raw[0]
@@ -623,7 +626,10 @@ class ApiHandler:
             transaction['reward'] = raw[9]
             transaction['operation'] = raw[10]
             transaction['openfield'] = raw[11]
-            transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
+            try:
+                transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
+            except:
+                transaction['pubkey'] = raw[6]  # support new pubkey schemes
             transaction['blockhash'] = raw[7]
             transaction['blockheight'] = raw[0]
             transaction['confirmations'] = block_height - raw[0]
@@ -699,7 +705,12 @@ class ApiHandler:
                 transaction['reward'] = raw[9]
                 transaction['operation']= raw[10]
                 transaction['openfield'] = raw[11]
-                transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
+
+                try:
+                    transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
+                except:
+                    transaction['pubkey'] = raw[6]  # support new pubkey schemes
+
                 transaction['blockhash'] = raw[7]
                 transaction['blockheight'] = raw[0]
                 transaction['confirmations'] = block_height - raw[0]

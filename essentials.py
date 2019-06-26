@@ -48,7 +48,10 @@ def format_raw_tx(raw: list) -> dict:
     transaction['recipient'] = raw[3]
     transaction['amount'] = raw[4]
     transaction['signature'] = raw[5]
-    transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
+    try:
+        transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
+    except:
+        transaction['pubkey'] = raw[6] #support new pubkey schemes
     transaction['block_hash'] = raw[7]
     transaction['fee'] = raw[8]
     transaction['reward'] = raw[9]
