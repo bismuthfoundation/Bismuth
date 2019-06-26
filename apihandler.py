@@ -150,13 +150,14 @@ class ApiHandler:
             i = 0
             blocks_dict = {}
             block_dict = {}
+            normal_transactions = []
 
             for transaction in list_of_txs:
 
                 transaction_formatted = format_raw_tx(transaction)
 
                 height = transaction_formatted["block_height"]
-                block_dict['transactions'] = []
+
 
                 del transaction_formatted["block_height"]
 
@@ -166,15 +167,17 @@ class ApiHandler:
                 if transaction_formatted["reward"] == 0:  # if normal tx
                     del transaction_formatted["block_hash"]
                     del transaction_formatted["reward"]
-                    block_dict['transactions'].append(transaction_formatted)
+                    normal_transactions.append(transaction_formatted)
 
                 elif transaction_formatted["reward"] != 0: #if mining tx (end of block)
                     del transaction_formatted["address"]
                     del transaction_formatted["amount"]
                     transaction_formatted['difficulty'] = list_of_diffs[i][0]
                     block_dict['mining_tx'] = transaction_formatted
-                    blocks_dict[height] = dict(block_dict) #mutable assignment workaround
 
+                    block_dict['transactions'] = list(normal_transactions)
+
+                    blocks_dict[height] = dict(block_dict)
                     block_dict.clear()
                     i += 1
 

@@ -78,9 +78,9 @@ class Keys:
 __version__ = '0.8.6'
 
 import PIL.Image, PIL.ImageTk, pyqrcode
-import matplotlib
+#import matplotlib
 
-matplotlib.use('TkAgg')
+#matplotlib.use('TkAgg')
 
 
 class Wallet():
