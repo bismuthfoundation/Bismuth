@@ -69,13 +69,6 @@ class ConnectionManager (threading.Thread):
                 self.node.plugin_manager.execute_action_hook('status', status)
                 # end status hook
 
-                if self.node.peerfile_suggested:  # if it is not empty
-                    try:
-                        self.node.peers.peers_dump(self.node.peerfile_suggested, self.node.peers.peer_dict, strict=False)
-                    except Exception as e:
-                        self.logger.app_log.warning(f"There was an issue saving peers ({e}), skipped")
-                        pass
-
                 # logger.app_log.info(threading.enumerate() all threads)
                 time.sleep(30)
                 """
