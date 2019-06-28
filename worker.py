@@ -12,6 +12,7 @@ import mempool as mp
 from difficulty import *
 from libs import client
 
+
 def sendsync(sdef, peer_ip, status, node):
     """ Save peer_ip to peerlist and send `sendsync`
 
@@ -26,16 +27,15 @@ def sendsync(sdef, peer_ip, status, node):
 
     returns None
     """
-
+    # TODO: ERROR, does **not** save anything. code or comment wrong.
     node.logger.app_log.info(f"Outbound: Synchronization with {peer_ip} finished after: {status}, sending new sync request")
-
     time.sleep(Decimal(node.pause))
     while node.db_lock.locked():
         if node.IS_STOPPING:
             return
         time.sleep(Decimal(node.pause))
-
     send(sdef, "sendsync")
+
 
 def worker(host, port, node):
     logger = node.logger
@@ -135,7 +135,7 @@ def worker(host, port, node):
 
                     # send block height, receive block height
                     send(s, "blockheight")
-                    
+
                     node.logger.app_log.info(f"Outbound: Sending block height to compare: {node.hdd_block}")
                     # append zeroes to get static length
                     send(s, node.hdd_block)
@@ -199,8 +199,6 @@ def worker(host, port, node):
                                     node.logger.app_log.info(
                                         "Outbound: Client rejected to sync from us because we're dont have the latest block")
 
-
-
                     elif int(received_block_height) >= node.hdd_block:
                         if int(received_block_height) == node.hdd_block:
                             node.logger.app_log.info(f"Outbound: We have the same block as {peer_ip} ({received_block_height}), hash will be verified")
@@ -221,7 +219,6 @@ def worker(host, port, node):
                     node.logger.app_log.info(f"Outbound: Sync failed {e}")
                 finally:
                     node.syncing.remove(peer_ip)
-
 
             elif data == "blocknfhb":  # one of the possible outcomes
                 block_hash_delete = receive(s)
@@ -281,7 +278,6 @@ def worker(host, port, node):
                                 raise ValueError(f"{peer_ip} is banned")
 
                         else:
-
                             digest_block(node, segments, s, peer_ip, db_handler_instance)
 
                             # receive theirs

@@ -16,9 +16,9 @@ import socks
 
 import regnet
 
-from essentials import most_common, most_common_dict, percentage_in
+from essentials import most_common_dict, percentage_in
 
-__version__ = "0.0.13"
+__version__ = "0.0.14"
 
 
 # TODO : some config options are  and others without => clean up later on
@@ -202,17 +202,17 @@ class Peers:
             else:
                 return False
 
-    def peers_get(self, peerfile=''):
-        """Returns a peerfile from disk as a dict {ip:port}"""
+    def peers_get(self, peer_file=''):
+        """Returns a peer_file from disk as a dict {ip:port}"""
         peer_dict = {}
-        if not peerfile:
-            peerfile = self.peerfile
-        if not os.path.exists(peerfile):
-            with open(peerfile, "a"):
+        if not peer_file:
+            peer_file = self.peerfile
+        if not os.path.exists(peer_file):
+            with open(peer_file, "a"):
                 self.app_log.warning("Peer file created")
         else:
-            with open(peerfile, "r") as peer_file:
-                peer_dict = json.load(peer_file)
+            with open(peer_file, "r") as fp:
+                peer_dict = json.load(fp)
         return peer_dict
 
     def peer_list_disk_format(self):

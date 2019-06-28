@@ -550,9 +550,9 @@ def sequencing_check(db_handler):
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
-        # this is a dedicated thread for each client.
+        # this is a dedicated thread for each client (not ip)
         if node.IS_STOPPING:
-            node.logger.app_log.warning("Inbound: Refused incoming cnx, node is stopping")
+            node.logger.app_log.warning("Inbound: Rejected incoming cnx, node is stopping")
             return
 
         db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
