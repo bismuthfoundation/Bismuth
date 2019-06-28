@@ -315,6 +315,8 @@ class Peers:
         if not self.config.accept_peers:
             return
         if self.peersync_lock.locked():
+            # TODO: means we will lose those peers forever.
+            # TODO: buffer, and keep track of recently tested peers
             self.app_log.info("Outbound: Peer sync occupied")
             return
         self.peersync_lock.acquire()
@@ -360,7 +362,7 @@ class Peers:
                 # json format
                 self.app_log.info(f"Received following {len(json.loads(subdata))} peers: {subdata}")
 
-                for ip,port in json.loads(subdata).items():
+                for ip, port in json.loads(subdata).items():
 
                     if ip not in self.peer_dict.keys():
                         self.app_log.info(f"Outbound: {ip}:{port} is a new peer, saving if connectible")
@@ -374,7 +376,6 @@ class Peers:
                             if ip not in self.peer_dict.keys():
                                 self.peer_dict[ip] = port
                                 self.app_log.info(f"Inbound: Peer {ip}:{port} saved to peers")
-
 
                         except:
                             pass

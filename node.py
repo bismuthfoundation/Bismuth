@@ -589,6 +589,15 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             self.request.close()
             node.logger.app_log.info(f"IP {peer_ip} banned, disconnected")
 
+        # TODO: I'd like to call
+        """
+        node.peers.peersync({peer_ip: node.port})
+        so we can save the peers that connected to us. 
+        But not ok in current architecture: would delay the command, and we're not even sure it would be saved.
+        TODO: Workaround: make sure our external ip and port is present in the peers we announce, or new nodes are likely never to be announced. 
+        Warning: needs public ip/port, not local ones!
+        """
+
         timeout_operation = 120  # timeout
         timer_operation = time.time()  # start counting
 

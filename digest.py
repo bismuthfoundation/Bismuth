@@ -277,7 +277,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 fork_reward_check()
                 sort_transactions(block)
 
-                # moved down, so bad format tx do not require sql query
+                # moved down, so block older for instance does not require sql query...
                 check_signature(block)
 
                 # calculate current difficulty (is done for each block in block array, not super easy to isolate)
