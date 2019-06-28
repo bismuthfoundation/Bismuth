@@ -1552,6 +1552,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for block_height_from_hash command")
 
+                elif data == "addpeers":
+                    if node.peers.is_allowed(peer_ip, data):
+                        data = receive(self.request)
+                        node.peers.peersync(data)
+                    else:
+                        node.logger.app_log.info(f"{peer_ip} not whitelisted for addpeers")
+
                 else:
                     if data == '*':
                         raise ValueError("Broken pipe")

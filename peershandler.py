@@ -250,8 +250,8 @@ class Peers:
         # Always allow whitelisted ip to post as block
         if 'block' == command and self.is_whitelisted(peer_ip):
             return True
-        # only allow local host for "stop" command
-        if 'stop' == command:
+        # only allow local host for "stop" and addpeers command
+        if command in ['stop', 'addpeers']:
             return peer_ip == '127.0.0.1'
         return peer_ip in self.config.allowed or "any" in self.config.allowed
 
