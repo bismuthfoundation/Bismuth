@@ -129,8 +129,10 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 raise ValueError(f"Empty signature from {peer_ip}")
 
     def sort_transactions(block):
+        # print("sort_transactions")
+        # print("block_instance.tx_count", block_instance.tx_count)
         for tx_index, transaction in enumerate(block):
-
+            # print("tx_index", tx_index)
             tx.start_time_tx = quantize_two(time.time())
             tx.q_received_timestamp = quantize_two(transaction[0])
             tx.received_timestamp = '%.2f' % tx.q_received_timestamp
@@ -155,6 +157,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 miner_tx.q_block_timestamp = tx.q_received_timestamp
                 miner_tx.nonce = tx.received_openfield[:128]
                 miner_tx.miner_address = tx.received_address
+                # print("miner_tx1", miner_tx)
 
             block_instance.transaction_list_converted.append((tx.received_timestamp,
                                                tx.received_address,
@@ -261,10 +264,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 # Then the exception handler takes place.
                 # EGG: Reminder: quick test first, **always**. Heavy tests only thereafter.
 
-                # reject blocks older than latest block
-                if miner_tx.q_block_timestamp <= node.last_block_timestamp:
-                    raise ValueError("Block is older than the previous one, will be rejected")
-
                 block_instance.tx_count = len(signature_list)
                 if block_instance.tx_count != len(set(signature_list)):
                     raise ValueError("There are duplicate transactions in this block, rejected")
@@ -275,10 +274,23 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 block_instance.start_time_block = quantize_two(time.time())
 
                 fork_reward_check()
-                sort_transactions(block)
 
                 # moved down, so block older for instance does not require sql query...
+                # TODO: this updates block_instance.tx_count, so all breaks if you move that.
+                # Hidden variables are bug prone.
                 check_signature(block)
+
+                # sort_transactions also computes several hidden variables, like miner_tx.q_block_timestamp
+                # So it has to be run before the check
+                # TODO: rework to avoid hidden variables and make the sequence clear.
+                # sort_transactions also validates all transactions and sigs, and this is a waste of time if the block timestamp is wrong.
+                sort_transactions(block)
+                # reject blocks older than latest block
+                if miner_tx.q_block_timestamp <= node.last_block_timestamp:
+                    # print("miner_tx2", miner_tx)
+                    raise ValueError(f"!Block is older {miner_tx.q_block_timestamp} "
+                                     f"than the previous one {node.last_block_timestamp} , will be rejected")
+
 
                 # calculate current difficulty (is done for each block in block array, not super easy to isolate)
                 diff = difficulty(node, db_handler)
@@ -412,12 +424,12 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 # NEW: returns new block sha_hash
         except Exception as e:
             # Left for edge cases debug
-            """
+
             print(e)
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
-            """
+
             raise
 
 
