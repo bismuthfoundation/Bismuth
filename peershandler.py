@@ -412,7 +412,6 @@ class Peers:
             print(exc_type, fname, exc_tb.tb_lineno)
             raise
 
-
     def consensus_remove(self, peer_ip):
         if peer_ip in self.peer_opinion_dict:
             try:
@@ -422,7 +421,6 @@ class Peers:
                 raise
 
     def can_connect_to(self, host, port):
-
         """
         Tells if we can connect to this host
         :param host:

@@ -82,9 +82,11 @@ SQL_SELECT_TX_TO_SEND_SINCE = 'SELECT * FROM transactions where mergedts > ? ORD
 
 SQL_MEMPOOL_GET = "SELECT amount, openfield, operation FROM transactions WHERE address = ?;"
 
+
 def sql_trace_callback(log, id, statement):
     line = f"SQL[{id}] {statement}"
     log.warning(line)
+
 
 class Mempool:
     """The mempool manager. Thread safe"""

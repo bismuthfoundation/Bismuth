@@ -146,7 +146,7 @@ def ledger_balance3(address, cache, db_handler):
 
 
 def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, public_key_b64encoded) -> Union[bool, tuple]:
-    # TODO: move, make use of polysign module
+    # TODO: move, make use of polysign module
     if not key:
         raise BaseException("The wallet is locked, you need to provide a decrypted key")
     try:
@@ -166,7 +166,7 @@ def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, p
 
 
 def keys_check(app_log, keyfile_name: str) -> None:
-    # TODO: move, make use of polysign module
+    # TODO: move, make use of polysign module
     # key maintenance
     if os.path.isfile("privkey.der") is True:
         app_log.warning("privkey.der found")

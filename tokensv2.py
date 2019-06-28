@@ -10,21 +10,23 @@ from hashlib import blake2b
 
 __version__ = '0.0.2'
 
+
 def blake2bhash_generate(data):
     # new hash
     blake2bhash = blake2b(str(data).encode(), digest_size=20).hexdigest()
     return blake2bhash
     # new hash
 
+
 def sql_trace_callback(log, id, statement):
     line = f"SQL[{id}] {statement}"
-    log.warning(line) 
+    log.warning(line)
+
 
 def tokens_update(node, db_handler_instance):
 
     db_handler_instance.index_cursor.execute("CREATE TABLE IF NOT EXISTS tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)")
     db_handler_instance.index.commit()
-
 
     db_handler_instance.index_cursor.execute("SELECT block_height FROM tokens ORDER BY block_height DESC LIMIT 1;")
     try:
@@ -54,7 +56,6 @@ def tokens_update(node, db_handler_instance):
 
                 timestamp = x[1]
                 node.logger.app_log.warning("Timestamp {}".format(timestamp))
-
 
                 tokens_processed.append(token_name)
                 node.logger.app_log.warning("Token: {}".format(token_name))
@@ -184,6 +185,7 @@ def tokens_update(node, db_handler_instance):
             node.logger.app_log.warning("Processing of {} finished".format(token))
 
         db_handler_instance.index.commit()
+
 
 if __name__ == "__main__":
     app_log = log.log("tokens.log", "WARNING", True)
