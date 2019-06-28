@@ -316,7 +316,7 @@ class Peers:
             return
         if self.peersync_lock.locked():
             # TODO: means we will lose those peers forever.
-            # TODO: buffer, and keep track of recently tested peers
+            # TODO: buffer, and keep track of recently tested peers.
             self.app_log.info("Outbound: Peer sync occupied")
             return
         self.peersync_lock.acquire()
