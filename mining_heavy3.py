@@ -155,6 +155,16 @@ def mining_open(path):
     global F
     global MMAP
     global RND_LEN
+    if os.path.isfile(path):
+        size = os.path.getsize(path)
+        if size != 1073741824:
+            print("Invalid size of heavy file {}.".format(path))
+            try:
+                os.remove(path)
+                print("Deleted, Will be re-created")
+            except Exception as e:
+                print(e)
+                sys.exit()
     if not os.path.isfile(path):
         create_heavy3a(path)
     try:

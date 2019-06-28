@@ -33,7 +33,7 @@ import log
 import options
 import peershandler
 import plugins
-import tokensv2 as tokens
+import tokensv2 as tokens  # TODO: unused here
 import wallet_keys
 from connections import send, receive
 from digest import *
@@ -56,6 +56,7 @@ appname = "Bismuth"
 appauthor = "Bismuth Foundation"
 
 # nodes_ban_reset=config.nodes_ban_reset
+
 
 def sql_trace_callback(log, id, statement):
     line = f"SQL[{id}] {statement}"
@@ -194,7 +195,6 @@ def recompress_ledger(node, rebuild=False, depth=15000):
     hyp.execute("VACUUM")
     hyper.close()
 
-
     if os.path.exists(node.hyper_path) and rebuild:
         os.remove(node.hyper_path)  # remove the old hyperblocks to rebuild
         os.rename(node.ledger_path + '.temp', node.hyper_path)
@@ -225,12 +225,10 @@ def ledger_check_heights(node, db_handler):
             lowest_block = min(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
             highest_block = max(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
 
-
             node.logger.app_log.warning(
                 f"Status: Cross-integrity check failed, {highest_block} will be rolled back below {lowest_block}")
 
             rollback(node,db_handler_initial,lowest_block) #rollback to the lowest value
-
             recompress = False
 
     else:
@@ -389,10 +387,8 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
         except Exception as e:
             node.logger.app_log.warning(e)
 
-
         finally:
             node.db_lock.release()
-
 
             node.logger.app_log.warning(f"Database lock released")
 
@@ -443,7 +439,6 @@ def sequencing_check(db_handler):
         sequencing_last = 0
 
     node.logger.app_log.warning(f"Status: Testing chain sequencing, starting with block {sequencing_last}")
-
 
     chains_to_check = [node.ledger_path, node.hyper_path]
 
@@ -549,7 +544,7 @@ def sequencing_check(db_handler):
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
-        #this is a single thread
+        # this is a dedicated thread for each client.
 
         db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
 
@@ -584,7 +579,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             client_instance.banned = True
             self.request.close()
             node.logger.app_log.info(f"IP {peer_ip} banned, disconnected")
-
 
         timeout_operation = 120  # timeout
         timer_operation = time.time()  # start counting
@@ -781,7 +775,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             else:
                                 node.logger.app_log.info(f"Inbound: Client is at block {client_block}")  # now check if we have any newer
 
-
                                 if node.hdd_hash == data or not node.egress:
                                     if not node.egress:
                                         node.logger.app_log.warning(f"Outbound: Egress disabled for {peer_ip}")
@@ -808,8 +801,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                     elif confirmation == "blocksrj":
                                         node.logger.app_log.info(
                                             "Inbound: Client rejected to sync from us because we're don't have the latest block")
-
-
 
                     except Exception as e:
                         node.logger.app_log.info(f"Inbound: Sync failed {e}")
@@ -1243,7 +1234,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for addlistlimmir command")
 
-
                 elif data == "aliasget":  # all for a single address, no protection against overlapping
                     if node.peers.is_allowed(peer_ip, data):
                         aliases.aliases_update(node, db_handler_instance)
@@ -1587,6 +1577,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             node.logger.app_log.warning(f"Inbound: Closing connection to old {peer_ip} node: {node.peers.ip_to_mainnet['peer_ip']}")
         return
 
+
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
 
@@ -1688,6 +1679,7 @@ def setup_net_type():
         sys.exit()
         """
 
+
 def node_block_init(database):
     node.hdd_block = database.block_height_max()
     node.difficulty = difficulty(node, db_handler_initial)  # check diff for miner
@@ -1745,6 +1737,7 @@ def ram_init(database):
     except Exception as e:
         node.logger.app_log.warning(e)
         raise
+
 
 def initial_db_check():
     """
@@ -2017,14 +2010,11 @@ if __name__ == "__main__":
             node_block_init(db_handler_initial)
             initial_db_check()
 
-
             if not node.is_regnet:
                 sequencing_check(db_handler_initial)
 
             if node.verify:
                 verify(db_handler_initial)
-
-            #db_handler_initial.close()
 
             if not node.tor:
                 # Port 0 means to select an arbitrary unused port
@@ -2050,14 +2040,10 @@ if __name__ == "__main__":
             else:
                 node.logger.app_log.warning("Status: Not starting a local server to conceal identity on Tor network")
 
-            # hyperlane_manager = hyperlane.HyperlaneManager(node.logger.app_log)
-            # hyperlane_manager.start()
-
             # start connection manager
             connection_manager = connectionmanager.ConnectionManager(node, mp)
             connection_manager.start()
             # start connection manager
-
 
         except Exception as e:
             node.logger.app_log.info(e)
@@ -2069,7 +2055,6 @@ if __name__ == "__main__":
 
     node.logger.app_log.warning("Status: Bismuth loop running.")
 
-
     while True:
         if node.IS_STOPPING:
             if node.db_lock.locked():
@@ -2079,3 +2064,4 @@ if __name__ == "__main__":
                 node.logger.app_log.warning("Status: Securely disconnected main processes, subprocess termination in progress.")
                 break
         time.sleep(0.1)
+    node.logger.app_log.warning("Status: Clean Stop")
