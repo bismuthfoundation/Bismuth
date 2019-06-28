@@ -10,6 +10,8 @@ node.build/
 workspace/
 *.log
 *.log.*
+node.log.*
+wallet.log.*
 privkey.der
 pubkey.der
 wallet.der
