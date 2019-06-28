@@ -424,12 +424,12 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 # NEW: returns new block sha_hash
         except Exception as e:
             # Left for edge cases debug
-
+            """
             print(e)
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
-
+            """
             raise
 
 

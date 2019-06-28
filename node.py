@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.3.0.3"  # Post fork candidate 3
+VERSION = "4.3.0.4"  # Post fork candidate 3
 
 import functools
 import glob
@@ -1555,9 +1555,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "addpeers":
                     if node.peers.is_allowed(peer_ip, data):
                         data = receive(self.request)
-                        node.peers.peersync(data)
+                        # peersync expects a dict encoded as json string, not a straight dict
+                        res = node.peers.peersync(data)
+                        send(self.request, {"added": res})
+                        node.logger.app_log.warning(f"{res} peers added")
                     else:
-                        node.logger.app_log.info(f"{peer_ip} not whitelisted for addpeers")
+                        node.logger.app_log.warning(f"{peer_ip} not whitelisted for addpeers")
 
                 else:
                     if data == '*':
