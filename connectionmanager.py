@@ -70,13 +70,10 @@ class ConnectionManager (threading.Thread):
                 # end status hook
 
                 # logger.app_log.info(threading.enumerate() all threads)
-                time.sleep(30)
-                """
+                # time.sleep(30)
                 for i in range(30):
                     # faster stop
-                    if not node.IS_STOPPING:
+                    if not self.node.IS_STOPPING:
                         time.sleep(1)
-                """
             except Exception as e:
                 self.logger.app_log.warning(f"Error in connection manger ({e})")
-

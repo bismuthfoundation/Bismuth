@@ -70,9 +70,11 @@ DIGEST_BLOCK = None
 
 # because of compatibility - huge node refactor wanted.
 
+
 def sql_trace_callback(log, id, statement):
     line = f"SQL[{id}] {statement}"
     log.warning(line)
+
 
 def generate_one_block(blockhash, mempool_txs, node, db_handler):
     try:
@@ -140,6 +142,7 @@ def generate_one_block(blockhash, mempool_txs, node, db_handler):
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         node.logger.app_log.warning(exc_type, fname, exc_tb.tb_lineno)
+
 
 def command(sdef, data, blockhash, node, db_handler):
     try:

@@ -102,6 +102,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             db_handler.hn_reward(node,block_instance,miner_tx,block_instance.mirror_hash)
 
     def check_signature(block):
+        # TODO EGG: benchmark this loop vs a single "WHERE IN" SQL
         for entry in block:  # sig 4
             block_instance.tx_count += 1
             entry_signature = entry[4]
@@ -128,8 +129,10 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 raise ValueError(f"Empty signature from {peer_ip}")
 
     def sort_transactions(block):
+        # print("sort_transactions")
+        # print("block_instance.tx_count", block_instance.tx_count)
         for tx_index, transaction in enumerate(block):
-
+            # print("tx_index", tx_index)
             tx.start_time_tx = quantize_two(time.time())
             tx.q_received_timestamp = quantize_two(transaction[0])
             tx.received_timestamp = '%.2f' % tx.q_received_timestamp
@@ -154,6 +157,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 miner_tx.q_block_timestamp = tx.q_received_timestamp
                 miner_tx.nonce = tx.received_openfield[:128]
                 miner_tx.miner_address = tx.received_address
+                # print("miner_tx1", miner_tx)
 
             block_instance.transaction_list_converted.append((tx.received_timestamp,
                                                tx.received_address,
@@ -249,163 +253,187 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 pass
 
     def process_blocks(block_data):
-        for block in block_data:
+        if node.IS_STOPPING:
+            node.logger.app_log.warning("Process_blocks aborted, node is stopping")
+            return
+        try:
+            for block in block_data:
 
-            block_instance.block_count += 1
-            # Reworked process: we exit as soon as we find an error, no need to process further tests.
-            # Then the exception handler takes place.
+                block_instance.block_count += 1
+                # Reworked process: we exit as soon as we find an error, no need to process further tests.
+                # Then the exception handler takes place.
+                # EGG: Reminder: quick test first, **always**. Heavy tests only thereafter.
 
-            # TODO EGG: benchmark this loop vs a single "WHERE IN" SQL
-            # move down, so bad format tx do not require sql query
-            check_signature(block)
+                block_instance.tx_count = len(signature_list)
+                if block_instance.tx_count != len(set(signature_list)):
+                    raise ValueError("There are duplicate transactions in this block, rejected")
 
-            block_instance.tx_count = len(signature_list)
-            if block_instance.tx_count != len(set(signature_list)):
-                raise ValueError("There are duplicate transactions in this block, rejected")
+                del signature_list[:]
 
-            del signature_list[:]
+                block_instance.block_height_new = node.last_block + 1
+                block_instance.start_time_block = quantize_two(time.time())
 
-            block_instance.block_height_new = node.last_block + 1
-            block_instance.start_time_block = quantize_two(time.time())
+                fork_reward_check()
 
-            fork_reward_check()
-            sort_transactions(block)
+                # moved down, so block older for instance does not require sql query...
+                # TODO: this updates block_instance.tx_count, so all breaks if you move that.
+                # Hidden variables are bug prone.
+                check_signature(block)
 
-            # reject blocks older than latest block
-            if miner_tx.q_block_timestamp <= node.last_block_timestamp:
-                raise ValueError("Block is older than the previous one, will be rejected")
+                # sort_transactions also computes several hidden variables, like miner_tx.q_block_timestamp
+                # So it has to be run before the check
+                # TODO: rework to avoid hidden variables and make the sequence clear.
+                # sort_transactions also validates all transactions and sigs, and this is a waste of time if the block timestamp is wrong.
+                sort_transactions(block)
+                # reject blocks older than latest block
+                if miner_tx.q_block_timestamp <= node.last_block_timestamp:
+                    # print("miner_tx2", miner_tx)
+                    raise ValueError(f"!Block is older {miner_tx.q_block_timestamp} "
+                                     f"than the previous one {node.last_block_timestamp} , will be rejected")
 
-            # calculate current difficulty (is done for each block in block array, not super easy to isolate)
-            diff = difficulty(node, db_handler)
-            node.difficulty = diff
 
-            node.logger.app_log.warning(f"Time to generate block {node.last_block + 1}: {'%.2f' % diff[2]}")
-            node.logger.app_log.warning(f"Current difficulty: {diff[3]}")
-            node.logger.app_log.warning(f"Current blocktime: {diff[4]}")
-            node.logger.app_log.warning(f"Current hashrate: {diff[5]}")
-            node.logger.app_log.warning(f"Difficulty adjustment: {diff[6]}")
-            node.logger.app_log.warning(f"Difficulty: {diff[0]} {diff[1]}")
+                # calculate current difficulty (is done for each block in block array, not super easy to isolate)
+                diff = difficulty(node, db_handler)
+                node.difficulty = diff
 
-            block_instance.block_hash = hashlib.sha224((str(block_instance.transaction_list_converted) + node.last_block_hash).encode("utf-8")).hexdigest()
-            del block_instance.transaction_list_converted[:]
+                node.logger.app_log.warning(f"Time to generate block {node.last_block + 1}: {'%.2f' % diff[2]}")
+                node.logger.app_log.warning(f"Current difficulty: {diff[3]}")
+                node.logger.app_log.warning(f"Current blocktime: {diff[4]}")
+                node.logger.app_log.warning(f"Current hashrate: {diff[5]}")
+                node.logger.app_log.warning(f"Difficulty adjustment: {diff[6]}")
+                node.logger.app_log.warning(f"Difficulty: {diff[0]} {diff[1]}")
 
-            # node.logger.app_log.info("Last block sha_hash: {}".format(block_hash))
-            node.logger.app_log.info(f"Calculated block sha_hash: {block_instance.block_hash}")
-            # node.logger.app_log.info("Nonce: {}".format(nonce))
+                block_instance.block_hash = hashlib.sha224((str(block_instance.transaction_list_converted) + node.last_block_hash).encode("utf-8")).hexdigest()
+                del block_instance.transaction_list_converted[:]
 
-            # check if we already have the sha_hash
-            db_handler.execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
-                                     (block_instance.block_hash,))
-            dummy = db_handler.h.fetchone()
-            if dummy:
-                raise ValueError(
-                    "Skipping digestion of block {} from {}, because we already have it on block_height {}".
-                        format(block_instance.block_hash[:10], peer_ip, dummy[0]))
+                # node.logger.app_log.info("Last block sha_hash: {}".format(block_hash))
+                node.logger.app_log.info(f"Calculated block sha_hash: {block_instance.block_hash}")
+                # node.logger.app_log.info("Nonce: {}".format(nonce))
 
-            if node.is_mainnet:
-                diff_save = mining_heavy3.check_block(block_instance.block_height_new,
-                                                      miner_tx.miner_address,
-                                                      miner_tx.nonce,
-                                                      node.last_block_hash,
-                                                      diff[0],
-                                                      tx.received_timestamp,
-                                                      tx.q_received_timestamp,
-                                                      node.last_block_timestamp,
-                                                      peer_ip=peer_ip,
-                                                      app_log=node.logger.app_log)
-            elif node.is_testnet:
-                diff_save = mining_heavy3.check_block(block_instance.block_height_new,
-                                                      miner_tx.miner_address,
-                                                      miner_tx.nonce,
-                                                      node.last_block_hash,
-                                                      diff[0],
-                                                      tx.received_timestamp,
-                                                      tx.q_received_timestamp,
-                                                      node.last_block_timestamp,
-                                                      peer_ip=peer_ip,
-                                                      app_log=node.logger.app_log)
-            else:
-                # it's regnet then, will use a specific fake method here.
-                diff_save = mining_heavy3.check_block(block_instance.block_height_new,
-                                                      miner_tx.miner_address,
-                                                      miner_tx.nonce,
-                                                      node.last_block_hash,
-                                                      regnet.REGNET_DIFF,
-                                                      tx.received_timestamp,
-                                                      tx.q_received_timestamp,
-                                                      node.last_block_timestamp,
-                                                      peer_ip=peer_ip,
-                                                      app_log=node.logger.app_log)
+                # check if we already have the sha_hash
+                db_handler.execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
+                                         (block_instance.block_hash,))
+                dummy = db_handler.h.fetchone()
+                if dummy:
+                    raise ValueError(
+                        "Skipping digestion of block {} from {}, because we already have it on block_height {}".
+                            format(block_instance.block_hash[:10], peer_ip, dummy[0]))
 
-            process_transactions(block)
+                if node.is_mainnet:
+                    diff_save = mining_heavy3.check_block(block_instance.block_height_new,
+                                                          miner_tx.miner_address,
+                                                          miner_tx.nonce,
+                                                          node.last_block_hash,
+                                                          diff[0],
+                                                          tx.received_timestamp,
+                                                          tx.q_received_timestamp,
+                                                          node.last_block_timestamp,
+                                                          peer_ip=peer_ip,
+                                                          app_log=node.logger.app_log)
+                elif node.is_testnet:
+                    diff_save = mining_heavy3.check_block(block_instance.block_height_new,
+                                                          miner_tx.miner_address,
+                                                          miner_tx.nonce,
+                                                          node.last_block_hash,
+                                                          diff[0],
+                                                          tx.received_timestamp,
+                                                          tx.q_received_timestamp,
+                                                          node.last_block_timestamp,
+                                                          peer_ip=peer_ip,
+                                                          app_log=node.logger.app_log)
+                else:
+                    # it's regnet then, will use a specific fake method here.
+                    diff_save = mining_heavy3.check_block(block_instance.block_height_new,
+                                                          miner_tx.miner_address,
+                                                          miner_tx.nonce,
+                                                          node.last_block_hash,
+                                                          regnet.REGNET_DIFF,
+                                                          tx.received_timestamp,
+                                                          tx.q_received_timestamp,
+                                                          node.last_block_timestamp,
+                                                          peer_ip=peer_ip,
+                                                          app_log=node.logger.app_log)
 
-            node.last_block = block_instance.block_height_new
-            node.last_block_hash = block_instance.block_hash
-            # end for block
+                process_transactions(block)
 
-            # save current diff (before the new block)
+                node.last_block = block_instance.block_height_new
+                node.last_block_hash = block_instance.block_hash
+                # end for block
 
-            # quantized vars have to be converted, since Decimal is not json serializable...
-            node.plugin_manager.execute_action_hook('block',
-                                                    {'height': block_instance.block_height_new, 'diff': diff_save,
-                                                     'hash': block_instance.block_hash,
-                                                     'timestamp': float(miner_tx.q_block_timestamp),
-                                                     'miner': miner_tx.miner_address, 'ip': peer_ip})
+                # save current diff (before the new block)
 
-            node.plugin_manager.execute_action_hook('fullblock',
-                                                    {'height': block_instance.block_height_new, 'diff': diff_save,
-                                                     'hash': block_instance.block_hash,
-                                                     'timestamp': float(miner_tx.q_block_timestamp),
-                                                     'miner': miner_tx.miner_address, 'ip': peer_ip,
-                                                     'transactions': block_transactions})
+                # quantized vars have to be converted, since Decimal is not json serializable...
+                node.plugin_manager.execute_action_hook('block',
+                                                        {'height': block_instance.block_height_new, 'diff': diff_save,
+                                                         'hash': block_instance.block_hash,
+                                                         'timestamp': float(miner_tx.q_block_timestamp),
+                                                         'miner': miner_tx.miner_address, 'ip': peer_ip})
 
-            db_handler.to_db(block_instance, diff_save, block_transactions)
+                node.plugin_manager.execute_action_hook('fullblock',
+                                                        {'height': block_instance.block_height_new, 'diff': diff_save,
+                                                         'hash': block_instance.block_hash,
+                                                         'timestamp': float(miner_tx.q_block_timestamp),
+                                                         'miner': miner_tx.miner_address, 'ip': peer_ip,
+                                                         'transactions': block_transactions})
 
-            # savings
-            if node.is_testnet or block_instance.block_height_new >= 843000:
-                # no savings for regnet
-                if int(block_instance.block_height_new) % 10000 == 0:  # every x blocks
+                db_handler.to_db(block_instance, diff_save, block_transactions)
 
-                    staking.staking_update(db_handler.conn, db_handler.c, db_handler.index, db_handler.index_cursor,
-                                           "normal", block_instance.block_height_new, node.logger.app_log)
-                    staking.staking_payout(db_handler.conn, db_handler.c, db_handler.index, db_handler.index_cursor,
-                                           block_instance.block_height_new, float(miner_tx.q_block_timestamp),
-                                           node.logger.app_log)
-                    staking.staking_revalidate(db_handler.conn, db_handler.c, db_handler.index,
-                                               db_handler.index_cursor, block_instance.block_height_new,
+                # savings
+                if node.is_testnet or block_instance.block_height_new >= 843000:
+                    # no savings for regnet
+                    if int(block_instance.block_height_new) % 10000 == 0:  # every x blocks
+
+                        staking.staking_update(db_handler.conn, db_handler.c, db_handler.index, db_handler.index_cursor,
+                                               "normal", block_instance.block_height_new, node.logger.app_log)
+                        staking.staking_payout(db_handler.conn, db_handler.c, db_handler.index, db_handler.index_cursor,
+                                               block_instance.block_height_new, float(miner_tx.q_block_timestamp),
                                                node.logger.app_log)
+                        staking.staking_revalidate(db_handler.conn, db_handler.c, db_handler.index,
+                                                   db_handler.index_cursor, block_instance.block_height_new,
+                                                   node.logger.app_log)
 
-            # new sha_hash
-            db_handler.execute(db_handler.c, "SELECT * FROM transactions "
-                                             "WHERE block_height = (SELECT max(block_height) FROM transactions)")
-            # Was trying to simplify, but it's the latest mirror sha_hash.
-            # not the latest block, nor the mirror of the latest block.
-            # c.execute("SELECT * FROM transactions WHERE block_height = ?", (block_instance.block_height_new -1,))
-            tx_list_to_hash = db_handler.c.fetchall()
-            block_instance.mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).hexdigest()
-            # /new sha_hash
+                # new sha_hash
+                db_handler.execute(db_handler.c, "SELECT * FROM transactions "
+                                                 "WHERE block_height = (SELECT max(block_height) FROM transactions)")
+                # Was trying to simplify, but it's the latest mirror sha_hash.
+                # not the latest block, nor the mirror of the latest block.
+                # c.execute("SELECT * FROM transactions WHERE block_height = ?", (block_instance.block_height_new -1,))
+                tx_list_to_hash = db_handler.c.fetchall()
+                block_instance.mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).hexdigest()
+                # /new sha_hash
 
-            rewards()
+                rewards()
 
-            # node.logger.app_log.warning("Block: {}: {} valid and saved from {}"
-            # .format(block_instance.block_height_new, block_hash[:10], peer_ip))
-            node.logger.app_log.warning(f"Valid block: {block_instance.block_height_new}: "
-                                        f"{block_instance.block_hash[:10]} with {len(block)} txs, "
-                                        f"digestion from {peer_ip} completed in "
-                                        f"{str(time.time() - float(block_instance.start_time_block))[:5]}s.")
-            del block_transactions[:]
-            node.peers.unban(peer_ip)
+                # node.logger.app_log.warning("Block: {}: {} valid and saved from {}"
+                # .format(block_instance.block_height_new, block_hash[:10], peer_ip))
+                node.logger.app_log.warning(f"Valid block: {block_instance.block_height_new}: "
+                                            f"{block_instance.block_hash[:10]} with {len(block)} txs, "
+                                            f"digestion from {peer_ip} completed in "
+                                            f"{str(time.time() - float(block_instance.start_time_block))[:5]}s.")
+                del block_transactions[:]
+                node.peers.unban(peer_ip)
 
-            # This new block may change the int(diff). Trigger the hook whether it changed or not.
-            diff = difficulty(node, db_handler)
-            node.difficulty = diff
-            node.plugin_manager.execute_action_hook('diff', diff[0])
-            # We could recalc diff after inserting block, and then only trigger the block hook,
-            # but I fear this would delay the new block event.
+                # This new block may change the int(diff). Trigger the hook whether it changed or not.
+                diff = difficulty(node, db_handler)
+                node.difficulty = diff
+                node.plugin_manager.execute_action_hook('diff', diff[0])
+                # We could recalc diff after inserting block, and then only trigger the block hook,
+                # but I fear this would delay the new block event.
 
-            # /whole block validation
-            # NEW: returns new block sha_hash
+                # /whole block validation
+                # NEW: returns new block sha_hash
+        except Exception as e:
+            # Left for edge cases debug
 
+            print(e)
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+
+            raise
+
+
+    # TODO: no def in def, unreadable. we are 10 screens down the prototype of that function.
     # digestion begins here
     if node.peers.is_banned(peer_ip):
         # no need to loose any time with banned peers

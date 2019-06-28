@@ -33,7 +33,7 @@ import log
 import options
 import peershandler
 import plugins
-import tokensv2 as tokens
+import tokensv2 as tokens  # TODO: unused here
 import wallet_keys
 from connections import send, receive
 from digest import *
@@ -57,12 +57,14 @@ appauthor = "Bismuth Foundation"
 
 # nodes_ban_reset=config.nodes_ban_reset
 
+
 def sql_trace_callback(log, id, statement):
     line = f"SQL[{id}] {statement}"
     log.warning(line)
 
 
 def bootstrap():
+    # TODO: Candidate for single user mode
     try:
         types = ['static/*.db-wal', 'static/*.db-shm']
         for t in types:
@@ -82,6 +84,7 @@ def bootstrap():
 
 
 def check_integrity(database):
+    # TODO: Candidate for single user mode
     # check ledger integrity
     with sqlite3.connect(database) as ledger_check:
         if node.trace_db_calls:
@@ -120,6 +123,7 @@ def rollback(node, db_handler, block_height):
 
 
 def recompress_ledger(node, rebuild=False, depth=15000):
+    # TODO: Candidate for single user mode
     node.logger.app_log.warning(f"Status: Recompressing, please be patient")
 
     files_remove = [node.ledger_path + '.temp',node.ledger_path + '.temp-shm',node.ledger_path + '.temp-wal']
@@ -194,15 +198,14 @@ def recompress_ledger(node, rebuild=False, depth=15000):
     hyp.execute("VACUUM")
     hyper.close()
 
-
     if os.path.exists(node.hyper_path) and rebuild:
         os.remove(node.hyper_path)  # remove the old hyperblocks to rebuild
         os.rename(node.ledger_path + '.temp', node.hyper_path)
 
 
 def ledger_check_heights(node, db_handler):
+    # TODO: Candidate for single user mode
     """conversion of normal blocks into hyperblocks from ledger.db or hyper.db to hyper.db"""
-
     if os.path.exists(node.hyper_path):
 
         # cross-integrity check
@@ -225,12 +228,10 @@ def ledger_check_heights(node, db_handler):
             lowest_block = min(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
             highest_block = max(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
 
-
             node.logger.app_log.warning(
                 f"Status: Cross-integrity check failed, {highest_block} will be rolled back below {lowest_block}")
 
             rollback(node,db_handler_initial,lowest_block) #rollback to the lowest value
-
             recompress = False
 
     else:
@@ -242,10 +243,12 @@ def ledger_check_heights(node, db_handler):
 
 
 def bin_convert(string):
+    # TODO: Move to essentials.py
     return ''.join(format(ord(x), '8b').replace(' ', '0') for x in string)
 
 
 def balanceget(balance_address, db_handler):
+    # TODO: To move in db_handler, call by db_handler.balance_get(address)
     # verify balance
 
     # node.logger.app_log.info("Mempool: Verifying balance")
@@ -389,10 +392,8 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
         except Exception as e:
             node.logger.app_log.warning(e)
 
-
         finally:
             node.db_lock.release()
-
 
             node.logger.app_log.warning(f"Database lock released")
 
@@ -434,6 +435,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
 
 
 def sequencing_check(db_handler):
+    # TODO: Candidate for single user mode
     try:
         with open("sequencing_last", 'r') as filename:
             sequencing_last = int(filename.read())
@@ -443,7 +445,6 @@ def sequencing_check(db_handler):
         sequencing_last = 0
 
     node.logger.app_log.warning(f"Status: Testing chain sequencing, starting with block {sequencing_last}")
-
 
     chains_to_check = [node.ledger_path, node.hyper_path]
 
@@ -549,7 +550,10 @@ def sequencing_check(db_handler):
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
-        #this is a single thread
+        # this is a dedicated thread for each client (not ip)
+        if node.IS_STOPPING:
+            node.logger.app_log.warning("Inbound: Rejected incoming cnx, node is stopping")
+            return
 
         db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
 
@@ -585,14 +589,20 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             self.request.close()
             node.logger.app_log.info(f"IP {peer_ip} banned, disconnected")
 
+        # TODO: I'd like to call
+        """
+        node.peers.peersync({peer_ip: node.port})
+        so we can save the peers that connected to us. 
+        But not ok in current architecture: would delay the command, and we're not even sure it would be saved.
+        TODO: Workaround: make sure our external ip and port is present in the peers we announce, or new nodes are likely never to be announced. 
+        Warning: needs public ip/port, not local ones!
+        """
 
         timeout_operation = 120  # timeout
         timer_operation = time.time()  # start counting
 
         while not client_instance.banned and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
             try:
-
-
                 # Failsafe
                 if self.request == -1:
                     raise ValueError(f"Inbound: Closed socket from {peer_ip}")
@@ -660,8 +670,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     # if len(mempool_txs) > 0: same as the other
                     send(self.request, mempool_txs)
 
-                    # send own
-
                 elif data == "hello":
                     if node.is_regnet:
                         node.logger.app_log.info("Inbound: Got hello but I'm in regtest mode, closing.")
@@ -727,8 +735,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             send(self.request, "blocksrj")
                             node.logger.app_log.info(
                                 f"Inbound: Distant peer {peer_ip} is at {received_block_height}, should be at least {max(block_req,node.last_block+1)}")
-
                     send(self.request, "sync")
+
                 elif data == "blockheight":
                     try:
                         received_block_height = receive(self.request)  # receive client's last block height
@@ -781,7 +789,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             else:
                                 node.logger.app_log.info(f"Inbound: Client is at block {client_block}")  # now check if we have any newer
 
-
                                 if node.hdd_hash == data or not node.egress:
                                     if not node.egress:
                                         node.logger.app_log.warning(f"Outbound: Egress disabled for {peer_ip}")
@@ -808,8 +815,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                     elif confirmation == "blocksrj":
                                         node.logger.app_log.info(
                                             "Inbound: Client rejected to sync from us because we're don't have the latest block")
-
-
 
                     except Exception as e:
                         node.logger.app_log.info(f"Inbound: Sync failed {e}")
@@ -1238,11 +1243,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             response_list.append(response)
 
                         send(self.request, response_list)
-
                         send(self.request, result)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for addlistlimmir command")
-
 
                 elif data == "aliasget":  # all for a single address, no protection against overlapping
                     if node.peers.is_allowed(peer_ip, data):
@@ -1267,10 +1270,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 # Not mandatory, but may help to reindex with minimal sql queries
 
                 elif data == "tokensget":
+                    # TODO: to be handled by token modules, with no sql here in node.
                     if node.peers.is_allowed(peer_ip, data):
 
                         tokens_address = receive(self.request)
-
                         tokens_user = db_handler_instance.tokens_user(tokens_address)
 
                         tokens_list = []
@@ -1541,7 +1544,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for stop command")
 
-
                 elif data == "block_height_from_hash":
                     if node.peers.is_allowed(peer_ip, data):
                         hash = receive(self.request)
@@ -1549,6 +1551,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         send(self.request, response)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for block_height_from_hash command")
+
+                elif data == "addpeers":
+                    if node.peers.is_allowed(peer_ip, data):
+                        data = receive(self.request)
+                        node.peers.peersync(data)
+                    else:
+                        node.logger.app_log.info(f"{peer_ip} not whitelisted for addpeers")
 
                 else:
                     if data == '*':
@@ -1587,11 +1596,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             node.logger.app_log.warning(f"Inbound: Closing connection to old {peer_ip} node: {node.peers.ip_to_mainnet['peer_ip']}")
         return
 
+
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
 
 
 def just_int_from(s):
+    # TODO: move to essentials.py
     return int(''.join(i for i in s if i.isdigit()))
 
 
@@ -1599,6 +1610,7 @@ def setup_net_type():
     """
     Adjust globals depending on mainnet, testnet or regnet
     """
+    # TODO: only deals with 'node' structure, candidate for single user mode.
     # Defaults value, dup'd here for clarity sake.
     node.is_mainnet = True
     node.is_testnet = False
@@ -1688,7 +1700,9 @@ def setup_net_type():
         sys.exit()
         """
 
+
 def node_block_init(database):
+    # TODO: candidate for single user mode
     node.hdd_block = database.block_height_max()
     node.difficulty = difficulty(node, db_handler_initial)  # check diff for miner
 
@@ -1707,6 +1721,7 @@ def node_block_init(database):
 
 
 def ram_init(database):
+    # TODO: candidate for single user mode
     try:
         if node.ram:
             node.logger.app_log.warning("Status: Moving database to RAM")
@@ -1746,10 +1761,12 @@ def ram_init(database):
         node.logger.app_log.warning(e)
         raise
 
+
 def initial_db_check():
     """
     Initial bootstrap check and chain validity control
     """
+    # TODO: candidate for single user mode
     # force bootstrap via adding an empty "fresh_sync" file in the dir.
     if os.path.exists("fresh_sync") and node.is_mainnet:
         node.logger.app_log.warning("Status: Fresh sync required, bootstrapping from the website")
@@ -1776,7 +1793,7 @@ def initial_db_check():
 
 def load_keys():
     """Initial loading of crypto keys"""
-
+    # TODO: candidate for single user mode
     essentials.keys_check(node.logger.app_log, "wallet.der")
 
     node.keys.key, node.keys.public_key_readable, node.keys.private_key_readable, _, _, node.keys.public_key_b64encoded, node.keys.address, node.keys.keyfile = essentials.keys_load(
@@ -1792,6 +1809,7 @@ def load_keys():
 
 
 def verify(db_handler):
+    # TODO: candidate for single user mode
     try:
         node.logger.app_log.warning("Blockchain verification started...")
         # verify blockchain
@@ -1936,6 +1954,10 @@ if __name__ == "__main__":
     # classes
 
     node.app_version = VERSION
+    # TODO: we could just loop over config items, and assign them to node.
+    # or just do node.config = config
+    # and use node.config.port... aso
+
     node.version = config.version
     node.debug_level = config.debug_level
     node.port = config.port
@@ -2017,14 +2039,14 @@ if __name__ == "__main__":
             node_block_init(db_handler_initial)
             initial_db_check()
 
-
             if not node.is_regnet:
                 sequencing_check(db_handler_initial)
 
             if node.verify:
                 verify(db_handler_initial)
 
-            #db_handler_initial.close()
+            # TODO: until here, we are in single user mode.
+            # All the above goes into a "bootup" function, with methods from single_user module only.
 
             if not node.tor:
                 # Port 0 means to select an arbitrary unused port
@@ -2050,14 +2072,10 @@ if __name__ == "__main__":
             else:
                 node.logger.app_log.warning("Status: Not starting a local server to conceal identity on Tor network")
 
-            # hyperlane_manager = hyperlane.HyperlaneManager(node.logger.app_log)
-            # hyperlane_manager.start()
-
             # start connection manager
             connection_manager = connectionmanager.ConnectionManager(node, mp)
             connection_manager.start()
             # start connection manager
-
 
         except Exception as e:
             node.logger.app_log.info(e)
@@ -2069,7 +2087,6 @@ if __name__ == "__main__":
 
     node.logger.app_log.warning("Status: Bismuth loop running.")
 
-
     while True:
         if node.IS_STOPPING:
             if node.db_lock.locked():
@@ -2079,3 +2096,4 @@ if __name__ == "__main__":
                 node.logger.app_log.warning("Status: Securely disconnected main processes, subprocess termination in progress.")
                 break
         time.sleep(0.1)
+    node.logger.app_log.warning("Status: Clean Stop")

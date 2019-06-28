@@ -10,6 +10,8 @@ node.build/
 workspace/
 *.log
 *.log.*
+node.log.*
+wallet.log.*
 privkey.der
 pubkey.der
 wallet.der
@@ -23,3 +25,4 @@ static/index_reg.*
 heavy3a.bin
 /theme
 config_custom.txt
+sequencing_last

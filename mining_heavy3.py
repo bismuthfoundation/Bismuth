@@ -46,7 +46,7 @@ def anneal3(mmap, n):
     h7 = n & 0xffffffff
     n = n >> 32
     index = ((h7 & ~0x7) % RND_LEN) * 4
-    f1 = struct.unpack('I', mmap[index:index + 4])[0]
+    # f1 = struct.unpack('I', mmap[index:index + 4])[0]
     value = h7 ^ struct.unpack('I', mmap[index:index + 4])[0]
     res = "{:08x}".format(value)
     for i in range(6):
@@ -66,9 +66,9 @@ def diffme_heavy3(pool_address, nonce, db_block_hash):
     # minimum possible diff
     diff = 1
     diff_result = 0
-    hash = sha224((pool_address + nonce + db_block_hash).encode("utf-8")).digest()
-    hash = int.from_bytes(hash, 'big')
-    annealed_sha = anneal3(MMAP, hash)
+    hash224 = sha224((pool_address + nonce + db_block_hash).encode("utf-8")).digest()
+    hash224 = int.from_bytes(hash224, 'big')
+    annealed_sha = anneal3(MMAP, hash224)
     bin_annealed_sha = bin_convert(annealed_sha)
     mining_condition = bin_convert(db_block_hash)
     while mining_condition[:diff] in bin_annealed_sha:
@@ -155,6 +155,16 @@ def mining_open(path):
     global F
     global MMAP
     global RND_LEN
+    if os.path.isfile(path):
+        size = os.path.getsize(path)
+        if size != 1073741824:
+            print("Invalid size of heavy file {}.".format(path))
+            try:
+                os.remove(path)
+                print("Deleted, Will be re-created")
+            except Exception as e:
+                print(e)
+                sys.exit()
     if not os.path.isfile(path):
         create_heavy3a(path)
     try:

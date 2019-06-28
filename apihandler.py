@@ -146,6 +146,8 @@ class ApiHandler:
             Reorganizes parameters to a quickly accessible json.
             Unnecessary data are removed.
             """
+            # TODO: no def definition within another function. Either use a helper for generic things
+            # or another class method depending on what data you'll need.
 
             i = 0
             blocks_dict = {}

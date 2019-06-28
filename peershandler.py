@@ -16,9 +16,9 @@ import socks
 
 import regnet
 
-from essentials import most_common, most_common_dict, percentage_in
+from essentials import most_common_dict, percentage_in
 
-__version__ = "0.0.13"
+__version__ = "0.0.14"
 
 
 # TODO : some config options are  and others without => clean up later on
@@ -204,17 +204,17 @@ class Peers:
             else:
                 return False
 
-    def peers_get(self, peerfile=''):
-        """Returns a peerfile from disk as a dict {ip:port}"""
+    def peers_get(self, peer_file=''):
+        """Returns a peer_file from disk as a dict {ip:port}"""
         peer_dict = {}
-        if not peerfile:
-            peerfile = self.peerfile
-        if not os.path.exists(peerfile):
-            with open(peerfile, "a"):
+        if not peer_file:
+            peer_file = self.peerfile
+        if not os.path.exists(peer_file):
+            with open(peer_file, "a"):
                 self.app_log.warning("Peer file created")
         else:
-            with open(peerfile, "r") as peer_file:
-                peer_dict = json.load(peer_file)
+            with open(peer_file, "r") as fp:
+                peer_dict = json.load(fp)
         return peer_dict
 
     def peer_list_disk_format(self):
@@ -252,8 +252,8 @@ class Peers:
         # Always allow whitelisted ip to post as block
         if 'block' == command and self.is_whitelisted(peer_ip):
             return True
-        # only allow local host for "stop" command
-        if 'stop' == command:
+        # only allow local host for "stop" and addpeers command
+        if command in ['stop', 'addpeers']:
             return peer_ip == '127.0.0.1'
         return peer_ip in self.config.allowed or "any" in self.config.allowed
 
@@ -271,6 +271,8 @@ class Peers:
         if not self.config.accept_peers:
             return
         if self.peersync_lock.locked():
+            # TODO: means we will lose those peers forever.
+            # TODO: buffer, and keep track of recently tested peers.
             self.app_log.info("Outbound: Peer sync occupied")
             return
         self.peersync_lock.acquire()
@@ -316,7 +318,7 @@ class Peers:
                 # json format
                 self.app_log.info(f"Received following {len(json.loads(subdata))} peers: {subdata}")
 
-                for ip,port in json.loads(subdata).items():
+                for ip, port in json.loads(subdata).items():
 
                     if ip not in self.peer_dict.keys():
                         self.app_log.info(f"Outbound: {ip}:{port} is a new peer, saving if connectible")
@@ -330,7 +332,6 @@ class Peers:
                             if ip not in self.peer_dict.keys():
                                 self.peer_dict[ip] = port
                                 self.app_log.info(f"Inbound: Peer {ip}:{port} saved to peers")
-
 
                         except:
                             pass
@@ -368,7 +369,6 @@ class Peers:
             print(exc_type, fname, exc_tb.tb_lineno)
             raise
 
-
     def consensus_remove(self, peer_ip):
         if peer_ip in self.peer_opinion_dict:
             try:
@@ -378,7 +378,6 @@ class Peers:
                 raise
 
     def can_connect_to(self, host, port):
-
         """
         Tells if we can connect to this host
         :param host:
