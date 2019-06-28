@@ -331,6 +331,13 @@ def balanceget(balance_address, db_handler):
 
 
 def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
+    """
+    Rolls back a single block, updates node object variables.
+    Rollback target must be above checkpoint.
+    Hash to rollback must match in case our ledger moved.
+    Not trusting hyperblock nodes for old blocks because of trimming,
+    they wouldn't find the hash and cause rollback.
+    """
     node.logger.app_log.info(f"Rollback operation on {block_hash_delete} initiated by {peer_ip}")
 
     my_time = time.time()
