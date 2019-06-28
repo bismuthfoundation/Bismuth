@@ -264,7 +264,6 @@ class Peers:
     def is_banned(self, peer_ip):
         return peer_ip in self.banlist
 
-<<<<<<< HEAD
     def peers_test(self, peerfile, strict=True):
         """Tests all peers from a list."""
         # TODO: lengthy, no need to test everyone at once?
