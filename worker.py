@@ -117,7 +117,7 @@ def worker(host, port, node):
             # print(data)
 
             if data == "peers":
-                subdata = receive(s)
+                subdata = receive(s)  # dict of "ip":"port"
                 node.peers.peersync(subdata)
 
             elif data == "sync":
