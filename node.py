@@ -1313,6 +1313,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if node.peers.is_allowed(peer_ip, data):
                         pub_key_address = receive(self.request)
                         target_public_key_b64encoded = db_handler_instance.pubkeyget(pub_key_address)
+                        # returns as stored in the DB, that is b64 encoded, except for RSA where it's b64 encoded twice.
                         send(self.request, target_public_key_b64encoded)
 
                     else:
@@ -1337,7 +1338,14 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for aliascheck command")
 
                 elif data == "txsend":
+                    """
+                    This is most unsafe and should never be used.
+                    - node gets the privkey
+                    - dup code for assembling and signing the TX
+                    TODO: DEPRECATED
+                    """
                     if node.peers.is_allowed(peer_ip, data):
+                        node.logger.app_log.warning("txsend is unsafe and deprecated, please don't use.")
                         tx_remote = receive(self.request)
 
                         # receive data necessary for remote tx construction
@@ -1766,7 +1774,6 @@ def initial_db_check():
             bootstrap()
 
 
-
 def load_keys():
     """Initial loading of crypto keys"""
 
@@ -1892,6 +1899,7 @@ def verify(db_handler):
             db_transaction = str((db_timestamp, db_address, db_recipient, db_amount, db_operation, db_openfield)).encode("utf-8")
 
             try:
+                # Signer factory is aware of the different tx schemes, and will b64 decode public_key once or twice as needed.
                 SignerFactory.verify_bis_signature(db_signature_enc, db_public_key_b64encoded, db_transaction, db_address)
             except Exception as e:
                 sha_hash = SHA.new(db_transaction)

@@ -9,12 +9,14 @@ gui.build/
 node.build/
 workspace/
 *.log
+*.log.*
 privkey.der
 pubkey.der
 wallet.der
 address.txt
 mempool.db
 ledger.db
+index.db
 static/regmode.
 static/regmode.*
 static/index_reg.*

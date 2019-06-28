@@ -503,6 +503,7 @@ class Mempool:
                         mempool_signature_enc = str(transaction[4])[:684]
                         mempool_public_key_b64encoded = str(transaction[5])[:1068]
                         if "b'" == mempool_public_key_b64encoded[:2]:
+                            # Binary content instead of str - leftover from legacy code?
                             mempool_public_key_b64encoded = transaction[5][2:1070]
                         mempool_operation = str(transaction[6])[:30]
                         mempool_openfield = str(transaction[7])[:100000]
