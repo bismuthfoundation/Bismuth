@@ -264,6 +264,10 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 # Then the exception handler takes place.
                 # EGG: Reminder: quick test first, **always**. Heavy tests only thereafter.
 
+                # TODO: this updates block_instance.tx_count, so all breaks if you move that.
+                # Hidden variables are bug prone.
+                check_signature(block)
+
                 block_instance.tx_count = len(signature_list)
                 if block_instance.tx_count != len(set(signature_list)):
                     raise ValueError("There are duplicate transactions in this block, rejected")
@@ -274,11 +278,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 block_instance.start_time_block = quantize_two(time.time())
 
                 fork_reward_check()
-
-                # moved down, so block older for instance does not require sql query...
-                # TODO: this updates block_instance.tx_count, so all breaks if you move that.
-                # Hidden variables are bug prone.
-                check_signature(block)
 
                 # sort_transactions also computes several hidden variables, like miner_tx.q_block_timestamp
                 # So it has to be run before the check
@@ -423,7 +422,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 # /whole block validation
                 # NEW: returns new block sha_hash
         except Exception as e:
-            # Left for edge cases debug
+            # Left for edge cases debug
             """
             print(e)
             exc_type, exc_obj, exc_tb = sys.exc_info()
