@@ -264,52 +264,6 @@ class Peers:
     def is_banned(self, peer_ip):
         return peer_ip in self.banlist
 
-    def peers_test(self, peerfile, strict=True):
-        """Tests all peers from a list."""
-        # TODO: lengthy, no need to test everyone at once?
-        if not self.peersync_lock.locked() and self.config.accept_peers:
-            self.peersync_lock.acquire()
-            try:
-                peer_dict = self.peers_get(peerfile)
-                peers_remove = {}
-
-                for key, value in peer_dict.items():
-                    ip, port = key, int(value)
-                    try:
-                        s = socks.socksocket()
-                        if self.config.tor:
-                            s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
-
-                        if strict:
-                            s.connect((ip, int(port)))
-                            connections.send(s, "getversion")
-                            versiongot = connections.receive(s, timeout=1)
-                            if versiongot == "*":
-                                raise ValueError ("Peer busy")
-                            self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
-                            s.close()
-                        else:
-                            s.connect((ip, int(port)))
-                            s.close()
-
-                        self.app_log.info(f"Connection to {ip}:{port} successful, keeping the peer")
-                    except Exception as e:
-                        if self.config.purge and not self.is_testnet:
-                            # remove from peerfile if not connectible
-                            self.app_log.info(f"Inbound: Distant peer {ip}:{port} not responding: {e}")
-
-                            peers_remove[key] = value
-                        pass
-
-                for key in peers_remove:
-                    del peer_dict[key]
-                    self.app_log.info(f"Removed formerly active peer {key}")
-
-                with open(peerfile, "w") as output:
-                    json.dump(peer_dict, output)
-            finally:
-                self.peersync_lock.release()
-
     def peersync(self, subdata: str) -> int:
         """Got a peers list from a peer, process. From worker().
         returns the number of added peers, -1 if it was locked or not accepting new peers
