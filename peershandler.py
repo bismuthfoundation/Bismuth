@@ -264,6 +264,15 @@ class Peers:
     def is_banned(self, peer_ip):
         return peer_ip in self.banlist
 
+    def dict_validate(self,dict):
+        """temporary fix for broken peerlists"""
+        print(dict)
+        if dict.count("}") > 1:
+            result = dict.split("}")[0] + "}"
+        else:
+            result = dict
+        return result
+
     def peersync(self, subdata: str) -> int:
         """Got a peers list from a peer, process. From worker().
         returns the number of added peers, -1 if it was locked or not accepting new peers
@@ -317,7 +326,10 @@ class Peers:
                             self.app_log.info(f"Outbound: {pair} is not a new peer")
                 else:
                     # json format
+
+                    subdata = self.dict_validate(subdata)
                     data_dict = json.loads(subdata)
+
                     self.app_log.info(f"Received {len(data_dict)} peers.")
                     # Simplified the log, every peers then has a ok or ko status anyway.
                     for ip, port in data_dict.items():
