@@ -266,7 +266,6 @@ class Peers:
 
     def dict_validate(self,dict):
         """temporary fix for broken peerlists"""
-        print(dict)
         if dict.count("}") > 1:
             result = dict.split("}")[0] + "}"
         else:
