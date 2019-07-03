@@ -181,6 +181,7 @@ class ApiHandler:
 
                     blocks_dict[height] = dict(block_dict)
                     block_dict.clear()
+                    del normal_transactions[:]
                     i += 1
 
             print(blocks_dict)
