@@ -171,20 +171,17 @@ class ApiHandler:
             del transaction['block_height']
             del transaction['block_hash']
 
-            if not old:
-                old = height  # init
 
-            if old == height:  # if same block
-                tx_list.append(transaction)
-
-                block['block_height'] = height
-                block['block_hash'] = hash
-                block['transactions'] = list(tx_list)
-                blocks[height] = dict(block)
-
-            else:
+            if old != height:  # if same block
                 del tx_list[:]
                 block.clear()
+
+            tx_list.append(transaction)
+
+            block['block_height'] = height
+            block['block_hash'] = hash
+            block['transactions'] = list(tx_list)
+            blocks[height] = dict(block)
 
             old = height  # update
 
@@ -214,24 +211,26 @@ class ApiHandler:
             block_dict = {}
             normal_transactions = []
 
+            old = None
             for transaction in list_of_txs:
-
                 transaction_formatted = format_raw_tx(transaction)
-
                 height = transaction_formatted["block_height"]
-
 
                 del transaction_formatted["block_height"]
 
                 #  del transaction_formatted["signature"]  # optional
                 #  del transaction_formatted["pubkey"]  # optional
 
+                if old != height:
+                    block_dict.clear()
+                    del normal_transactions[:]
+
                 if transaction_formatted["reward"] == 0:  # if normal tx
                     del transaction_formatted["block_hash"]
                     del transaction_formatted["reward"]
                     normal_transactions.append(transaction_formatted)
 
-                elif transaction_formatted["reward"] != 0:  # if mining tx (end of block)
+                else:
                     del transaction_formatted["address"]
                     del transaction_formatted["amount"]
                     transaction_formatted['difficulty'] = list_of_diffs[i][0]
@@ -240,9 +239,8 @@ class ApiHandler:
                     block_dict['transactions'] = list(normal_transactions)
 
                     blocks_dict[height] = dict(block_dict)
-                    block_dict.clear()
-                    del normal_transactions[:]
                     i += 1
+                old = height
 
             return blocks_dict
 
