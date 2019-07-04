@@ -135,7 +135,7 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
     return diff_save
 
 
-def create_heavy3a(file_name):
+def create_heavy3a(file_name="heavy3a.bin"):
     print("Creating Junction Noise file, this usually takes a few minutes...")
     gen = DRBG(b"Bismuth is a chemical element with symbol Bi and atomic number 83. It is a pentavalent post-transition metal and one of the pnictogens with chemical properties resembling its lighter homologs arsenic and antimony.")
     # Size in Gb - No more than 4Gb from a single seed
@@ -148,30 +148,30 @@ def create_heavy3a(file_name):
             f.write(gen.generate(CHUNK_SIZE))
 
 
-def mining_open(path):
+def mining_open(file_name="heavy3a.bin"):
     """
     Opens the Junction MMapped file
     """
     global F
     global MMAP
     global RND_LEN
-    if os.path.isfile(path):
-        size = os.path.getsize(path)
+    if os.path.isfile(file_name):
+        size = os.path.getsize(file_name)
         if size != 1073741824:
-            print("Invalid size of heavy file {}.".format(path))
+            print("Invalid size of heavy file {}.".format(file_name))
             try:
-                os.remove(path)
+                os.remove(file_name)
                 print("Deleted, Will be re-created")
             except Exception as e:
                 print(e)
                 sys.exit()
-    if not os.path.isfile(path):
-        create_heavy3a(path)
+    if not os.path.isfile(file_name):
+        create_heavy3a(file_name)
     try:
-        F = open(path, "rb+")
+        F = open(file_name, "rb+")
         # memory-map the file, size 0 means whole file
         MMAP = mmap.mmap(F.fileno(), 0)
-        RND_LEN = os.path.getsize(path) // 4
+        RND_LEN = os.path.getsize(file_name) // 4
         if read_int_from_map(MMAP, 0) != 3786993664:
             raise ValueError("Wrong file: {}".format(path))
         if read_int_from_map(MMAP, 1024) != 1742706086:
