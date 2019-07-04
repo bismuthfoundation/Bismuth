@@ -130,6 +130,66 @@ class ApiHandler:
         except Exception as e:
             self.app_log.warning(e)
 
+    def api_getaddressrange(self, socket_handler, db_handler, peers):
+        """
+        Returns a given number of transactions, maximum of 500 entries. Ignores blocks where no transactions of a given address happened.
+        Reorganizes parameters to a quickly accessible json.
+        Unnecessary data are removed.
+
+        :param socket_handler:
+        :param db_handler: (UNUSED)
+        :param peers: (UNUSED)
+        :return:
+        """
+
+        address = connections.receive(socket_handler)
+        starting_block = connections.receive(socket_handler)
+        limit = connections.receive(socket_handler)
+
+        if limit > 500:
+            limit = 500
+
+        db_handler.execute_param(db_handler.h, ("SELECT * FROM transactions "
+                                                "WHERE ? IN (address, recipient) "
+                                                "AND block_height >= ? "
+                                                "ORDER BY block_height "
+                                                "ASC LIMIT ?"),
+                                 (address, starting_block, limit,))
+
+        result = db_handler.h.fetchall()
+
+        tx_list = []
+        block = {}
+        blocks = {}
+
+        old = None
+        for transaction_raw in result:
+            transaction = format_raw_tx(transaction_raw)
+            height = transaction['block_height']
+            hash = transaction['block_hash']
+
+            del transaction['block_height']
+            del transaction['block_hash']
+
+            if not old:
+                old = height  # init
+
+            if old == height:  # if same block
+                tx_list.append(transaction)
+
+                block['block_height'] = height
+                block['block_hash'] = hash
+                block['transactions'] = list(tx_list)
+                blocks[height] = dict(block)
+
+            else:
+                del tx_list[:]
+                block.clear()
+
+            old = height  # update
+
+        connections.send(socket_handler, blocks)
+
     def api_getblockrange(self, socket_handler, db_handler, peers):
         """
         Returns full blocks and transactions from a block range, maximum of 50 entries.
@@ -163,15 +223,15 @@ class ApiHandler:
 
                 del transaction_formatted["block_height"]
 
-                del transaction_formatted["signature"] # optional
-                del transaction_formatted["pubkey"] # optional
+                #  del transaction_formatted["signature"]  # optional
+                #  del transaction_formatted["pubkey"]  # optional
 
                 if transaction_formatted["reward"] == 0:  # if normal tx
                     del transaction_formatted["block_hash"]
                     del transaction_formatted["reward"]
                     normal_transactions.append(transaction_formatted)
 
-                elif transaction_formatted["reward"] != 0: #if mining tx (end of block)
+                elif transaction_formatted["reward"] != 0:  # if mining tx (end of block)
                     del transaction_formatted["address"]
                     del transaction_formatted["amount"]
                     transaction_formatted['difficulty'] = list_of_diffs[i][0]
@@ -184,7 +244,6 @@ class ApiHandler:
                     del normal_transactions[:]
                     i += 1
 
-            print(blocks_dict)
             return blocks_dict
 
         start_block = connections.receive(socket_handler)
@@ -195,13 +254,17 @@ class ApiHandler:
 
         try:
             db_handler.execute_param(db_handler.h,
-                                    ('SELECT * FROM transactions WHERE block_height >= ? AND block_height < ?;'),
-                                    (start_block, start_block+limit,))
+                                     ('SELECT * FROM transactions '
+                                      'WHERE block_height >= ? '
+                                      'AND block_height < ?;'),
+                                     (start_block, start_block+limit,))
             raw_txs = db_handler.h.fetchall()
 
             db_handler.execute_param(db_handler.h,
-                                    ('SELECT difficulty FROM misc WHERE block_height >= ? AND block_height < ?;'),
-                                    (start_block, start_block+limit,))
+                                     ('SELECT difficulty FROM misc '
+                                      'WHERE block_height >= ? '
+                                      'AND block_height < ?;'),
+                                     (start_block, start_block+limit,))
             raw_diffs = db_handler.h.fetchall()
 
             reply = json.dumps(format_raw_txs_diffs(raw_txs, raw_diffs))
