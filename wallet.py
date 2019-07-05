@@ -1385,11 +1385,20 @@ def refresh(address):
         asterisk_check(stats_account)
         balance = stats_account[0]
         credit = stats_account[1]
+        credit_var.set("Received Total: {:.8f} BIS".format(Decimal(credit)))
+
         debit = stats_account[2]
+        debit_var.set("Sent Total: {:.8f} BIS".format(Decimal(debit)))
+
         fees = stats_account[3]
+        fees_var.set("Fees Paid: {:.8f} BIS".format(Decimal(fees)))
+
         rewards = stats_account[4]
+        rewards_var.set("Rewards: {:.8f} BIS".format(Decimal(rewards)))
 
         app_log.warning("Transaction address balance: {}".format(balance))
+        balance_var.set("Balance: {:.8f} BIS".format(Decimal(balance)))
+        balance_raw.set(balance)
 
         # 0000000011"statusget"
         # 0000000011"blocklast"
@@ -1399,9 +1408,13 @@ def refresh(address):
             block_get = connections.receive(wallet.s, timeout=wallet.timeout)
 
         asterisk_check(block_get)
+
         bl_height = block_get[0]
+        bl_height_var.set("Block: {}".format(bl_height))
         db_timestamp_last = block_get[1]
         hash_last = block_get[7]
+        hash_var.set("Hash: {}...".format(hash_last[:6]))
+
 
         # check difficulty
 
@@ -1413,6 +1426,7 @@ def refresh(address):
 
         app_log.warning(diff)
         diff_msg = int(diff[1])  # integer is enough
+        diff_msg_var.set("Difficulty: {}".format(diff_msg))
 
         # network status
         time_now = str(time.time())
@@ -1423,29 +1437,22 @@ def refresh(address):
         else:
             sync_msg = "Last block: {}s ago".format((int(last_block_ago)))
             sync_msg_label.config(fg='green')
+        sync_msg_var.set(sync_msg)
+
 
         # network status
 
         with wallet.socket_wait:
             connections.send(wallet.s, "mpget")  # senders
             wallet.mempool_total = connections.receive(wallet.s, timeout=wallet.timeout)
+
         asterisk_check(wallet.mempool_total)
-        app_log.warning(wallet.mempool_total)
+        mempool_count_var.set("Mempool txs: {}".format(len(wallet.mempool_total)))
 
         # fees_current_var.set("Current Fee: {}".format('%.8f' % float(fee)))
-        balance_var.set("Balance: {:.8f} BIS".format(Decimal(balance)))
-        balance_raw.set(balance)
-        # address_var.set("Address: {}".format(address))
-        debit_var.set("Sent Total: {:.8f} BIS".format(Decimal(debit)))
-        credit_var.set("Received Total: {:.8f} BIS".format(Decimal(credit)))
-        fees_var.set("Fees Paid: {:.8f} BIS".format(Decimal(fees)))
-        rewards_var.set("Rewards: {:.8f} BIS".format(Decimal(rewards)))
-        bl_height_var.set("Block: {}".format(bl_height))
-        diff_msg_var.set("Difficulty: {}".format(diff_msg))
-        sync_msg_var.set(sync_msg)
 
-        hash_var.set("Hash: {}...".format(hash_last[:6]))
-        mempool_count_var.set("Mempool txs: {}".format(len(wallet.mempool_total)))
+        # address_var.set("Address: {}".format(address))
+
 
         '''
         version_var = StringVar()
