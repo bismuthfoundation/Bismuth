@@ -107,6 +107,7 @@ class Wallet():
 
         self.reconnect = False
         self.connected = False
+        self.protocol = None
 
 
 def mempool_clear(s):
@@ -210,7 +211,21 @@ def convert_ip_port(ip):
     :param ip:
     :return: (ip, port)
     """
-    port = 5658  # default
+
+    if "mainnet" in version:
+        wallet.port = 5658  # default
+        wallet.protocol = "mainnet"
+
+    elif "testnet" in version:
+        wallet.protocol = "testnet"
+        wallet.port = 2829
+        ip = "127.0.0.1:3030"
+
+    elif "regnet" in version:
+        wallet.protocol = "regnet"
+        wallet.port = 3030
+        ip = "127.0.0.1:3030"
+
     if ':' in ip:
         ip, port = ip.split(':')
     return ip, port
@@ -218,12 +233,12 @@ def convert_ip_port(ip):
 
 def node_connect():
     try:
-        for pair in light_ip:
+        for pair in wallet.light_ip:
             if pair != wallet.pair:
                 while not wallet.connected:
                     wallet.ip, wallet.port = convert_ip_port(pair)
-                    wallet.pair= pair
-                    app_log.warning("Status: Attempting to connect to {}:{} out of {}".format(wallet.ip, wallet.port, light_ip))
+                    wallet.pair = pair
+                    app_log.warning("Status: Attempting to connect to {}:{} out of {}".format(wallet.ip, wallet.port, wallet.light_ip))
 
                     wallet.s = socks.socksocket()
                     wallet.s.connect((wallet.ip, int(wallet.port)))
@@ -244,7 +259,7 @@ def node_connect_once(ip):  # Connect a light-wallet-ip directly from menu
     try:
         connect_ip, connect_port = convert_ip_port(ip)
         wallet.ip = connect_ip
-        app_log.warning("Status: Attempting to connect to {}:{} out of {}".format(ip, connect_port, light_ip))
+        app_log.warning("Status: Attempting to connect to {}:{} out of {}".format(ip, connect_port, wallet.light_ip))
         wallet.s = socks.socksocket()
         wallet.s.connect((connect_ip, int(connect_port)))
 
@@ -1756,16 +1771,15 @@ if __name__ == "__main__":
 
     config.read()
     debug_level = config.debug_level
-    light_ip = config.light_ip
+    wallet.light_ip = config.light_ip
     node_ip = config.node_ip
     version = config.version
     terminal_output = config.terminal_output
     gui_scaling = config.gui_scaling
 
     wallet.port = int(config.port)
-    if "testnet" in version:
-        wallet.port = 2829
-        light_ip = ["127.0.0.1"]
+    print(version)
+
 
     app_log = log.log("wallet.log", debug_level, terminal_output)
 
@@ -1780,12 +1794,13 @@ if __name__ == "__main__":
     keyring.key, keyring.public_key_readable, keyring.private_key_readable, keyring.encrypted, keyring.unlocked, keyring.public_key_b64encoded, keyring.myaddress, keyring.keyfile = essentials.keys_load(private_key_load, public_key_load)
     app_log.warning("Keyfile: {}".format(keyring.keyfile))
 
-    light_ip_conf = light_ip
+    light_ip_conf = wallet.light_ip
 
-    light_ip = get_best_ipport_to_use(light_ip_conf)
+    if wallet.protocol not in ["testnet","regnet"]:
+        wallet.light_ip = get_best_ipport_to_use(light_ip_conf)
     # light_ip.insert(0,node_ip)
     # light_ip = "127.0.0.1:8150"
-    app_log.warning(f"Connecting to {light_ip}")
+    app_log.warning(f"Connecting to {wallet.light_ip}")
 
     root = Tk()
 
@@ -1950,7 +1965,7 @@ if __name__ == "__main__":
     menubar.add_cascade(label="Connection", menu=connect_menu)
     connect_list = []
 
-    for ip_once in light_ip:
+    for ip_once in wallet.light_ip:
         connect_list.append(ip_once)
         connect_menu.add_command(label=ip_once, command=lambda ip_once=ip_once: node_connect_once(ip_once))
 
