@@ -15,11 +15,8 @@ import tokensv2 as tokens
 
 fork = Fork()
 
-
 def digest_block(node, data, sdef, peer_ip, db_handler):
     """node param for imports"""
-
-    tokens_operation_present = False
 
     class Transaction:
         def __init__(self):
@@ -53,6 +50,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             self.mining_reward = None
             self.mirror_hash = None
             self.start_time_block = quantize_two(time.time())
+            self.tokens_operation_present = False
 
     def fork_reward_check():
         # fork handling
@@ -103,8 +101,10 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
     def check_signature(block):
         # TODO EGG: benchmark this loop vs a single "WHERE IN" SQL
+        signature_list = []
+
         for entry in block:  # sig 4
-            block_instance.tx_count += 1
+
             entry_signature = entry[4]
             if entry_signature:  # prevent empty signature database retry hack
                 signature_list.append(entry_signature)
@@ -128,6 +128,13 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             else:
                 raise ValueError(f"Empty signature from {peer_ip}")
 
+
+
+        if block_instance.tx_count != len(set(signature_list)):
+            raise ValueError("There are duplicate transactions in this block, rejected")
+
+
+
     def sort_transactions(block):
         # print("sort_transactions")
         # print("block_instance.tx_count", block_instance.tx_count)
@@ -145,7 +152,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             tx.received_openfield = str(transaction[7])[:100000]
 
             if tx.received_operation in ["token:issue","token:transfer"]:
-                tokens_operation_present = True  # update on change
+                block_instance.tokens_operation_present = True  # update on change
 
             # if transaction == block[-1]:
             if tx_index == block_instance.tx_count - 1:  # faster than comparing the whole tx
@@ -257,22 +264,14 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             node.logger.app_log.warning("Process_blocks aborted, node is stopping")
             return
         try:
-            for block in block_data:
+            block_instance.block_count = len(block_data)
 
-                block_instance.block_count += 1
+            for block in block_data:
                 # Reworked process: we exit as soon as we find an error, no need to process further tests.
                 # Then the exception handler takes place.
                 # EGG: Reminder: quick test first, **always**. Heavy tests only thereafter.
 
-                # TODO: this updates block_instance.tx_count, so all breaks if you move that.
-                # Hidden variables are bug prone.
-                check_signature(block)
-
-                block_instance.tx_count = len(signature_list)
-                if block_instance.tx_count != len(set(signature_list)):
-                    raise ValueError("There are duplicate transactions in this block, rejected")
-
-                del signature_list[:]
+                block_instance.tx_count = len(block)
 
                 block_instance.block_height_new = node.last_block + 1
                 block_instance.start_time_block = quantize_two(time.time())
@@ -290,6 +289,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                     raise ValueError(f"!Block is older {miner_tx.q_block_timestamp} "
                                      f"than the previous one {node.last_block_timestamp} , will be rejected")
 
+                check_signature(block)
 
                 # calculate current difficulty (is done for each block in block array, not super easy to isolate)
                 diff = difficulty(node, db_handler)
@@ -409,6 +409,10 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                             f"{block_instance.block_hash[:10]} with {len(block)} txs, "
                                             f"digestion from {peer_ip} completed in "
                                             f"{str(time.time() - float(block_instance.start_time_block))[:5]}s.")
+
+                if block_instance.tokens_operation_present:
+                    tokens.tokens_update(node, db_handler)
+
                 del block_transactions[:]
                 node.peers.unban(peer_ip)
 
@@ -462,7 +466,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
         try:
             block_data = data
             # reject block with duplicate transactions
-            signature_list = []
             block_transactions = []
 
             process_blocks(block_data)
@@ -503,9 +506,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                                      'deltat': delta_t,
                                                      "blocks": block_instance.block_count,
                                                      "txs": block_instance.tx_count})
-
-            if tokens_operation_present:
-                tokens.tokens_update(node, db_handler)
 
     else:
         node.logger.app_log.warning(f"Chain: Skipping processing from {peer_ip}, someone delivered data faster")

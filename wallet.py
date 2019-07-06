@@ -213,17 +213,14 @@ def convert_ip_port(ip):
     """
 
     if "mainnet" in version:
-        wallet.port = 5658  # default
         wallet.protocol = "mainnet"
 
     elif "testnet" in version:
         wallet.protocol = "testnet"
-        wallet.port = 2829
-        ip = "127.0.0.1:3030"
+        ip = "127.0.0.1:2829"
 
     elif "regnet" in version:
         wallet.protocol = "regnet"
-        wallet.port = 3030
         ip = "127.0.0.1:3030"
 
     if ':' in ip:

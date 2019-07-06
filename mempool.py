@@ -538,8 +538,8 @@ class Mempool:
                             SignerFactory.verify_bis_signature(mempool_signature_enc, mempool_public_key_b64encoded,
                                                                buffer,
                                                                mempool_address)
-                        except:
-                            mempool_result.append("Mempool: Attempt to spend from a wrong address")
+                        except Exception as e:
+                            mempool_result.append(f"Mempool: Attempt to spend from a wrong address ({e})")
                             continue
 
                         # Only now, process the tests requiring db access
