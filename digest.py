@@ -260,13 +260,16 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 pass
 
     def process_blocks(block_data):
-        if node.IS_STOPPING:
-            node.logger.app_log.warning("Process_blocks aborted, node is stopping")
-            return
+        # TODO: block_data shadows block_data from outer scope. Very error prone.
+        # here, functions in functions use both local vars or parent variables, it's a call for nasty bugs.
+        # take care of pycharms hints, do not define func in funcs.
         try:
             block_instance.block_count = len(block_data)
 
             for block in block_data:
+                if node.IS_STOPPING:
+                    node.logger.app_log.warning("Process_blocks aborted, node is stopping")
+                    return
                 # Reworked process: we exit as soon as we find an error, no need to process further tests.
                 # Then the exception handler takes place.
                 # EGG: Reminder: quick test first, **always**. Heavy tests only thereafter.
