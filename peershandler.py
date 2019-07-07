@@ -18,7 +18,7 @@ import regnet
 
 from essentials import most_common_dict, percentage_in
 
-__version__ = "0.0.14"
+__version__ = "0.0.15"
 
 
 # TODO : some config options are  and others without => clean up later on
@@ -110,13 +110,16 @@ class Peers:
     def peers_test(self, file, peerdict, strict=True):
         """Validates then adds a peer to the peer list on disk"""
         # called by Sync, should not be an issue, but check if needs to be thread safe or not.
+        # also called by self.client_loop, which is to be reworked
         self.peerlist_updated = False
 
         with open(file, "r") as peer_file:
             peers_pairs = json.load(peer_file)
 
         for ip, port in peerdict.items():
-
+            if self.node.IS_STOPPING:
+                # Early exit if stopping
+                return
             try:
                 if ip not in peers_pairs:
                     self.app_log.info(f"Testing connectivity to: {ip}:{port}")
@@ -161,7 +164,6 @@ class Peers:
             shutil.move(f"{file}.tmp",file)
         else:
             self.app_log.warning(f"{file} peerlist update skipped, no changes")  # the whole dict is saved
-
 
     def append_client(self, client):
         """
@@ -529,6 +531,7 @@ class Peers:
             self.peer_dict.update(self.peers_get(self.peerfile))
             #self.peer_dict.update(self.peers_get(self.suggested_peerfile))
 
+            # TODO: this is not OK. client_loop is called every 30 sec and should NOT contain any lengthy calls.
             self.peers_test(self.suggested_peerfile, self.peer_dict, strict=False)
             self.peers_test(self.peerfile, self.peer_dict, strict=True)
 
