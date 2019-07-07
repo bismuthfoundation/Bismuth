@@ -2025,7 +2025,7 @@ if __name__ == "__main__":
         node.startup_time = time.time()
         try:
 
-            node.peers = peershandler.Peers(node.logger.app_log, config, node)
+            node.peers = peershandler.Peers(node.logger.app_log, config=config, node=node)
 
             # print(peers.peer_list_old_format())
             # sys.exit()
