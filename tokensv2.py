@@ -103,7 +103,7 @@ def tokens_update(node, db_handler_instance):
         try:
             node.logger.app_log.warning("processing {}".format(token))
             db_handler_instance.c.execute("SELECT block_height, timestamp, address, recipient, signature, operation, openfield FROM transactions WHERE (block_height >= ? OR block_height <= ?) AND operation = ? AND openfield LIKE ? AND reward = 0 ORDER BY block_height ASC;",
-                      (token_last_block, -token_last_block, "token:transfer",token + '%',))
+                      (token_last_block, -token_last_block, "token:transfer",token + ':%',))
             results2 = db_handler_instance.c.fetchall()
             node.logger.app_log.warning(results2)
 
