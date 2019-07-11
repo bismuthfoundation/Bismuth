@@ -13,7 +13,7 @@ def aliases_update(node, db_handler_instance):
 
     node.logger.app_log.warning("Alias anchor block: {}".format(alias_last_block))
     
-    db_handler_instance.h.execute("SELECT block_height, address, openfield FROM transactions WHERE operation = ? AND block_height >= ? ORDER BY block_height ASC, timestamp ASC;", ("alias:register", alias_last_block,))
+    db_handler_instance.h.execute("SELECT block_height, address, openfield FROM transactions WHERE operation = ? AND block_height >= ? AND reward = 0 ORDER BY block_height ASC, timestamp ASC;", ("alias:register", alias_last_block,))
     #include the anchor block in case indexation stopped there
     result = db_handler_instance.h.fetchall()
     
