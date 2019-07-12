@@ -28,7 +28,7 @@ Bismuth Readme
 ### Related repositories: 
 * https://github.com/maccaspacca
 * https://github.com/EggPool
-https://github.com/EggPool
+* https://github.com/hclivess
 
 ### License:
 
