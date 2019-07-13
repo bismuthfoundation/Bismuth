@@ -2,13 +2,19 @@
 Send a transaction from console, with no password nor confirmation asked.
 To be used for unattended, automated processes.
 
+This file takes optional arguments,
 
-This file takes optional arguments, arg1: amount to send, arg2: recipient address, arg3: operation, arg4: OpenField data
-args3+4 are not prompted if ran without args
+arg1: amount to send
+arg2: recipient address
+arg3: operation
+arg4: OpenField data
+arg5: wallet file
+arg6: request confirmation for every transaction
+
+args3,4,6 are not prompted if ran without args
 """
 
 import base64
-import sqlite3
 import sys
 import time
 
@@ -16,10 +22,9 @@ import socks
 from Cryptodome.Hash import SHA
 from Cryptodome.Signature import PKCS1_v1_5
 
-import connections
-import essentials
+from bisbasic import connections, essentials
+from bisbasic.essentials import fee_calculate
 import options
-from essentials import fee_calculate
 from polysign.signerfactory import SignerFactory
 
 
@@ -28,6 +33,8 @@ def connect():
     s.settimeout(10)
     if 'regnet' in config.version:
         s.connect(("127.0.0.1", 3030))
+    elif 'testnet' in config.version:
+        s.connect(("127.0.0.1", 2829))
     else:
         s.connect(("127.0.0.1", 5658))
     return s
@@ -36,33 +43,27 @@ def connect():
 if __name__ == "__main__":
     config = options.Get()
     config.read()
-    ledger_path = config.ledger_path
-    hyper_path = config.hyper_path
 
-    key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address, keyfile = essentials.keys_load_new("wallet.der")
+    try:
+        wallet_file = sys.argv[5]
+    except:
+        wallet_file = input("Path to wallet: ")
+
+    try:
+        request_confirmation = sys.argv[6]
+    except:
+        request_confirmation = False
+
+    key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address, keyfile = essentials.keys_load_new(wallet_file)
 
     if encrypted:
         key, private_key_readable = essentials.keys_unlock(private_key_readable)
 
-    print('Number of arguments: %d arguments.' % len(sys.argv))
-    print('Argument List: %s' % ', '.join(sys.argv))
+    print(f'Number of arguments: {len(sys.argv)} arguments.')
+    print(f'Argument list: {"".join(sys.argv)}')
+    print(f'Using address: {address}')
 
     # get balance
-
-    # include mempool fees
-    mempool = sqlite3.connect('mempool.db')
-    mempool.text_factory = str
-    m = mempool.cursor()
-    m.execute("SELECT count(amount), sum(amount) FROM transactions WHERE address = ?;", (address,))
-    result = m.fetchall()[0]
-    if result[1] is None:
-        debit_mempool = 0
-    else:
-        debit_mempool = float('%.8f' % (float(result[1]) + float(result[1]) * 0.001 + int(result[0]) * 0.01))
-
-    conn = sqlite3.connect(ledger_path)
-    conn.text_factory = str  # This is the default anyway.
-    c = conn.cursor()
 
     s = connect()
     connections.send (s, "balanceget")
@@ -99,6 +100,14 @@ if __name__ == "__main__":
 
     fee = fee_calculate(openfield_input)
     print("Fee: %s" % fee)
+
+    if request_confirmation:
+        confirm = input("Confirm (y/n): ")
+
+        if confirm != 'y':
+            print("Transaction cancelled, user confirmation failed")
+            exit(1)
+
     try:
         float(amount_input)
         is_float = 1
@@ -116,8 +125,8 @@ if __name__ == "__main__":
     signature_enc = base64.b64encode(signature)
     txid = signature_enc[:56]
 
-    print("Encoded Signature: %s" % signature_enc.decode("utf-8"))
-    print("Transaction ID: %s" % txid.decode("utf-8"))
+    print(f"Encoded Signature: {signature_enc.decode('utf-8')}")
+    print(f"Transaction ID: {txid.decode('utf-8')}")
 
     verifier = PKCS1_v1_5.new(key)
 
@@ -142,7 +151,7 @@ if __name__ == "__main__":
                         print("Connection cut, retrying")
 
                 except Exception as e:
-                    print("A problem occurred: {}, retrying".format(e))
+                    print(f"A problem occurred: {e}, retrying")
                     s = connect()
                     pass
     else:

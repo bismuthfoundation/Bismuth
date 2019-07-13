@@ -1,4 +1,5 @@
 import time
+import sys
 
 """
 Call send_nogui.py (edit not to require manual confirmation)
@@ -34,7 +35,10 @@ PYTHON_EXECUTABLE = "python3"
 parser = argparse.ArgumentParser(description='Bismuth Batch reward sender')
 # parser.add_argument("-v", "--verbose", action="count", default=False, help='Be verbose.')
 parser.add_argument("-y", "--yes", action="count", default=False, help='Do send')
+parser.add_argument("-w", "--wallet", help='Path to wallet, use quotation marks')
 args = parser.parse_args()
+
+print(sys.argv[3])
 
 total = 0
 nb = 0
@@ -45,15 +49,16 @@ for line in open('rewards.csv' , 'r'):
         try:
             total += float(data[1])
             data[1] = float(data[1]) - 0.01
-            command = "{} {} {} {} tx ".format(PYTHON_EXECUTABLE, SEND_PATH, data[1], data[0])
+            command = f"{PYTHON_EXECUTABLE} {SEND_PATH} {data[1]} {data[0]} {None} {None} {sys.argv[3]} " #arguments are passed here
             if args.yes:
-                print("Running: {}".format(command))
+                print(f"Running: {command} tx")
                 os.system(command)
             else:
-                print("Check: {}, didn't you forget the magic word?".format(command))
+                print(f"Check: {command}, didn't you forget the magic word?")
+                sys.exit(0)
             nb += 1
             time.sleep(1)
         except Exception as e:
             print (e)
 
-print("{} Transactions, {} $BIS total.".format(nb, total))
+print(f"{nb} Transactions, {total} $BIS total.")
