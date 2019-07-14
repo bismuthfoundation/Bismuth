@@ -317,6 +317,12 @@ def listlim(socket, arg1):
     for row in tx_list:
         print (row)
 
+def api_getblockfromhash(socket, arg1):
+    connections.send(s, "api_getblockfromhash")
+    connections.send(s, arg1)
+    reply = connections.receive(s)
+    print(reply)
+
 def listlimjson(socket, arg1):
     #get x last txs
     connections.send(s, "listlimjson")
@@ -510,6 +516,10 @@ elif command == "addlistlimmirjson":
 
 elif command == "listlim":
     listlim(s, arg1)
+
+elif command == "api_getblockfromhash":
+    api_getblockfromhash(s, arg1)
+
 
 elif command == "api_getblocksince":
     try:
