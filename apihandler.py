@@ -219,6 +219,26 @@ class ApiHandler:
         blocks = self.blockstojson(result)
         connections.send(socket_handler, blocks)
 
+    def api_getblockfromheight(self, socket_handler, db_handler, peers):
+        """
+        Returns a specific block based on the provided hash.
+
+        :param socket_handler:
+        :param db_handler:
+        :param peers:
+        :return:
+        """
+
+        height = connections.receive(socket_handler)
+
+        db_handler.execute_param(db_handler.h, ("SELECT * FROM transactions "
+                                                "WHERE block_height = ? "),
+                                 (height,))
+
+        result = db_handler.h.fetchall()
+        blocks = self.blockstojson(result)
+        connections.send(socket_handler, blocks)
+
     def api_getaddressrange(self, socket_handler, db_handler, peers):
         """
         Returns a given number of transactions, maximum of 500 entries. Ignores blocks where no transactions of a given address happened.
