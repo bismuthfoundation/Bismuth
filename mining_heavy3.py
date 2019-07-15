@@ -173,9 +173,9 @@ def mining_open(file_name="heavy3a.bin"):
         MMAP = mmap.mmap(F.fileno(), 0)
         RND_LEN = os.path.getsize(file_name) // 4
         if read_int_from_map(MMAP, 0) != 3786993664:
-            raise ValueError("Wrong file: {}".format(path))
+            raise ValueError("Wrong file: {}".format(file_name))
         if read_int_from_map(MMAP, 1024) != 1742706086:
-            raise ValueError("Wrong file: {}".format(path))
+            raise ValueError("Wrong file: {}".format(file_name))
     except Exception as e:
         print("Error while loading Junction file: {}".format(e))
         sys.exit()
