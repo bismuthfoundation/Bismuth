@@ -27,7 +27,7 @@ def difficulty(node, db_handler):
         timestamp_before_last = timestamp_last if previous is None else Decimal(previous[1])
 
         db_handler.execute_param(db_handler.c, (
-            "SELECT timestamp FROM transactions WHERE block_height > ? AND reward != 0 ORDER BY timestamp ASC LIMIT 2"),
+            "SELECT timestamp FROM transactions WHERE block_height > ? AND reward != 0 ORDER BY block_height ASC LIMIT 2"),
                                  (block_height - 1441,))
         timestamp_1441 = Decimal(db_handler.c.fetchone()[0])
         block_time_prev = (timestamp_before_last - timestamp_1441) / 1440

@@ -647,7 +647,7 @@ class ApiHandler:
             format = connections.receive(socket_handler)
             # raw tx details
             db_handler.execute_param(db_handler.h,
-                                    "SELECT * FROM transactions WHERE signature like ?",
+                                    "SELECT * FROM transactions WHERE substr(signature,1,4)=substr(?1,1,4) and  signature like ?1",
                                     (transaction_id+'%',))
             raw = db_handler.h.fetchone()
             if not format:
@@ -704,7 +704,7 @@ class ApiHandler:
             format = connections.receive(socket_handler)
             # raw tx details
             db_handler.execute_param(db_handler.h,
-                                    "SELECT * FROM transactions WHERE signature = ?",
+                                    "SELECT * FROM transactions WHERE substr(signature,1,4)=substr(?1,1,4) and  signature = ?1",
                                     (signature,))
             raw = db_handler.h.fetchone()
             if not format:
@@ -783,7 +783,7 @@ class ApiHandler:
                 recipients = json.dumps(addresses).replace("[", "(").replace(']', ')')  # format as sql
                 # raw tx details
                 db_handler.execute_param(db_handler.h,
-                                        "SELECT * FROM transactions WHERE recipient IN {} AND signature LIKE ?".format(recipients),
+                                        "SELECT * FROM transactions WHERE recipient IN {} AND substr(signature,1,4)=substr(?1,1,4) and signature LIKE ?1".format(recipients),
                                         (transaction_id + '%', ))
                 raw = db_handler.h.fetchone()
                 if not format:

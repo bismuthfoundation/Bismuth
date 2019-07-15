@@ -31,18 +31,21 @@ class DbHandler:
         if self.trace_db_calls:
             self.index.set_trace_callback(functools.partial(sql_trace_callback,self.logger.app_log,"INDEX"))
         self.index.text_factory = str
+        self.index.execute('PRAGMA case_sensitive_like = 1;')
         self.index_cursor = self.index.cursor()
 
         self.hdd = sqlite3.connect(self.ledger_path, timeout=1)
         if self.trace_db_calls:
             self.hdd.set_trace_callback(functools.partial(sql_trace_callback,self.logger.app_log,"HDD"))
         self.hdd.text_factory = str
+        self.hdd.execute('PRAGMA case_sensitive_like = 1;')
         self.h = self.hdd.cursor()
 
         self.hdd2 = sqlite3.connect(self.hyper_path, timeout=1)
         if self.trace_db_calls:
             self.hdd2.set_trace_callback(functools.partial(sql_trace_callback,self.logger.app_log,"HDD2"))
         self.hdd2.text_factory = str
+        self.hdd2.execute('PRAGMA case_sensitive_like = 1;')
         self.h2 = self.hdd2.cursor()
 
         if self.ram:
@@ -53,6 +56,7 @@ class DbHandler:
         if self.trace_db_calls:
             self.conn.set_trace_callback(functools.partial(sql_trace_callback,self.logger.app_log,"CONN"))
         self.conn.execute('PRAGMA journal_mode = WAL;')
+        self.conn.execute('PRAGMA case_sensitive_like = 1;')
         self.conn.text_factory = str
         self.c = self.conn.cursor()
 

@@ -110,7 +110,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 signature_list.append(entry_signature)
                 # reject block with transactions which are already in the ledger ram
 
-                db_handler.execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE signature = ?;",
+                db_handler.execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1;",
                                          (entry_signature,))
                 tx_presence_check = db_handler.h.fetchone()
                 if tx_presence_check:
@@ -118,7 +118,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                     raise ValueError(f"That transaction {entry_signature[:10]} is already in our ledger, "
                                      f"block_height {tx_presence_check[0]}")
 
-                db_handler.execute_param(db_handler.c, "SELECT block_height FROM transactions WHERE signature = ?;",
+                db_handler.execute_param(db_handler.c, "SELECT block_height FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1;",
                                          (entry_signature,))
                 tx_presence_check = db_handler.c.fetchone()
                 if tx_presence_check:
@@ -156,6 +156,8 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
             # if transaction == block[-1]:
             if tx_index == block_instance.tx_count - 1:  # faster than comparing the whole tx
+                if float(tx.received_amount) != 0:
+                    raise ValueError("Coinbase (Mining) transaction must have zero amount")
                 if not address_is_rsa(tx.received_recipient):
                     # Compare address rather than sig, as sig could be made up
                     raise ValueError("Coinbase (Mining) transaction only supports legacy RSA Bismuth addresses")
@@ -206,12 +208,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                             essentials.fee_calculate(db_openfield, db_operation,
                                                      node.last_block)))  # exclude the mining tx from fees
 
-            balance_pre = ledger_balance3(db_address, balances, db_handler)  # keep this as c (ram hyperblock access)
-            balance = quantize_eight(balance_pre - block_debit_address)
-
-            fee = essentials.fee_calculate(db_openfield, db_operation, node.last_block)
-
-            fees_block.append(quantize_eight(fee))
             # node.logger.app_log.info("Fee: " + str(fee))
 
             # decide reward
@@ -229,18 +225,22 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 else:
                     block_instance.mining_reward = 0
 
-                reward = quantize_eight(block_instance.mining_reward + sum(fees_block[:-1]))
+                reward = quantize_eight(block_instance.mining_reward + sum(fees_block))
                 # don't request a fee for mined block so new accounts can mine
                 fee = 0
             else:
                 reward = 0
+                fee = essentials.fee_calculate(db_openfield, db_operation, node.last_block)
+                fees_block.append(quantize_eight(fee))
+                balance_pre = ledger_balance3(db_address, balances, db_handler)  # keep this as c (ram hyperblock access)
+                balance = quantize_eight(balance_pre - block_debit_address)
 
-            if quantize_eight(balance_pre) < quantize_eight(db_amount):
-                raise ValueError(f"{db_address} sending more than owned: {db_amount}/{balance_pre}")
+                if quantize_eight(balance_pre) < quantize_eight(db_amount):
+                    raise ValueError(f"{db_address} sending more than owned: {db_amount}/{balance_pre}")
 
-            if quantize_eight(balance) - quantize_eight(block_fees_address) < 0:
-                # exclude fee check for the mining/header tx
-                raise ValueError(f"{db_address} Cannot afford to pay fees (balance: {balance}, "
+                if quantize_eight(balance) - quantize_eight(block_fees_address) < 0:
+                    # exclude fee check for the mining/header tx
+                    raise ValueError(f"{db_address} Cannot afford to pay fees (balance: {balance}, "
                                  f"block fees: {block_fees_address})")
 
             # append, but do not insert to ledger before whole block is validated,

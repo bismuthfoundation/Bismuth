@@ -124,6 +124,8 @@ class Peers:
                 if ip not in peers_pairs:
                     self.app_log.info(f"Testing connectivity to: {ip}:{port}")
                     s = socks.socksocket()
+                    # connect timeout
+                    s.settimeout(5)
                     if self.config.tor:
                         s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
 

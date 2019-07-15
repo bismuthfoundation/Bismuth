@@ -57,10 +57,10 @@ SQL_PURGE = "DELETE FROM transactions WHERE timestamp <= strftime('%s', 'now', '
 SQL_CLEAR = "DELETE FROM transactions"
 
 # Check for presence of a given tx signature
-SQL_SIG_CHECK = 'SELECT timestamp FROM transactions WHERE signature = ?'
+SQL_SIG_CHECK = 'SELECT timestamp FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1'
 
 # delete a single tx
-SQL_DELETE_TX = 'DELETE FROM transactions WHERE signature = ?'
+SQL_DELETE_TX = 'DELETE FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1'
 
 # Selects all tx from mempool - list fields so we don't send mergedts and keep compatibility
 SQL_SELECT_ALL_TXS = 'SELECT timestamp, address, recipient, amount, signature, public_key, operation, openfield FROM transactions'
@@ -552,7 +552,7 @@ class Mempool:
                         # reject transactions which are already in the ledger
                         # TODO: not clean, will need to have ledger as a module too.
                         # TODO: need better txid index, this is very sloooooooow
-                        essentials.execute_param_c(c, "SELECT timestamp FROM transactions WHERE signature = ?",
+                        essentials.execute_param_c(c, "SELECT timestamp FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) AND signature = ?1",
                                                    (mempool_signature_enc,), self.app_log)
                         ledger_in = bool(c.fetchone())
                         # remove from mempool if it's in both ledger and mempool already
