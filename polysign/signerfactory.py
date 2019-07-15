@@ -9,7 +9,7 @@ from polysign.signer_rsa import SignerRSA
 from polysign.signer_ecdsa import SignerECDSA
 from polysign.signer_ed25519 import SignerED25519
 
-RE_RSA_ADDRESS = re.compile(r"[abcdef0123456789]{56}")
+RE_RSA_ADDRESS = re.compile(r"^[abcdef0123456789]{56}$")
 # TODO: improve that ECDSA one
 RE_ECDSA_ADDRESS = re.compile(r"^Bis")
 
