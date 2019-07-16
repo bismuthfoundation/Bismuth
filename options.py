@@ -1,6 +1,7 @@
 import os.path as path
 from sys import exit
 
+
 class Get:
 
     # "param_name":["type"] or "param_name"=["type","property_name"]
@@ -39,6 +40,7 @@ class Get:
         "egress": ["bool"],
         "trace_db_calls": ["bool"],
         "heavy3_path": ["str"],
+        "mempool_path": ["str"],
     }
 
     # Optional default values so we don't bug if they are not in the config.
@@ -49,6 +51,7 @@ class Get:
         "trace_db_calls": False,
         "mempool_ram": True,
         "heavy3_path": "./heavy3a.bin",
+        "mempool_path": "./mempool.db",
     }
 
     def load_file(self, filename):

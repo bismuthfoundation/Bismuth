@@ -19,7 +19,7 @@ import essentials
 from quantizer import *
 from polysign.signerfactory import SignerFactory
 
-__version__ = "0.0.5g"
+__version__ = "0.0.6"
 
 """
 0.0.5g - Add default param to mergedts for compatibility
@@ -150,7 +150,7 @@ class Mempool:
                 self.db.commit()
                 self.app_log.warning("Status: In memory mempool file created")
             else:
-                self.db = sqlite3.connect('mempool.db', timeout=1,
+                self.db = sqlite3.connect(self.config.mempool_path, timeout=1,
                                           check_same_thread=False)
                 if self.trace_db_calls:
                     self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log,"MEMPOOL"))
@@ -163,8 +163,8 @@ class Mempool:
                 # print(res)
                 if len(res) != 9:
                     self.db.close()
-                    os.remove("mempool.db")
-                    self.db = sqlite3.connect('mempool.db', timeout=1,
+                    os.remove(self.config.mempool_path)
+                    self.db = sqlite3.connect(self.config.mempool_path, timeout=1,
                                               check_same_thread=False)
                     if self.trace_db_calls:
                         self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log,"MEMPOOL"))
