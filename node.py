@@ -2027,8 +2027,10 @@ if __name__ == "__main__":
     if not node.full_ledger:
         node.logger.app_log.warning("Cloning hyperblocks to ledger file")
         shutil.copy(node.hyper_path, node.ledger_path)  # hacked to remove all the endless checks
-
+    # needed for docker logs
+    node.logger.app_log.warning(f"Checking Heavy3 file, can take up to 5 minutes...")
     mining_heavy3.mining_open(node.heavy3_path)
+    node.logger.app_log.warning(f"Heavy3 file Ok!")
     try:
         # create a plugin manager, load all plugin modules and init
         node.plugin_manager = plugins.PluginManager(app_log=node.logger.app_log, init=True)
