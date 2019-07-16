@@ -4,8 +4,8 @@ config = options.Get()
 config.read()
 version = config.version
 
-print ('Number of arguments:', len(sys.argv), 'arguments.')
-print ('Argument List:', str(sys.argv))
+# print ('Number of arguments:', len(sys.argv), 'arguments.')
+# print ('Argument List:', str(sys.argv))
 
 try:
     command = sys.argv[1]
@@ -84,9 +84,6 @@ else:
     s.connect(("127.0.0.1", 5658))
     #s.connect(("34.192.6.105", 5658))
     #s.connect(("bismuth.live", 5658))
-
-def stop(socket):
-    connections.send(s, "stop")
 
 
 def annverget(socket):
@@ -405,7 +402,6 @@ if command == "getversion":
     connections.send(s, "getversion")
     print(connections.receive(s))
 
-
 if command == "generate":
     if not is_regnet:
         print("Only available on regnet")
@@ -421,7 +417,6 @@ if command == "mpfill":
     connections.send(s, "regtest_mpfill")
     connections.send(s, arg1)
     print(connections.receive(s))
-
 
 if command == "mpinsert":
     #arg1 = '1520788207.69', '4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed', '4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed', '0.00000000', 'e0piKXvc636t0fYmxdOti3fJZ+G1vQYAJ2IZv4inPGQYgG4nS0lU+61LDQQVqeGvmsDOsxFhM6VVLpYExPmc5HF6e1ZAr5IXQ69s88sJBx/XVl1YavAdo0katGDyvZpQf609F8PVbtD0zzBinQjfkoXU/NXo00CEyniyYPxAXuI=', 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlHZk1BMEdDU3FHU0liM0RRRUJBUVVBQTRHTkFEQ0JpUUtCZ1FES3ZMVGJEeDg1YTF1Z2IvNnhNTWhWT3E2VQoyR2VZVDgrSXEyejlGd0lNUjQwbDJ0dEdxTks3dmFyTmNjRkxJdThLbjRvZ0RRczNXU1dRQ3hOa2haaC9GcXpGCllZYTMvSXRQUGZ6clhxZ2Fqd0Q4cTRadDRZbWp0OCsyQmtJbVBqakZOa3VUUUl6Mkl1M3lGcU9JeExkak13N24KVVZ1OXRGUGlVa0QwVm5EUExRSURBUUFCCi0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQ==', '0', ''
@@ -520,7 +515,6 @@ elif command == "listlim":
 elif command == "api_getblockfromhash":
     api_getblockfromhash(s, arg1)
 
-
 elif command == "api_getblocksince":
     try:
         api_getblocksince(s, int(arg1))
@@ -528,10 +522,8 @@ elif command == "api_getblocksince":
         api_getblocksince(s)
 
 elif command == "stop":
-    stop(s)
-
-elif command == "stop":
     connections.send(s, "stop")
+    print("Asked to Stop")
 
 elif command == "addfromalias":
     addfromalias(s, arg1)
