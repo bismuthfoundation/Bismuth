@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import socks, connections, time, sys, json
 import options
 config = options.Get()
