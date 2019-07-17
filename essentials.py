@@ -48,6 +48,7 @@ def format_raw_tx(raw: list) -> dict:
     transaction['recipient'] = raw[3]
     transaction['amount'] = raw[4]
     transaction['signature'] = raw[5]
+    transaction['txid'] = raw[5][:56]
     try:
         transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
     except:
