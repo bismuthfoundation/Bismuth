@@ -1498,7 +1498,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                   "threads": threading.active_count(),
                                   "uptime": uptime, "consensus": node.peers.consensus,
                                   "consensus_percent": node.peers.consensus_percentage,
-                                  "python_version": ".".join(version_info[:3]),
+                                  "python_version": str(version_info[:3]),
                                   "last_block_ago": node.last_block_ago,
                                   "server_timestamp": '%.2f' % time.time()}
                         if node.is_regnet:
