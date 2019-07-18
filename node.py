@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.3.0.5"  # Post fork candidate 5
+VERSION = "4.3.0.6"  # Post fork candidate 5
 
 import functools
 import glob
@@ -21,6 +21,7 @@ import socketserver
 import sqlite3
 import tarfile
 import threading
+from sys import version_info
 
 import aliases  # PREFORK_ALIASES
 # import aliasesv2 as aliases # POSTFORK_ALIASES
@@ -1461,49 +1462,45 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "statusget":
                     if node.peers.is_allowed(peer_ip, data):
-
                         nodes_count = node.peers.consensus_size
                         nodes_list = node.peers.peer_opinion_dict
                         threads_count = threading.active_count()
                         uptime = int(time.time() - node.startup_time)
                         diff = node.difficulty
                         server_timestamp = '%.2f' % time.time()
-
                         if node.reveal_address:
                             revealed_address = node.keys.address
-
                         else:
                             revealed_address = "private"
-
                         send(self.request, (
                             revealed_address, nodes_count, nodes_list, threads_count, uptime, node.peers.consensus,
                             node.peers.consensus_percentage, VERSION, diff, server_timestamp))
-
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for statusget command")
 
                 elif data == "statusjson":
+                    # not only sends as an explicit dict, but also embeds extra info
                     if node.peers.is_allowed(peer_ip, data):
                         uptime = int(time.time() - node.startup_time)
                         tempdiff = node.difficulty
-
                         if node.reveal_address:
                             revealed_address = node.keys.address
                         else:
                             revealed_address = "private"
-
                         status = {"protocolversion": node.version,
                                   "address": revealed_address,
                                   "walletversion": VERSION,
-                                  "testnet": node.is_testnet,  # config data
+                                  "testnet": node.is_testnet,
                                   "blocks": node.hdd_block, "timeoffset": 0,
                                   "connections": node.peers.consensus_size,
                                   "connections_list": node.peers.peer_opinion_dict,
-                                  "difficulty": tempdiff[0],  # live status, bitcoind format
+                                  "difficulty": tempdiff[0],
                                   "threads": threading.active_count(),
                                   "uptime": uptime, "consensus": node.peers.consensus,
                                   "consensus_percent": node.peers.consensus_percentage,
-                                  "server_timestamp": '%.2f' % time.time()}  # extra data
+                                  "python_version": ".".join(version_info[:3]),
+                                  "last_block_ago": node.last_block_ago,
+                                  "server_timestamp": '%.2f' % time.time()}
                         if node.is_regnet:
                             status['regnet'] = True
                         send(self.request, status)
