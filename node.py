@@ -798,7 +798,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                                 if node.hdd_hash == data or not node.egress:
                                     if not node.egress:
-                                        node.logger.app_log.warning(f"Outbound: Egress disabled for {peer_ip}")
+                                        node.logger.app_log.warning(f"Inbound: Egress disabled for {peer_ip}")
                                     else:
                                         node.logger.app_log.info(f"Inbound: Client {peer_ip} has the latest block")
 
@@ -837,7 +837,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         if node.peers.warning(self.request, peer_ip, "Rollback", 2):
                             node.logger.app_log.info(f"{peer_ip} banned")
                             break
-                    node.logger.app_log.info("Outbound: Deletion complete, sending sync request")
+                    node.logger.app_log.info("Inbound: Deletion complete, sending sync request")
 
                     while node.db_lock.locked():
                         time.sleep(node.pause)
@@ -851,7 +851,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         if node.peers.warning(self.request, peer_ip, "Rollback", 2):
                             node.logger.app_log.info(f"{peer_ip} banned")
                             break
-                    node.logger.app_log.info("Outbound: Deletion complete, sending sync request")
+                    node.logger.app_log.info("Inbound: Deletion complete, sending sync request")
 
                     while node.db_lock.locked():
                         time.sleep(node.pause)
@@ -861,46 +861,62 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     # if (peer_ip in allowed or "any" in allowed):  # from miner
                     if node.peers.is_allowed(peer_ip, data):  # from miner
                         # TODO: rights management could be done one level higher instead of repeating the same check everywhere
-
-                        node.logger.app_log.info(f"Outbound: Received a block from miner {peer_ip}")
+                        node.logger.app_log.info(f"Inbound: Received a block from miner {peer_ip}")
                         # receive block
                         segments = receive(self.request)
                         # node.logger.app_log.info("Inbound: Combined mined segments: " + segments)
-
                         mined = {"timestamp": time.time(), "last": node.last_block, "ip": peer_ip, "miner": "",
                                  "result": False, "reason": ''}
                         try:
                             mined['miner'] = segments[0][-1][2]
                         except:
-                            pass
+                            # Block is sent by miners/pools, we can drop the connection
+                            # If there is a reason not to, use "continue" here and below instead of returns.
+                            return  # missing info, bye
                         if node.is_mainnet:
                             if len(node.peers.connection_pool) < 5 and not node.peers.is_whitelisted(peer_ip):
-                                reason = "Outbound: Mined block ignored, insufficient connections to the network"
+                                reason = "Inbound: Mined block ignored, insufficient connections to the network"
                                 mined['reason'] = reason
                                 node.plugin_manager.execute_action_hook('mined', mined)
                                 node.logger.app_log.info(reason)
+                                return
                             elif node.db_lock.locked():
-                                reason = "Outbound: Block from miner skipped because we are digesting already"
+                                reason = "Inbound: Block from miner skipped because we are digesting already"
                                 mined['reason'] = reason
                                 node.plugin_manager.execute_action_hook('mined', mined)
                                 node.logger.app_log.warning(reason)
+                                return
                             elif node.last_block >= node.peers.consensus_max - 3:
                                 mined['result'] = True
                                 node.plugin_manager.execute_action_hook('mined', mined)
-                                node.logger.app_log.info("Outbound: Processing block from miner")
-                                digest_block(node, segments, self.request, peer_ip, db_handler_instance)
+                                node.logger.app_log.info("Inbound: Processing block from miner")
+                                try:
+                                    digest_block(node, segments, self.request, peer_ip, db_handler_instance)
+                                except ValueError as e:
+                                    node.logger.app_log.warning("Inbound: block {}".format(str(e)))
+                                    return
+                                except Exception as e:
+                                    node.logger.app_log.error("Inbound: Processing block from miner {}".format(e))
+                                    return
                                 # This new block may change the int(diff). Trigger the hook whether it changed or not.
                                 #node.difficulty = difficulty(node, db_handler_instance)
-
                             else:
-                                reason = f"Outbound: Mined block was orphaned because node was not synced, we are at block {node.last_block}, should be at least {node.peers.consensus_max - 3}"
+                                reason = f"Inbound: Mined block was orphaned because node was not synced, " \
+                                         f"we are at block {node.last_block}, " \
+                                         f"should be at least {node.peers.consensus_max - 3}"
                                 mined['reason'] = reason
                                 node.plugin_manager.execute_action_hook('mined', mined)
                                 node.logger.app_log.warning(reason)
-
                         else:
-                            digest_block(node, segments, self.request, peer_ip, db_handler_instance)
-
+                            # Not mainnet
+                            try:
+                                digest_block(node, segments, self.request, peer_ip, db_handler_instance)
+                            except ValueError as e:
+                                node.logger.app_log.warning("Inbound: block {}".format(str(e)))
+                                return
+                            except Exception as e:
+                                node.logger.app_log.error("Inbound: Processing block from miner {}".format(e))
+                                return
                     else:
                         receive(self.request)  # receive block, but do nothing about it
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for block command")
@@ -908,8 +924,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "blocklast":
                     # if (peer_ip in allowed or "any" in allowed):  # only sends the miner part of the block!
                     if node.peers.is_allowed(peer_ip, data):
-                        db_handler_instance.execute(db_handler_instance.c,
-                                                    "SELECT * FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
+                        db_handler_instance.execute(db_handler_instance.c, "SELECT * FROM transactions "
+                                                                           "WHERE reward != 0 "
+                                                                           "ORDER BY block_height DESC LIMIT 1;")
                         block_last = db_handler_instance.c.fetchall()[0]
 
                         send(self.request, block_last)
@@ -1068,7 +1085,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                         response_list.append(response)
 
-                    # node.logger.app_log.info("Outbound: Extracted from the mempool: " + str(mempool_txs))  # improve: sync based on signatures only
+                    # node.logger.app_log.info("Inbound: Extracted from the mempool: " + str(mempool_txs))  # improve: sync based on signatures only
 
                     # if len(mempool_txs) > 0: #wont sync mempool until we send something, which is bad
                     # send own
@@ -1077,7 +1094,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "mpget" and node.peers.is_allowed(peer_ip, data):
                     mempool_txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
 
-                    # node.logger.app_log.info("Outbound: Extracted from the mempool: " + str(mempool_txs))  # improve: sync based on signatures only
+                    # node.logger.app_log.info("Inbound: Extracted from the mempool: " + str(mempool_txs))  # improve: sync based on signatures only
 
                     # if len(mempool_txs) > 0: #wont sync mempool until we send something, which is bad
                     # send own
