@@ -304,6 +304,7 @@ class Peers:
                             try:
                                 # check if node is active
                                 s_purge = socks.socksocket()
+                                s_purge.settimeout(5)
                                 if self.config.tor:
                                     s_purge.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
                                 s_purge.connect((pair[0], int(pair[1])))
@@ -340,6 +341,7 @@ class Peers:
                             self.app_log.info(f"Outbound: {ip}:{port} is a new peer, saving if connectible")
                             try:
                                 s_purge = socks.socksocket()
+                                s_purge.settimeout(5)
                                 if self.config.tor:
                                     s_purge.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
                                 s_purge.connect((ip, int(port)))  # save a new peer file with only active nodes
