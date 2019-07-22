@@ -24,8 +24,9 @@ Bismuth Foundation:
 
 
 Twitter:
-* https://twitter.com/bismuth_cz
+* https://twitter.com/bismuthplatform
 * https://twitter.com/bismuthdev
+* https://twitter.com/EggPoolNet
 
 Facebook:
 * https://web.facebook.com/cryptobismuth
