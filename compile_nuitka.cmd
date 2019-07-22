@@ -5,28 +5,18 @@ mkdir dist
 python -m nuitka --follow-imports commands.py --windows-icon=graphics\icon.ico --standalone --show-progress -j 8 --recurse-all
 python -m nuitka --follow-imports node.py --windows-icon=graphics\icon.ico --standalone --show-progress -j 8 --recurse-all
 python -m nuitka --follow-imports node_stop.py --windows-icon=graphics\icon.ico --standalone --show-progress -j 8 --recurse-all
-python -m nuitka --follow-imports wallet.py --windows-icon=graphics\icon.ico --standalone --show-progress -j 8 --recurse-all --plugin-enable=tk-inter=numpy=matplotlib
 
-robocopy "C:\Program Files\Python37\Lib\site-packages\matplotlib\mpl-data" dist\matplotlib\mpl-data /MIR
-robocopy node.dist dist\files /MOVE /E
-robocopy wallet.dist dist\files /MOVE /E
-robocopy commands.dist dist\files /MOVE /E
-robocopy node_stop.dist dist\files /MOVE /E
+robocopy "C:\Program Files\Python37\Lib\site-packages\Cryptodome" dist\Cryptodome /MIR
+robocopy "C:\Program Files\Python37\Lib\site-packages\coincurve" dist\coincurve /MIR
 
-mkdir dist\files\static
-copy static\backup.py dist\files\static\backup.py
-copy static\bg.jpg dist\files\static\bg.jpg
-copy static\Chart.js dist\files\static\Chart.js
-copy static\explorer.ico dist\files\static\explorer.ico
-copy static\explorer_bg.png dist\files\static\explorer_bg.png
-copy static\style.css dist\files\static\style.css
-copy static\style_zircodice.css dist\files\static\style_zircodice.css
-copy static\zircodice.ico dist\files\static\zircodice.ico
+robocopy node.dist dist /MOVE /E
+robocopy commands.dist dist /MOVE /E
+robocopy node_stop.dist dist /MOVE /E
 
-copy peers.txt dist\files\peers.txt
-copy peers.txt dist\files\suggested_peers.txt
-copy config.txt dist\files\config.txt
+copy peers.txt dist\peers.txt
+copy peers.txt dist\suggested_peers.txt
+copy config.txt dist\config.txt
 
-"C:\Program Files (x86)\Inno Setup 5\iscc" /q "setup_nuitka.iss"
+"C:\Program Files (x86)\Inno Setup 5\iscc" /q "setup.iss"
 pause
 

@@ -87,6 +87,10 @@ def bootstrap():
 def check_integrity(database):
     # TODO: Candidate for single user mode
     # check ledger integrity
+
+    if not os.path.exists("static"):
+        os.mkdir("static")
+
     with sqlite3.connect(database) as ledger_check:
         if node.trace_db_calls:
             ledger_check.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"CHECK_INTEGRITY"))
