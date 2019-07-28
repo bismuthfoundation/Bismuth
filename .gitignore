@@ -28,3 +28,5 @@ config_custom.txt
 sequencing_last
 # ignore polysign, so devs can have a symlink or local dev version.
 polysign
+# ignore ledger queries, for the time being.
+ledger_queries.py

@@ -19,7 +19,7 @@ import essentials
 from quantizer import *
 from polysign.signerfactory import SignerFactory
 
-__version__ = "0.0.6"
+__version__ = "0.0.6b"
 
 """
 0.0.5g - Add default param to mergedts for compatibility
@@ -27,6 +27,7 @@ __version__ = "0.0.6"
 0.0.5e - add mergedts timestamp to tx for better handling of late txs
          quicker unfreeze
          less strict freezing
+0.0.6b - Raise freeze tolerance to > 15 minutes old txs.
 """
 
 MEMPOOL = None
@@ -569,8 +570,8 @@ class Mempool:
                             mempool_result.append("That transaction is already in our ledger")
                             # Can be a syncing node. Do not request mempool from this peer until FREEZE_MIN min
                             # ledger_in is the ts of the tx in ledger. if it's recent, maybe the peer is just one block late.
-                            # give him 3 minute margin.
-                            if (peer_ip != '127.0.0.1') and (ledger_in < time_now - 60 * 3):
+                            # give him 15 minute margin.
+                            if (peer_ip != '127.0.0.1') and (ledger_in < time_now - 60 * 15):
                                 with self.peers_lock:
                                     self.peers_sent[peer_ip] = time.time() + FREEZE_MIN * 60
                                 self.app_log.warning("Freezing mempool from {} for {} min.".format(peer_ip, FREEZE_MIN))
