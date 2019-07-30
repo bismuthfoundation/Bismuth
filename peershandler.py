@@ -18,7 +18,7 @@ import regnet
 
 from essentials import most_common_dict, percentage_in
 
-__version__ = "0.0.15"
+__version__ = "0.0.16"
 
 
 # TODO : some config options are  and others without => clean up later on
@@ -111,12 +111,16 @@ class Peers:
         """Validates then adds a peer to the peer list on disk"""
         # called by Sync, should not be an issue, but check if needs to be thread safe or not.
         # also called by self.client_loop, which is to be reworked
+        # Egg: Needs to be thread safe.
         self.peerlist_updated = False
 
         with open(file, "r") as peer_file:
             peers_pairs = json.load(peer_file)
 
-        for ip, port in peerdict.items():
+        # TODO: rework, because this takes too much time and freezes the status thread.
+        # to be done in a dedicated thread, with one peer per xx seconds, not all at once, and added properties.
+        for ip, port in dict(peerdict.items()):
+            # I do create a new dict copy above, because logs showed that the dict can change while iterating
             if self.node.IS_STOPPING:
                 # Early exit if stopping
                 return
