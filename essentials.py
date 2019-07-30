@@ -117,9 +117,8 @@ def round_down(number, order):
 
 
 def checkpoint_set(node):
-    if node.last_block > 2000:
-        node.checkpoint = round_down(node.last_block, 1000) - 1000
-        node.logger.app_log.warning(f"Checkpoint set to {node.checkpoint}")
+    node.checkpoint = round_down(node.last_block, 10) - 30
+    node.logger.app_log.warning(f"Checkpoint set to {node.checkpoint}")
 
 
 def ledger_balance3(address, cache, db_handler):
