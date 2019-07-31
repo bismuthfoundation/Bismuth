@@ -85,7 +85,7 @@ class ApiHandler:
             old = height  # update
 
         return blocks
-    
+
     def blocktojsondiffs(self, list_of_txs:list, list_of_diffs:list):
         i = 0
         blocks_dict = {}
@@ -198,10 +198,13 @@ class ApiHandler:
         except Exception as e:
             self.app_log.warning(e)
 
-
     def api_getblockfromhash(self, socket_handler, db_handler, peers):
         """
         Returns a specific block based on the provided hash.
+        Warning: format is strange: we provide a hash, so there should be at most one result.
+        Or we send back a dict, with height as key, and block (including height again) as value.
+        Should be enough to only send the block.
+        **BUT** do not change, this would break current implementations using the current format (json rpc server for instance).
 
         :param socket_handler:
         :param db_handler:
@@ -209,11 +212,11 @@ class ApiHandler:
         :return:
         """
 
-        hash = connections.receive(socket_handler)
+        block_hash = connections.receive(socket_handler)
 
         db_handler.execute_param(db_handler.h, ("SELECT * FROM transactions "
                                                 "WHERE block_hash = ? "),
-                                 (hash,))
+                                 (block_hash,))
 
         result = db_handler.h.fetchall()
         blocks = self.blockstojson(result)
