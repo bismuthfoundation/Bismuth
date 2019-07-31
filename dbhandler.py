@@ -400,6 +400,25 @@ class DbHandler:
                 self.logger.app_log.warning(f"Database retry reason: {e}")
                 time.sleep(1)
 
+    def fetchall(self, cursor, query, param=None):
+        """Helper to simplify calling code, execute and fetch in a single line instead of 2"""
+        if param is None:
+            self.execute(cursor, query)
+        else:
+            self.execute_param(cursor, query, param)
+        return cursor.fetchall()
+
+    def fetchone(self, cursor, query, param=None):
+        """Helper to simplify calling code, execute and fetch in a single line instead of 2"""
+        if param is None:
+            self.execute(cursor, query)
+        else:
+            self.execute_param(cursor, query, param)
+        res = cursor.fetchone()
+        if res:
+            return res[0]
+        return None
+
     def close(self):
         self.index.close()
         self.hdd.close()

@@ -17,7 +17,7 @@ import connections
 import mempool as mp
 from polysign.signerfactory import SignerFactory
 
-__version__ = "0.0.7"
+__version__ = "0.0.8"
 
 
 class ApiHandler:
@@ -214,13 +214,54 @@ class ApiHandler:
 
         block_hash = connections.receive(socket_handler)
 
-        db_handler.execute_param(db_handler.h, ("SELECT * FROM transactions "
-                                                "WHERE block_hash = ? "),
+        db_handler.execute_param(db_handler.h,
+                                 "SELECT * FROM transactions "
+                                 "WHERE block_hash = ?",
                                  (block_hash,))
 
         result = db_handler.h.fetchall()
         blocks = self.blockstojson(result)
         connections.send(socket_handler, blocks)
+
+    def api_getblockfromhashextra(self, socket_handler, db_handler, peers):
+        """
+        Returns a specific block based on the provided hash.
+        similar to api_getblockfromhash, but sends block dict, not a dict of a dict.
+        Also embeds last and next block hash, as well as block difficulty
+        Needed for json-rpc server and btc like data.
+
+        :param socket_handler:
+        :param db_handler:
+        :param peers:
+        :return:
+        """
+        try:
+            block_hash = connections.receive(socket_handler)
+
+            result = db_handler.fetchall(db_handler.h,
+                                         "SELECT * FROM transactions "
+                                         "WHERE block_hash = ? ",
+                                         (block_hash,))
+            blocks = self.blockstojson(result)
+            block = list(blocks.values())[0]
+
+            block["previous_block_hash"] = db_handler.fetchone(db_handler.h,
+                                                               "SELECT block_hash FROM transactions WHERE block_height = ?",
+                                                               (block['block_height'] - 1,))
+            block["next_block_hash"] = db_handler.fetchone(db_handler.h,
+                                                           "SELECT block_hash FROM transactions WHERE block_height = ?",
+                                                           (block['block_height'] + 1,))
+            block["difficulty"] = int(float(db_handler.fetchone(db_handler.h,
+                                                                "SELECT difficulty FROM misc WHERE block_height = ?",
+                                                                (block['block_height'],))))
+            # print(block)
+            connections.send(socket_handler, block)
+        except Exception as e:
+            self.app_log.warning("api_getblockfromhashextra {}".format(e))
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            self.app_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
+            raise
 
     def api_getblockfromheight(self, socket_handler, db_handler, peers):
         """
@@ -388,7 +429,7 @@ class ApiHandler:
             self.app_log.warning(e)
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            self.app_log.warning(exc_type, fname, exc_tb.tb_lineno)
+            self.app_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
             raise
 
     def api_getblocksafterwhere(self, socket_handler, db_handler, peers):
