@@ -2,24 +2,25 @@
 Mempool module for Bismuth nodes
 """
 
-import base64
-import hashlib
+import functools
+# import base64
+# import hashlib
 import os
 import sqlite3
 import sys
 import threading
 import time
-import functools
 
-from Cryptodome.Hash import SHA
-#from Cryptodome.PublicKey import RSA
-#from Cryptodome.Signature import PKCS1_v1_5
+from polysign.signerfactory import SignerFactory
 
 import essentials
 from quantizer import *
-from polysign.signerfactory import SignerFactory
 
-__version__ = "0.0.6b"
+# from Cryptodome.Hash import SHA
+# from Cryptodome.PublicKey import RSA
+# from Cryptodome.Signature import PKCS1_v1_5
+
+__version__ = "0.0.6c"
 
 """
 0.0.5g - Add default param to mergedts for compatibility
@@ -28,6 +29,7 @@ __version__ = "0.0.6b"
          quicker unfreeze
          less strict freezing
 0.0.6b - Raise freeze tolerance to > 15 minutes old txs.
+0.0.6c - Return last exception to client in all cases
 """
 
 MEMPOOL = None
@@ -429,7 +431,7 @@ class Mempool:
         # Sorry, no space left for this tx type.
         return False
 
-    def merge(self, data, peer_ip, c, size_bypass=False, wait=False, revert=False):
+    def merge(self, data: list, peer_ip: str, c, size_bypass: bool=False, wait: bool=False, revert: bool =False) -> list:
         """
         Checks and merge the tx list in out mempool
         :param data:
@@ -443,7 +445,7 @@ class Mempool:
         global REFUSE_OLDER_THAN
         # Easy cases of empty or invalid data
         if not data:
-            return "Mempool from {} was empty".format(peer_ip)
+            return ["Mempool from {} was empty".format(peer_ip)]
         mempool_result = []
         if data == '*':
             raise ValueError("Connection lost")
@@ -621,17 +623,18 @@ class Mempool:
                         for entry in essentials.execute_param_c(c,
                                                                 "SELECT sum(reward) FROM transactions WHERE recipient = ?",
                                                                 (mempool_address,), self.app_log):
-
                             rewards = quantize_eight(rewards) + quantize_eight(entry[0])
+                            # error conversion from NoneType to Decimal is not supported
 
                         balance = quantize_eight(credit - debit - fees + rewards - quantize_eight(mempool_amount))
                         balance_pre = quantize_eight(credit - debit_ledger - fees + rewards)
 
                         fee = essentials.fee_calculate(mempool_openfield, mempool_operation, last_block)
 
-                        #print("Balance", balance, fee)
+                        # print("Balance", balance, fee)
 
-                        if quantize_eight(mempool_amount) > quantize_eight(balance_pre): #mp amount is already included in "balance" var! also, that tx might already be in the mempool
+                        if quantize_eight(mempool_amount) > quantize_eight(balance_pre):
+                            # mp amount is already included in "balance" var! also, that tx might already be in the mempool
                             mempool_result.append("Mempool: Sending more than owned")
                             continue
                         if quantize_eight(balance) - quantize_eight(fee) < 0:
@@ -644,7 +647,7 @@ class Mempool:
                                       mempool_signature_enc, mempool_public_key_b64encoded, mempool_operation,
                                       mempool_openfield, int(time_now)))
                         mempool_result.append("Mempool updated with a received transaction from {}".format(peer_ip))
-                        mempool_result.append("Success")
+                        mempool_result.append("Success")  # WARNING: Do not change string or case ever!
                         self.commit()  # Save (commit) the changes to mempool db
 
                         mempool_size += sys.getsizeof(str(transaction)) / 1000000.0
@@ -658,5 +661,10 @@ class Mempool:
             except Exception as e:
                 self.app_log.warning("Mempool: Error processing: {} {}".format(data, e))
                 if self.config.debug:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    self.app_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
+                    mempool_result.append("Exception: {}".format(str(e)))
+                    # if left there, means debug can *not* be used in production, or exception is not sent back to the client.
                     raise
         return mempool_result
