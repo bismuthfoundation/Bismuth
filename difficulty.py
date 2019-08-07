@@ -1,9 +1,9 @@
-from decimal import *
+from decimal import Decimal
 import regnet
 import math
 import time
 from fork import *
-from quantizer import *
+from quantizer import quantize_two, quantize_eight, quantize_ten
 from fork import Fork
 
 def difficulty(node, db_handler):

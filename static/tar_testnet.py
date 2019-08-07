@@ -5,8 +5,8 @@ sys.path.append("../")
 import tarfile
 import sys
 import sqlite3
-from decimal import *
-from quantizer import *
+from decimal import Decimal
+from quantizer import quantize_two, quantize_eight, quantize_ten
 import process_search
 from essentials import address_validate
 

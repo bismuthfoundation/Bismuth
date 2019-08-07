@@ -12,7 +12,7 @@ import struct
 import sys
 from hashlib import sha224
 from hmac_drbg import DRBG
-from quantizer import *
+from quantizer import quantize_two, quantize_eight, quantize_ten
 
 import regnet
 

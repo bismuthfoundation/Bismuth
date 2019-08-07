@@ -8,7 +8,7 @@ import sys
 
 # custom modules
 sys.path.append('../')
-from quantizer import *
+from quantizer import quantize_two, quantize_eight, quantize_ten
 
 LEDGER_PATH = '../static/ledger.db'
 HYPER_PATH = '../static/hyper.db'

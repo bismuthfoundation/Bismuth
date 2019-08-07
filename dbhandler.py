@@ -5,7 +5,7 @@ Database handler module for Bismuth nodes
 import time
 import sqlite3
 import essentials
-from quantizer import *
+from quantizer import quantize_two, quantize_eight, quantize_ten
 import functools
 from fork import Fork
 import sys

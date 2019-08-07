@@ -6,7 +6,7 @@
 
 import sqlite3
 import log
-from quantizer import *
+from quantizer import quantize_two, quantize_eight, quantize_ten
 import mempool as mp
 from hashlib import blake2b
 import re

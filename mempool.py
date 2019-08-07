@@ -14,7 +14,7 @@ import time
 from polysign.signerfactory import SignerFactory
 
 import essentials
-from quantizer import *
+from quantizer import quantize_two, quantize_eight, quantize_ten
 
 # from Cryptodome.Hash import SHA
 # from Cryptodome.PublicKey import RSA

@@ -1,4 +1,4 @@
-from decimal import *
+from decimal import Decimal
 
 DECIMAL_ZERO_2DP = Decimal('0.00')
 DECIMAL_ZERO_8DP = Decimal('0.00000000')

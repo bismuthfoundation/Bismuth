@@ -6,8 +6,8 @@ import time
 import dbhandler
 import socks
 from connections import send, receive
-from decimal import *
-from quantizer import *
+from decimal import Decimal
+from quantizer import quantize_two, quantize_eight, quantize_ten
 import mempool as mp
 from difficulty import *
 from libs import client
