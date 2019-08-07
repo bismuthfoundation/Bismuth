@@ -499,29 +499,49 @@ class Mempool:
                     if size_bypass or self.space_left_for_tx(transaction, mempool_size):
                         # all transactions in the mempool need to be cycled to check for special cases,
                         # therefore no while/break loop here
-                        mempool_timestamp = '%.2f' % (quantize_two(transaction[0]))
-                        mempool_timestamp_float = float(transaction[0])  # limit Decimal where not needed
+                        try:
+                            mempool_timestamp = '%.2f' % (quantize_two(transaction[0]))
+                            mempool_timestamp_float = float(transaction[0])  # limit Decimal where not needed
+                        except Exception as e:
+                            mempool_result.append("Mempool: Invalid timestamp {}".format(transaction[0]))
+                        if not essentials.address_validate(transaction[1]):
+                            mempool_result.append("Mempool: Invalid address {}".format(transaction[1]))
+                            continue
+                        # We could now ignore the truncates here, I left them for explicit reminder of the various fields max lengths.
                         mempool_address = str(transaction[1])[:56]
+                        if not essentials.address_validate(transaction[2]):
+                            mempool_result.append("Mempool: Invalid recipient {}".format(transaction[2]))
+                            continue
                         mempool_recipient = str(transaction[2])[:56]
-                        mempool_amount = '%.8f' % (quantize_eight(transaction[3]))  # convert scientific notation
-                        mempool_amount_float = float(transaction[3])
+                        try:
+                            mempool_amount = '%.8f' % (quantize_eight(transaction[3]))  # convert scientific notation
+                            mempool_amount_float = float(transaction[3])
+                        except Exception as e:
+                            mempool_result.append("Mempool: Invalid amount {}".format(transaction[3]))
+                            continue
+                        if len(transaction[4]) > 684:
+                            mempool_result.append("Mempool: Invalid signature len{}".format(len(transaction[4])))
+                            continue
                         mempool_signature_enc = str(transaction[4])[:684]
+                        if len(transaction[5]) > 1068:
+                            mempool_result.append("Mempool: Invalid pubkey len{}".format(len(transaction[5])))
+                            continue
                         mempool_public_key_b64encoded = str(transaction[5])[:1068]
                         if "b'" == mempool_public_key_b64encoded[:2]:
                             # Binary content instead of str - leftover from legacy code?
                             mempool_public_key_b64encoded = transaction[5][2:1070]
+                        if len(transaction[6]) > 30:
+                            mempool_result.append("Mempool: Invalid operation len{}".format(len(transaction[6])))
+                            continue
                         mempool_operation = str(transaction[6])[:30]
+                        if len(transaction[7]) > 100000:
+                            mempool_result.append("Mempool: Invalid openfield len{}".format(len(transaction[7])))
+                            continue
                         mempool_openfield = str(transaction[7])[:100000]
 
                         # Begin with the easy tests that do not require cpu or disk access
                         if mempool_amount_float < 0:
                             mempool_result.append("Mempool: Negative balance spend attempt")
-                            continue
-                        if not essentials.address_validate(mempool_address):
-                            mempool_result.append("Mempool: Invalid address {}".format(mempool_address))
-                            continue
-                        if not essentials.address_validate(mempool_recipient):
-                            mempool_result.append("Mempool: Invalid recipient {}".format(mempool_recipient))
                             continue
                         if mempool_timestamp_float > time_now:
                             mempool_result.append("Mempool: Future transaction rejected {}s".
@@ -542,7 +562,7 @@ class Mempool:
                                                                buffer,
                                                                mempool_address)
                         except Exception as e:
-                            mempool_result.append(f"Mempool: Attempt to spend from a wrong address ({e})")
+                            mempool_result.append(f"Mempool: Signature did not match for address ({e})")
                             continue
 
                         # Only now, process the tests requiring db access
