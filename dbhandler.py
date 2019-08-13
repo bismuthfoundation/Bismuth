@@ -423,4 +423,4 @@ class DbHandler:
         self.index.close()
         self.hdd.close()
         self.hdd2.close()
-        #self.conn.close() disabled for troubleshooting
+        self.conn.close()

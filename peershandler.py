@@ -296,69 +296,33 @@ class Peers:
         with self.peersync_lock:
             try:
                 total_added = 0
-                if "(" in str(subdata):  # OLD WAY
-                    # TODO: next fork, no such peers should be left out. Simplify this code.
-                    server_peer_tuples = re.findall("'([\d.]+)', '([\d]+)'", subdata)
-                    self.app_log.info(f"Received following {len(server_peer_tuples)} peers: {server_peer_tuples}")
-                    with open(self.peerfile, "r") as peer_file:
-                        peers = json.load(peer_file)
-                    for pair in set(server_peer_tuples):  # set removes duplicates
-                        if pair not in peers and self.accept_peers:
-                            self.app_log.info(f"Outbound: {pair} is a new peer, saving if connectible")
-                            try:
-                                # check if node is active
-                                s_purge = socks.socksocket()
-                                s_purge.settimeout(5)
-                                if self.config.tor:
-                                    s_purge.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
-                                s_purge.connect((pair[0], int(pair[1])))
-                                s_purge.close()
-                                # Save to suggested if not already
-                                with open(self.suggested_peerfile) as peers_existing:
-                                    peers_suggested = json.load(peers_existing)
-                                    if pair not in peers_suggested:
-                                        peers_suggested[pair[0]] = pair[1]
 
-                                        with open(self.suggested_peerfile, "w") as peer_list_file:
-                                            json.dump(peers_suggested, peer_list_file)
-                                # Also add to our local peers dict and dump the json
-                                if pair[0] not in peers:
-                                    total_added += 1
-                                peers[pair[0]] = pair[1]
-                                with open(self.peerfile, "w") as peer_file:
-                                    json.dump(peers, peer_file)
-                            except:
-                                pass
-                                self.app_log.info("Not connectible")
-                        else:
-                            self.app_log.info(f"Outbound: {pair} is not a new peer")
-                else:
-                    # json format
+                # json format
 
-                    subdata = self.dict_validate(subdata)
-                    data_dict = json.loads(subdata)
+                subdata = self.dict_validate(subdata)
+                data_dict = json.loads(subdata)
 
-                    self.app_log.info(f"Received {len(data_dict)} peers.")
-                    # Simplified the log, every peers then has a ok or ko status anyway.
-                    for ip, port in data_dict.items():
-                        if ip not in self.peer_dict:
-                            self.app_log.info(f"Outbound: {ip}:{port} is a new peer, saving if connectible")
-                            try:
-                                s_purge = socks.socksocket()
-                                s_purge.settimeout(5)
-                                if self.config.tor:
-                                    s_purge.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
-                                s_purge.connect((ip, int(port)))  # save a new peer file with only active nodes
-                                s_purge.close()
-                                # This only adds to our local dict, does not force save.
-                                if ip not in self.peer_dict:
-                                    total_added += 1
-                                    self.peer_dict[ip] = port
-                                    self.app_log.info(f"Inbound: Peer {ip}:{port} saved to local peers")
-                            except:
-                                self.app_log.info("Not connectible")
-                        else:
-                            self.app_log.info(f"Outbound: {ip}:{port} is not a new peer")
+                self.app_log.info(f"Received {len(data_dict)} peers.")
+                # Simplified the log, every peers then has a ok or ko status anyway.
+                for ip, port in data_dict.items():
+                    if ip not in self.peer_dict:
+                        self.app_log.info(f"Outbound: {ip}:{port} is a new peer, saving if connectible")
+                        try:
+                            s_purge = socks.socksocket()
+                            s_purge.settimeout(5)
+                            if self.config.tor:
+                                s_purge.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
+                            s_purge.connect((ip, int(port)))  # save a new peer file with only active nodes
+                            s_purge.close()
+                            # This only adds to our local dict, does not force save.
+                            if ip not in self.peer_dict:
+                                total_added += 1
+                                self.peer_dict[ip] = port
+                                self.app_log.info(f"Inbound: Peer {ip}:{port} saved to local peers")
+                        except:
+                            self.app_log.info("Not connectible")
+                    else:
+                        self.app_log.info(f"Outbound: {ip}:{port} is not a new peer")
             except Exception as e:
                 self.app_log.warning(e)
                 exc_type, exc_obj, exc_tb = sys.exc_info()

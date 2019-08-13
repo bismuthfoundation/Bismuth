@@ -203,7 +203,7 @@ def recompress_ledger(node, rebuild=False, depth=15000):
     hyp.execute("VACUUM")
     hyper.close()
 
-    if os.path.exists(node.hyper_path) and rebuild:
+    if os.path.exists(node.hyper_path):
         os.remove(node.hyper_path)  # remove the old hyperblocks to rebuild
         os.rename(node.ledger_path + '.temp', node.hyper_path)
 
@@ -223,12 +223,12 @@ def ledger_check_heights(node, db_handler):
 
         if hdd_block_max == hdd2_block_last == hdd2_block_last_misc == hdd_block_max_diff and node.hyper_recompress:  # cross-integrity check
             node.logger.app_log.warning("Status: Recompressing hyperblocks (keeping full ledger)")
-            recompress = True
+            node.recompress = True
 
             #print (hdd_block_max,hdd2_block_last,node.hyper_recompress)
         elif hdd_block_max == hdd2_block_last and not node.hyper_recompress:
             node.logger.app_log.warning("Status: Hyperblock recompression skipped")
-            recompress = False
+            node.recompress = False
         else:
             lowest_block = min(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
             highest_block = max(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
@@ -237,14 +237,13 @@ def ledger_check_heights(node, db_handler):
                 f"Status: Cross-integrity check failed, {highest_block} will be rolled back below {lowest_block}")
 
             rollback(node,db_handler_initial,lowest_block) #rollback to the lowest value
-            recompress = False
+            node.recompress = False
 
     else:
         node.logger.app_log.warning("Status: Compressing ledger to Hyperblocks")
-        recompress = True
+        node.recompress = True
 
-    if recompress:
-        recompress_ledger(node)
+
 
 
 def bin_convert(string):
@@ -2084,6 +2083,14 @@ if __name__ == "__main__":
             db_handler_initial = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
 
             ledger_check_heights(node, db_handler_initial)
+
+
+            if node.recompress:
+                #todo: do not close database and move files, swap tables instead
+                db_handler_initial.close()
+                recompress_ledger(node)
+                db_handler_initial = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
+
             ram_init(db_handler_initial)
             node_block_init(db_handler_initial)
             initial_db_check()

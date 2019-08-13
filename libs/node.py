@@ -61,6 +61,8 @@ class Node:
         self.last_block_timestamp = None
         self.last_block_ago = None
 
+        self.recompress = None
+
         self.accept_peers = True
         self.difficulty = None
         self.ledger_temp = None
