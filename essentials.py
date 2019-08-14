@@ -118,7 +118,7 @@ def round_down(number, order):
 
 
 def checkpoint_set(node):
-    node.checkpoint = round_down(node.last_block, 10) - 30
+    node.checkpoint = round_down(node.last_block, 1000) - 1000
     node.logger.app_log.warning(f"Checkpoint set to {node.checkpoint}")
 
 
