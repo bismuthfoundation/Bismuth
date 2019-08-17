@@ -49,8 +49,6 @@ from Cryptodome.Signature import PKCS1_v1_5
 import base64
 #/todo
 
-getcontext().rounding = ROUND_HALF_EVEN
-
 fork = Fork()
 
 appname = "Bismuth"

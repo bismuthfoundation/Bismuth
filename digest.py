@@ -4,7 +4,6 @@ import sys
 
 import essentials
 import mempool as mp
-import mining
 import mining_heavy3
 import staking
 from difficulty import *
@@ -12,6 +11,7 @@ from essentials import address_is_rsa, checkpoint_set, ledger_balance3
 from polysign.signerfactory import SignerFactory
 from fork import Fork
 import tokensv2 as tokens
+from decimal import Decimal
 
 fork = Fork()
 

@@ -107,7 +107,7 @@ class Peers:
             return True
         return self.ip_to_mainnet[ip] in version_allow
 
-    def peers_test(self, file, peerdict, strict=True):
+    def peers_test(self, file, peerdict: dict, strict=True):
         """Validates then adds a peer to the peer list on disk"""
         # called by Sync, should not be an issue, but check if needs to be thread safe or not.
         # also called by self.client_loop, which is to be reworked
@@ -119,7 +119,7 @@ class Peers:
 
         # TODO: rework, because this takes too much time and freezes the status thread.
         # to be done in a dedicated thread, with one peer per xx seconds, not all at once, and added properties.
-        for ip, port in dict(peerdict.items()):
+        for ip, port in dict(peerdict).items():
             # I do create a new dict copy above, because logs showed that the dict can change while iterating
             if self.node.IS_STOPPING:
                 # Early exit if stopping
@@ -509,6 +509,7 @@ class Peers:
 
         except Exception as e:
             self.app_log.warning(f"Status: Manager run skipped due to error: {e}")
+            raise
 
     def status_log(self):
         """Prints the peers part of the node status"""
