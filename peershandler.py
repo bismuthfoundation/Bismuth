@@ -3,19 +3,18 @@ Peers handler module for Bismuth nodes
 @EggPoolNet
 """
 
-import connections
 import json
 import os
-import re
+import shutil
+# import re
 import sys
 import threading
 import time
-import shutil
 
 import socks
 
+import connections
 import regnet
-
 from essentials import most_common_dict, percentage_in
 
 __version__ = "0.0.16"
@@ -508,8 +507,12 @@ class Peers:
             self.peers_test(self.peerfile, self.peer_dict, strict=True)
 
         except Exception as e:
-            self.app_log.warning(f"Status: Manager run skipped due to error: {e}")
-            raise
+            self.app_log.warning(f"Status: peers client loop skipped due to error: {e}")
+            # raise
+            """We do not want to raise here, since the rest of the calling method would be skipped also.
+            It's ok to skip this part only
+            The calling method has other important subsequent calls that have to be done.
+            """
 
     def status_log(self):
         """Prints the peers part of the node status"""
