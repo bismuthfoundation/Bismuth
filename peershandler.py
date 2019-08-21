@@ -17,7 +17,7 @@ import connections
 import regnet
 from essentials import most_common_dict, percentage_in
 
-__version__ = "0.0.17"
+__version__ = "0.0.18"
 
 
 class Peers:
@@ -461,7 +461,9 @@ class Peers:
     def client_loop(self, node, this_target):
         """Manager loop called every 30 sec. Handles maintenance"""
         try:
-            for key, value in self.peer_dict.items():
+            for key, value in dict(self.peer_dict).items():
+                # The dict() above is not an error or a cast, 
+                # it's to make a copy of the dict and avoid "dictionary changed size during iteration"
                 host = key
                 port = int(value)
 
