@@ -32,7 +32,6 @@ REGNET_PEERS = "peers_reg.txt"
 REGNET_SUGGESTED_PEERS = "peers_reg.txt"
 
 SQL_INDEX = [ "CREATE TABLE aliases (block_height INTEGER, address, alias)",
-              "CREATE TABLE staking (block_height INTEGER, timestamp NUMERIC, address, balance)",
               "CREATE TABLE tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)" ]
 
 SQL_LEDGER = [ "CREATE TABLE misc (block_height INTEGER, difficulty TEXT)",

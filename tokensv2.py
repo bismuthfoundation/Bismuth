@@ -156,17 +156,16 @@ def tokens_update(node, db_handler_instance):
 
                 # node.logger.app_log.warning all token transfers
                 balance_sender = credit_sender - debit_sender
-                if balance_sender < 0 and sender == "staking":
-                    node.logger.app_log.warning("Total staked {}".format(abs(balance_sender)))
-                else:
-                    node.logger.app_log.warning("Sender's balance {}".format(balance_sender))
+
+                node.logger.app_log.warning("Sender's balance {}".format(balance_sender))
+
                 try:
                     db_handler_instance.index_cursor.execute("SELECT txid from tokens WHERE txid = ?", (txid,))
                     dummy = db_handler_instance.index_cursor.fetchone()  # check for uniqueness
                     if dummy:
                         node.logger.app_log.warning("Token operation already processed: {} {}".format(token, txid))
                     else:
-                        if (balance_sender - transfer_amount >= 0 and transfer_amount > 0) or (sender == "staking"):
+                        if (balance_sender - transfer_amount >= 0 and transfer_amount > 0):
                             db_handler_instance.index_cursor.execute("INSERT INTO tokens VALUES (?,?,?,?,?,?,?)",
                                       (abs(block_height), timestamp, token, sender, recipient, txid, transfer_amount))
                             if node.plugin_manager:

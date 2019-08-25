@@ -223,24 +223,6 @@ class DbHandler:
         except Exception as e:
             node.logger.app_log.warning(f"Failed to roll back the token index below {(height)} due to {e}")
 
-    def staking_rollback(self, node, height):
-        """Rollback staking index
-
-        :param height: height index of token in chain
-
-        Simply deletes from the `staking` table where the block_height is
-        greater than or equal to the :param height: and logs the new height
-
-        returns None
-        """
-        try:
-            self.execute_param(self.index_cursor, "DELETE FROM staking WHERE block_height >= ?;", (height,))
-            self.commit(self.index)
-
-            node.logger.app_log.warning(f"Rolled back the staking index below {(height)}")
-        except Exception as e:
-            node.logger.app_log.warning(f"Failed to roll back the staking index below {(height)} due to {e}")
-
     def aliases_rollback(self, node, height):
         """Rollback Alias index
 

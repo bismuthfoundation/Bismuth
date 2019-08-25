@@ -5,7 +5,6 @@ import sys
 import essentials
 import mempool as mp
 import mining_heavy3
-import staking
 from difficulty import *
 from essentials import address_is_rsa, checkpoint_set, ledger_balance3
 from polysign.signerfactory import SignerFactory
@@ -379,20 +378,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                                          'transactions': block_transactions})
 
                 db_handler.to_db(block_instance, diff_save, block_transactions)
-
-                # savings
-                if node.is_testnet or block_instance.block_height_new >= 843000:
-                    # no savings for regnet
-                    if int(block_instance.block_height_new) % 10000 == 0:  # every x blocks
-
-                        staking.staking_update(db_handler.conn, db_handler.c, db_handler.index, db_handler.index_cursor,
-                                               "normal", block_instance.block_height_new, node.logger.app_log)
-                        staking.staking_payout(db_handler.conn, db_handler.c, db_handler.index, db_handler.index_cursor,
-                                               block_instance.block_height_new, float(miner_tx.q_block_timestamp),
-                                               node.logger.app_log)
-                        staking.staking_revalidate(db_handler.conn, db_handler.c, db_handler.index,
-                                                   db_handler.index_cursor, block_instance.block_height_new,
-                                                   node.logger.app_log)
 
                 # new sha_hash
                 db_handler.execute(db_handler.c, "SELECT * FROM transactions "

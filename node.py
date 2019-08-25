@@ -119,7 +119,6 @@ def rollback(node, db_handler, block_height):
     # rollback indices
     db_handler.tokens_rollback(node, block_height)
     db_handler.aliases_rollback(node, block_height)
-    db_handler.staking_rollback(node, block_height)
     # rollback indices
 
     node.logger.app_log.warning(f"Status: Chain rolled back below {block_height} and will be resynchronized")
@@ -388,7 +387,6 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
                 # rollback indices
                 db_handler.tokens_rollback(node, db_block_height)
                 db_handler.aliases_rollback(node, db_block_height)
-                db_handler.staking_rollback(node, db_block_height)
                 # /rollback indices
 
                 node.last_block_timestamp = db_handler.last_block_timestamp()
@@ -490,7 +488,6 @@ def sequencing_check(db_handler):
                     # rollback indices
                     db_handler.tokens_rollback(node, y)
                     db_handler.aliases_rollback(node, y)
-                    db_handler.staking_rollback(node, y)
 
                     # rollback indices
 
@@ -539,7 +536,6 @@ def sequencing_check(db_handler):
                     # rollback indices
                     db_handler.tokens_rollback(node, y)
                     db_handler.aliases_rollback(node, y)
-                    db_handler.staking_rollback(node, y)
                     # rollback indices
 
                     node.logger.app_log.warning(f"Status: Due to a sequencing issue at block {y}, {chain} has been rolled back and will be resynchronized")
