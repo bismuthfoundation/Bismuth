@@ -113,11 +113,14 @@ class Mempool:
             self.trace_db_calls = trace_db_calls
 
             self.testnet = testnet
-            if not self.testnet:
-                self.mempool_ram_file = "file:mempool?mode=memory&cache=shared"
-            else:
+
+            if self.testnet:
                 app_log.warning("Starting mempool in testnet mode")
+                self.mempool_path = "mempool_testnet.db"
                 self.mempool_ram_file = "file:mempool_testnet?mode=memory&cache=shared"
+            else:
+                self.mempool_ram_file = "file:mempool?mode=memory&cache=shared"
+                self.mempool_path = self.config.mempool_path #default
 
             self.check()
 
@@ -153,7 +156,7 @@ class Mempool:
                 self.db.commit()
                 self.app_log.warning("Status: In memory mempool file created")
             else:
-                self.db = sqlite3.connect(self.config.mempool_path, timeout=1,
+                self.db = sqlite3.connect(self.mempool_path, timeout=1,
                                           check_same_thread=False)
                 if self.trace_db_calls:
                     self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log,"MEMPOOL"))
@@ -166,8 +169,8 @@ class Mempool:
                 # print(res)
                 if len(res) != 9:
                     self.db.close()
-                    os.remove(self.config.mempool_path)
-                    self.db = sqlite3.connect(self.config.mempool_path, timeout=1,
+                    os.remove(self.mempool_path)
+                    self.db = sqlite3.connect(self.mempool_path, timeout=1,
                                               check_same_thread=False)
                     if self.trace_db_calls:
                         self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log,"MEMPOOL"))
