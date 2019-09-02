@@ -136,6 +136,16 @@ class ApiHandler:
         txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
         connections.send(socket_handler, txs)
 
+    def api_getconfig(self, socket_handler, db_handler, peers):
+        """
+        Returns configuration
+        :param socket_handler:
+        :param db_handler:
+        :param peers:
+        :return: list of node configuration options
+        """
+        connections.send(socket_handler, self.config.__dict__)
+
     def api_clearmempool(self, socket_handler, db_handler, peers):
         """
         Empty the current mempool

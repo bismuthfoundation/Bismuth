@@ -87,14 +87,8 @@ else:
     #s.connect(("34.192.6.105", 5658))
     #s.connect(("bismuth.live", 5658))
 
-
-def annverget(socket):
-    connections.send(s, "annverget")
-    result = connections.receive(s)
-    print (result)
-
-def annget(socket):
-    connections.send(s, "annget")
+def api_getconfig(socket):
+    connections.send(s, "api_getconfig")
     result = connections.receive(s)
     print (result)
 
@@ -460,11 +454,8 @@ elif command == "balancegethyper":
 elif command == "balancegethyperjson":
     balancegethyperjson(s, arg1)
 
-elif command == "annget":
-    annget(s)
-
-elif command == "annverget":
-    annverget(s)
+elif command == "api_getconfig":
+    api_getconfig(s)
 
 elif command == "mpget":
     mpget(s)
