@@ -22,23 +22,21 @@ import socks
 from Cryptodome.Hash import SHA
 from Cryptodome.Signature import PKCS1_v1_5
 
-from bisbasic import connections, essentials
+from bismuthclient import rpcconnections
+from bisbasic import essentials, options
 from bisbasic.essentials import fee_calculate
-import options
 from polysign.signerfactory import SignerFactory
 
 
 def connect():
-    s = socks.socksocket()
-    s.settimeout(10)
     if 'regnet' in config.version:
-        s.connect(("127.0.0.1", 3030))
+        port = 3030
     elif 'testnet' in config.version:
-        s.connect(("127.0.0.1", 2829))
+        port = 2829
     else:
-        s.connect(("127.0.0.1", 5658))
-    return s
+        port = 5658
 
+    return rpcconnections.Connection(("127.0.0.1", int(port)))
 
 if __name__ == "__main__":
     config = options.Get()
@@ -66,9 +64,9 @@ if __name__ == "__main__":
     # get balance
 
     s = connect()
-    connections.send (s, "balanceget")
-    connections.send (s, address)  # change address here to view other people's transactions
-    stats_account = connections.receive (s)
+    s._send ("balanceget")
+    s._send (address)  # change address here to view other people's transactions
+    stats_account = s._receive()
     balance = stats_account[0]
 
     print("Transaction address: %s" % address)
@@ -115,7 +113,7 @@ if __name__ == "__main__":
         is_float = 0
         sys.exit(1)
 
-    timestamp = '%.2f' % time.time()
+    timestamp = '%.2f' % (time.time() - 5) #remote proofing
     # TODO: use transaction object, no dup code for buffer assembling
     transaction = (str(timestamp), str(address), str(recipient_input), '%.8f' % float(amount_input), str(operation_input), str(openfield_input))  # this is signed
     # TODO: use polysign here
@@ -141,9 +139,9 @@ if __name__ == "__main__":
             tx_submit = (str (timestamp), str (address), str (recipient_input), '%.8f' % float (amount_input), str (signature_enc.decode ("utf-8")), str (public_key_b64encoded.decode("utf-8")), str (operation_input), str (openfield_input))
             while True:
                 try:
-                    connections.send (s, "mpinsert")
-                    connections.send (s, tx_submit)
-                    reply = connections.receive (s)
+                    s._send("mpinsert")
+                    s._send (tx_submit)
+                    reply = s._receive()
                     print ("Client: {}".format (reply))
                     if reply != "*":  # response can be empty due to different timeout setting
                         break
