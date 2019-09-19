@@ -50,7 +50,6 @@ def worker(host, port, node):
     client_instance_worker = client.Client()
 
     if node.peers.is_banned(host) or dict_ip['ip'] == 'banned':
-        client_instance_worker.banned = True
         node.logger.app_log.warning(f"IP {host} is banned, won't connect")
         return
 
@@ -106,10 +105,10 @@ def worker(host, port, node):
         node.logger.app_log.info(f"Connected to {this_client}")
         node.logger.app_log.info(f"Current active pool: {node.peers.connection_pool}")
 
-    if not client_instance_worker.banned and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
+    if not node.peers.is_banned(host) and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
         db_handler_instance = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, logger)
 
-    while not client_instance_worker.banned and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
+    while not node.peers.is_banned(host) and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
         try:
             #ensure_good_peer_version(host)
 
@@ -169,7 +168,6 @@ def worker(host, port, node):
                             send(s, data)
 
                         else:
-
                             node.logger.app_log.warning(
                                 f"Outbound: Node is at block {client_block}")  # now check if we have any newer
 
@@ -276,7 +274,6 @@ def worker(host, port, node):
                         except:
                             if node.peers.warning(s, peer_ip, "Failed to deliver the longest chain", 2):
                                 raise ValueError(f"{peer_ip} is banned")
-
                         else:
                             digest_block(node, segments, s, peer_ip, db_handler_instance)
 

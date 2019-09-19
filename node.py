@@ -590,7 +590,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         node.plugin_manager.execute_filter_hook('peer_ip', dict_ip)
 
         if node.peers.is_banned(peer_ip) or dict_ip['ip'] == 'banned':
-            client_instance.banned = True
             self.request.close()
             node.logger.app_log.info(f"IP {peer_ip} banned, disconnected")
 
@@ -606,7 +605,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         timeout_operation = 120  # timeout
         timer_operation = time.time()  # start counting
 
-        while not client_instance.banned and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
+        while not node.peers.is_banned(host) and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
             try:
                 # Failsafe
                 if self.request == -1:
