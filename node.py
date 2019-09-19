@@ -790,6 +790,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                     send(self.request, "blocknfhb")  # announce we are on hyperblocks
                                 send(self.request, data)
 
+                                if node.peers.warning(self.request, peer_ip, "Forked", 2):
+                                    node.logger.app_log.info(f"{peer_ip} banned")
+                                    break
+
                             else:
                                 node.logger.app_log.info(f"Inbound: Client is at block {client_block}")  # now check if we have any newer
 

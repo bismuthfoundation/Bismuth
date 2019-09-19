@@ -167,6 +167,9 @@ def worker(host, port, node):
                                 send(s, "blocknfhb")
                             send(s, data)
 
+                            if node.peers.warning(s, peer_ip, "Forked", 1):
+                                raise ValueError(f"{peer_ip} is banned")
+
                         else:
                             node.logger.app_log.warning(
                                 f"Outbound: Node is at block {client_block}")  # now check if we have any newer
