@@ -605,7 +605,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         timeout_operation = 120  # timeout
         timer_operation = time.time()  # start counting
 
-        while not node.peers.is_banned(host) and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
+        while not node.peers.is_banned(peer_ip) and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
             try:
                 # Failsafe
                 if self.request == -1:
