@@ -10,6 +10,7 @@ import shutil
 import sys
 import threading
 from time import time
+import random
 
 import socks
 
@@ -81,6 +82,11 @@ class Peers:
             # regnet takes over testnet
             return True
         return "regnet" in self.config.version
+
+    def dict_shuffle(self, dictinary):
+        l = list(dictinary.items())
+        random.shuffle(l)
+        return dict(l)
 
     def status_dict(self):
         """Returns a status as a dict"""
@@ -461,7 +467,7 @@ class Peers:
     def client_loop(self, node, this_target):
         """Manager loop called every 30 sec. Handles maintenance"""
         try:
-            for key, value in dict(self.peer_dict).items():
+            for key, value in dict(self.dict_shuffle(self.peer_dict)).items():
                 # The dict() above is not an error or a cast, 
                 # it's to make a copy of the dict and avoid "dictionary changed size during iteration"
                 host = key
