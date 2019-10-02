@@ -2,9 +2,7 @@ import os.path as path
 from sys import exit
 import json
 
-
 class Get:
-
     # "param_name":["type"] or "param_name"=["type","property_name"]
     vars={
         "port":["str"],
