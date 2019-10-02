@@ -1,5 +1,6 @@
 import os.path as path
 from sys import exit
+import json
 
 
 class Get:
@@ -27,7 +28,7 @@ class Get:
         "allowed":["str","allowed"],
         "ram":["bool","ram"],
         "node_ip":["str","node_ip"],
-        "light_ip":["list"],
+        "light_ip":["dict"],
         "reveal_address":["bool"],
         "accept_peers":["bool"],
         "banlist":["list"],
@@ -69,6 +70,8 @@ class Get:
                     params = self.vars[left]
                     if params[0] == "int":
                         right = int(right)
+                    elif params[0] == "dict":
+                        right = json.loads(right)
                     elif params[0] == "list":
                         right = [item.strip() for item in right.split(",")]
                     elif params[0] == "bool":
