@@ -69,7 +69,10 @@ class Get:
                     if params[0] == "int":
                         right = int(right)
                     elif params[0] == "dict":
-                        right = json.loads(right)
+                        try:
+                            right = json.loads(right)
+                        except: #compatibility
+                            right = [item.strip() for item in right.split(",")]
                     elif params[0] == "list":
                         right = [item.strip() for item in right.split(",")]
                     elif params[0] == "bool":
