@@ -1523,6 +1523,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for diffget command")
 
+                elif data == "portget":
+                    if node.peers.is_allowed(peer_ip, data):
+                        send(self.request, {"port": node.port})
+                    else:
+                        node.logger.app_log.info(f"{peer_ip} not whitelisted for portget command")
+
                 elif data == "diffgetjson":
                     if node.peers.is_allowed(peer_ip, data):
                         diff = node.difficulty
