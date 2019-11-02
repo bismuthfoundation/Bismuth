@@ -251,9 +251,14 @@ class DbHandler:
         fork = Fork()
 
         if node.last_block >= fork.POW_FORK or (node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET):
-            self.reward_sum = "24"
+            self.reward_sum = 24 - 10*(node.last_block + 5 - fork.POW_FORK)/3000000
         else:
-            self.reward_sum = "8"
+            self.reward_sum = 24
+
+        if self.reward_sum < 0.5:
+            self.reward_sum = 0.5
+
+        self.reward_sum = '{:.8f}'.format(self.reward_sum)
 
         self.execute_param(self.c, self.SQL_TO_TRANSACTIONS,
                            (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Hypernode Payouts",

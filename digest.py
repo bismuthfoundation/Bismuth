@@ -212,19 +212,17 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             # decide reward
             if tx_index == block_instance.tx_count - 1:
                 db_amount = 0  # prevent spending from another address, because mining txs allow delegation
-                if node.last_block <= 10000000:
 
-                    if node.last_block >= fork.POW_FORK or (node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET):
-                        block_instance.mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("2.4")
-                    else:
-                        block_instance.mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("0.8")
-
-                    if block_instance.mining_reward < 0:
-                        block_instance.mining_reward = 0
+                if node.last_block >= fork.POW_FORK or (node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET):
+                    block_instance.mining_reward = 15 - (block_instance.block_height_new - fork.POW_FORK) / 1100000 - 9.5
                 else:
-                    block_instance.mining_reward = 0
+                    block_instance.mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("2.4")
 
-                reward = quantize_eight(block_instance.mining_reward + sum(fees_block))
+                if block_instance.mining_reward < 0.5:
+                    block_instance.mining_reward = 0.5
+
+                reward = '{:.8f}'.format(block_instance.mining_reward + sum(fees_block))
+
                 # don't request a fee for mined block so new accounts can mine
                 fee = 0
             else:
