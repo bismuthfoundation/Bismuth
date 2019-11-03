@@ -8,7 +8,7 @@ class Fork():
         self.FORK_REWARD_TESTNET = None
         self.PASSED = False
         self.PASSED_TESTNET = False
-        self.REWARD_MAX = 11
+        self.REWARD_MAX = 6
 
         #self.POW_FORK = 1168860 #HACK
         #self.versions_remove = [] #HACK
