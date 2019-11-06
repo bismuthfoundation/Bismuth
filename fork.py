@@ -3,7 +3,7 @@ class Fork():
         self.POW_FORK = 1450000
         self.POW_FORK_TESTNET = 894170
         self.FORK_AHEAD = 5
-        self.versions_remove = ['mainnet0019', 'mainnet0018', 'mainnet0017']
+        self.versions_remove = ['mainnet0020', 'mainnet0019', 'mainnet0018', 'mainnet0017']
         self.FORK_REWARD = None
         self.FORK_REWARD_TESTNET = None
         self.PASSED = False
