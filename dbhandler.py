@@ -250,7 +250,10 @@ class DbHandler:
     def hn_reward(self,node,block_array,miner_tx,mirror_hash):
         fork = Fork()
 
-        if node.last_block >= fork.POW_FORK or (node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET):
+        if node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET:
+            self.reward_sum = 24 - 10 * (node.last_block + 5 - fork.POW_FORK_TESTNET) / 3000000
+
+        elif node.last_block >= fork.POW_FORK:
             self.reward_sum = 24 - 10*(node.last_block + 5 - fork.POW_FORK)/3000000
         else:
             self.reward_sum = 24

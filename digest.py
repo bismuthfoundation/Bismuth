@@ -213,7 +213,9 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             if tx_index == block_instance.tx_count - 1:
                 db_amount = 0  # prevent spending from another address, because mining txs allow delegation
 
-                if node.last_block >= fork.POW_FORK or (node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET):
+                if node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET:
+                    block_instance.mining_reward = 15 - (block_instance.block_height_new - fork.POW_FORK_TESTNET) / 1100000 - 9.5
+                elif node.last_block >= fork.POW_FORK:
                     block_instance.mining_reward = 15 - (block_instance.block_height_new - fork.POW_FORK) / 1100000 - 9.5
                 else:
                     block_instance.mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("2.4")
