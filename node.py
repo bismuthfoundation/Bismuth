@@ -1966,6 +1966,7 @@ def verify(db_handler):
         node.logger.app_log.warning("Error: {}".format(e))
         raise
 
+
 def add_indices(db_handler: dbhandler.DbHandler):
     CREATE_TXID4_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS TXID4_Index ON transactions(substr(signature,1,4))"
     CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS 'Misc Block Height Index' on misc(block_height)"
@@ -1985,6 +1986,7 @@ def add_indices(db_handler: dbhandler.DbHandler):
     db_handler.execute(db_handler.c, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
 
     node.logger.app_log.warning("Finished creating indices")
+
 
 if __name__ == "__main__":
     # classes
