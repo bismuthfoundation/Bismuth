@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.3.0.9"  # Post fork candidate 9
+VERSION = "4.3.0.10"  # Post fork candidate 10
 
 import functools
 import glob
@@ -1665,17 +1665,17 @@ def setup_net_type():
     node.index_db = "static/index.db"
 
     if node.is_mainnet:
-        # Allow only 20 and up
-        if node.version != 'mainnet0020':
-            node.version = 'mainnet0020'  # Force in code.
-        if "mainnet0020" not in node.version_allow:
-            node.version_allow = ['mainnet0020', 'mainnet0021']
+        # Allow only 21 and up
+        if node.version != 'mainnet0021':
+            node.version = 'mainnet0021'  # Force in code.
+        if "mainnet0021" not in node.version_allow:
+            node.version_allow = ['mainnet0021', 'mainnet0022']
         # Do not allow bad configs.
         if not 'mainnet' in node.version:
             node.logger.app_log.error("Bad mainnet version, check config.txt")
             sys.exit()
         num_ver = just_int_from(node.version)
-        if num_ver <20:
+        if num_ver <21:
             node.logger.app_log.error("Too low mainnet version, check config.txt")
             sys.exit()
         for allowed in node.version_allow:
