@@ -10,13 +10,14 @@ from quantizer import quantize_two, quantize_eight, quantize_ten
 import process_search
 from essentials import address_validate
 
-class Tar():
+
+class Tar:
     def __init__(self):
-        self.hdd = sqlite3.connect("ledger.db", timeout=1)
+        self.hdd = sqlite3.connect("ledger_test.db", timeout=1)
         self.hdd.text_factory = str
         self.h = self.hdd.cursor()
 
-        self.hdd2 = sqlite3.connect("hyper.db", timeout=1)
+        self.hdd2 = sqlite3.connect("hyper_test.db", timeout=1)
         self.hdd2.text_factory = str
         self.h2 = self.hdd2.cursor()
 
@@ -24,7 +25,9 @@ class Tar():
         self.h_name = "ledger"
         self.h2_name = "hyperblocks"
 
+
 tar_obj = Tar()
+
 
 def vacuum(cursor, name):
     print(f"Vacuuming {name}")
@@ -43,6 +46,7 @@ def dupes_check_sigs(cursor, name):
         if result[0] not in dupes_allowed:
             print (f"Duplicate entry on block: {result}")
             tar_obj.errors += 1
+
 
 def dupes_check_rows_transactions(cursor, name):
     print (f"Testing {name} for transaction row duplicates")
@@ -63,6 +67,7 @@ def dupes_check_rows_misc(cursor, name):
         print(f"Duplicate entry on block: {entry}")
         tar_obj.errors += 1
 
+
 def balance_from_cursor(cursor, address):
     credit = Decimal("0")
     debit = Decimal("0")
@@ -75,7 +80,6 @@ def balance_from_cursor(cursor, address):
         except Exception as e:
             credit = 0
         #print (credit)
-
 
     for entry in cursor.execute("SELECT amount,fee FROM transactions WHERE address = ? ",(address, )):
         try:
@@ -109,14 +113,13 @@ def balance_differences():
         if not address_validate(address) and (balance1 or balance2) != 0:
             print (f"{address} > wrong recipient")
 
-
         print(f"{check} {address} {balance1} {balance2}")
 
         if (Decimal(balance1) < 0 or Decimal(balance2) < 0):
             print(address,balance1,balance2)
 
-
     print(f"Done, {tar_obj.errors} errors.")
+
 
 balance_differences()
 dupes_check_rows_transactions(tar_obj.h, tar_obj.h_name)
@@ -139,9 +142,9 @@ else:
     tar_obj.hdd2.close()
 
     if not process_search.proccess_presence ("node.py"):
-        files = ["ledger.db-wal","ledger.db-shm","ledger.db","hyper.db-shm", "hyper.db-wal", "hyper.db", "index.db"]
+        files = ["ledger_test.db-wal","ledger_test.db-shm","ledger_test.db","hyper_test.db-shm", "hyper_test.db-wal", "hyper_test.db", "index_test.db"]
 
-        tar = tarfile.open("ledger.tar.gz", "w:gz")
+        tar = tarfile.open("test.tar.gz", "w:gz")
 
         for file in files:
             try:

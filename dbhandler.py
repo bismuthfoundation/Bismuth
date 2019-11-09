@@ -5,9 +5,10 @@ Database handler module for Bismuth nodes
 import time
 import sqlite3
 import essentials
-from quantizer import *
+from quantizer import quantize_two, quantize_eight, quantize_ten
 import functools
 from fork import Fork
+import sys
 
 
 def sql_trace_callback(log, id, statement):
@@ -30,18 +31,21 @@ class DbHandler:
         if self.trace_db_calls:
             self.index.set_trace_callback(functools.partial(sql_trace_callback,self.logger.app_log,"INDEX"))
         self.index.text_factory = str
+        self.index.execute('PRAGMA case_sensitive_like = 1;')
         self.index_cursor = self.index.cursor()
 
         self.hdd = sqlite3.connect(self.ledger_path, timeout=1)
         if self.trace_db_calls:
             self.hdd.set_trace_callback(functools.partial(sql_trace_callback,self.logger.app_log,"HDD"))
         self.hdd.text_factory = str
+        self.hdd.execute('PRAGMA case_sensitive_like = 1;')
         self.h = self.hdd.cursor()
 
         self.hdd2 = sqlite3.connect(self.hyper_path, timeout=1)
         if self.trace_db_calls:
             self.hdd2.set_trace_callback(functools.partial(sql_trace_callback,self.logger.app_log,"HDD2"))
         self.hdd2.text_factory = str
+        self.hdd2.execute('PRAGMA case_sensitive_like = 1;')
         self.h2 = self.hdd2.cursor()
 
         if self.ram:
@@ -52,12 +56,17 @@ class DbHandler:
         if self.trace_db_calls:
             self.conn.set_trace_callback(functools.partial(sql_trace_callback,self.logger.app_log,"CONN"))
         self.conn.execute('PRAGMA journal_mode = WAL;')
+        self.conn.execute('PRAGMA case_sensitive_like = 1;')
         self.conn.text_factory = str
         self.c = self.conn.cursor()
 
-
         self.SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
         self.SQL_TO_MISC = "INSERT INTO misc VALUES (?,?)"
+
+    def last_block_hash(self):
+        self.execute(self.c, "SELECT block_hash FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
+        result = self.c.fetchone()[0]
+        return result
 
     def pubkeyget(self, address):
         self.execute_param(self.c, "SELECT public_key FROM transactions WHERE address = ? and reward = 0 LIMIT 1", (address,))
@@ -125,6 +134,30 @@ class DbHandler:
             results.append(result)
         return results
 
+    def block_height_from_hash(self, data):
+        try:
+            self.execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?;",(data,))
+            result = self.h.fetchone()[0]
+        except:
+            result = None
+
+        return result
+
+    def blocksync(self, block):
+        blocks_fetched = []
+        while sys.getsizeof(
+                str(blocks_fetched)) < 500000:  # limited size based on txs in blocks
+            # db_handler.execute_param(db_handler.h, ("SELECT block_height, timestamp,address,recipient,amount,signature,public_key,keep,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),(str(int(client_block)),) + (str(int(client_block + 1)),))
+            self.execute_param(self.h, (
+                "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),
+                                              (str(int(block)), str(int(block + 1)),))
+            result = self.h.fetchall()
+            if not result:
+                break
+            blocks_fetched.extend([result])
+            block = int(block) + 1
+        return blocks_fetched
+
     def block_height_max(self):
         self.h.execute("SELECT max(block_height) FROM transactions")
         return self.h.fetchone()[0]
@@ -146,15 +179,15 @@ class DbHandler:
         self.execute_param(self.c, "SELECT * FROM transactions WHERE block_height >= ?;", (block_height,))
         backup_data = self.c.fetchall()
 
-        self.execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height)) #this belongs to rollback_to
-        self.commit(self.conn) #this belongs to rollback_to
+        self.execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height)) #this belongs to rollback_under
+        self.commit(self.conn) #this belongs to rollback_under
 
-        self.execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,)) #this belongs to rollback_to
-        self.commit(self.conn)  #this belongs to rollback_to
+        self.execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,)) #this belongs to rollback_under
+        self.commit(self.conn)  #this belongs to rollback_under
 
         return backup_data
 
-    def rollback_to(self, block_height):
+    def rollback_under(self, block_height):
         self.h.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height,))
         self.commit(self.hdd)
 
@@ -166,6 +199,11 @@ class DbHandler:
 
         self.h2.execute("DELETE FROM misc WHERE block_height >= ?", (block_height,))
         self.commit(self.hdd2)
+
+    def rollback_to(self, block_height):
+        # We don'tt need node to have the logger
+        self.logger.app_log.error("rollback_to is deprecated, use rollback_under")
+        self.rollback_under(block_height)
 
     def tokens_rollback(self, node, height):
         """Rollback Token index
@@ -184,24 +222,6 @@ class DbHandler:
             node.logger.app_log.warning(f"Rolled back the token index below {(height)}")
         except Exception as e:
             node.logger.app_log.warning(f"Failed to roll back the token index below {(height)} due to {e}")
-
-    def staking_rollback(self, node, height):
-        """Rollback staking index
-
-        :param height: height index of token in chain
-
-        Simply deletes from the `staking` table where the block_height is
-        greater than or equal to the :param height: and logs the new height
-
-        returns None
-        """
-        try:
-            self.execute_param(self.index_cursor, "DELETE FROM staking WHERE block_height >= ?;", (height,))
-            self.commit(self.index)
-
-            node.logger.app_log.warning(f"Rolled back the staking index below {(height)}")
-        except Exception as e:
-            node.logger.app_log.warning(f"Failed to roll back the staking index below {(height)} due to {e}")
 
     def aliases_rollback(self, node, height):
         """Rollback Alias index
@@ -230,10 +250,18 @@ class DbHandler:
     def hn_reward(self,node,block_array,miner_tx,mirror_hash):
         fork = Fork()
 
-        if node.last_block >= fork.POW_FORK or (node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET):
-            self.reward_sum = "24"
+        if node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET:
+            self.reward_sum = 24 - 10 * (node.last_block + 5 - fork.POW_FORK_TESTNET) / 3000000
+
+        elif node.is_mainnet and node.last_block >= fork.POW_FORK:
+            self.reward_sum = 24 - 10*(node.last_block + 5 - fork.POW_FORK)/3000000
         else:
-            self.reward_sum = "8"
+            self.reward_sum = 24
+
+        if self.reward_sum < 0.5:
+            self.reward_sum = 0.5
+
+        self.reward_sum = '{:.8f}'.format(self.reward_sum)
 
         self.execute_param(self.c, self.SQL_TO_TRANSACTIONS,
                            (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Hypernode Payouts",
@@ -283,8 +311,6 @@ class DbHandler:
 
 
         try:
-            self.execute(self.c, "SELECT max(block_height) FROM transactions")
-            node.last_block = self.c.fetchone()[0]
 
             node.logger.app_log.warning(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
 
@@ -294,23 +320,20 @@ class DbHandler:
 
             result1 = self.c.fetchall()
 
-            if node.is_mainnet or node.ram: #testnet does not use hyperblocks, change this in the future
-                transactions_to_h(result1)
-
-            if node.is_mainnet and node.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
+            transactions_to_h(result1)
+            if node.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
                 transactions_to_h2(result1)
 
             self.execute_param(self.c, "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
                                      (node.hdd_block,))
             result2 = self.c.fetchall()
 
-            if not node.is_testnet: #testnet does not use hyperblocks, change this in the future
-                misc_to_h(result2)
-            if node.is_mainnet and node.ram:  # we want to save to hyper.db from RAM
+            misc_to_h(result2)
+            if node.ram:  # we want to save to hyper.db from RAM
                 misc_to_h2(result2)
 
-            self.execute(self.h, "SELECT max(block_height) FROM transactions")
-            node.hdd_block = self.h.fetchone()[0]
+            node.hdd_block = node.last_block
+            node.hdd_hash = node.last_block_hash
 
             node.logger.app_log.warning(f"Chain: {len(result1)} txs moved to HDD")
         except Exception as e:
@@ -367,8 +390,27 @@ class DbHandler:
                 self.logger.app_log.warning(f"Database retry reason: {e}")
                 time.sleep(1)
 
+    def fetchall(self, cursor, query, param=None):
+        """Helper to simplify calling code, execute and fetch in a single line instead of 2"""
+        if param is None:
+            self.execute(cursor, query)
+        else:
+            self.execute_param(cursor, query, param)
+        return cursor.fetchall()
+
+    def fetchone(self, cursor, query, param=None):
+        """Helper to simplify calling code, execute and fetch in a single line instead of 2"""
+        if param is None:
+            self.execute(cursor, query)
+        else:
+            self.execute_param(cursor, query, param)
+        res = cursor.fetchone()
+        if res:
+            return res[0]
+        return None
+
     def close(self):
         self.index.close()
         self.hdd.close()
         self.hdd2.close()
-        #self.conn.close() disabled for troubleshooting
+        self.conn.close()

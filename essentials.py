@@ -14,17 +14,31 @@ import requests
 # from Crypto import Random
 from Cryptodome.PublicKey import RSA
 
-from quantizer import *
-from simplecrypt import *
+from quantizer import quantize_two, quantize_eight, quantize_ten
+from decimal import Decimal
+from simplecrypt import encrypt, decrypt
 from typing import Union
 from polysign.signer import SignerType
 from polysign.signerfactory import SignerFactory
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
-RE_RSA_ADDRESS = re.compile(r"[abcdef0123456789]{56}")
-# TODO: improve that ECDSA one
-RE_ECDSA_ADDRESS = re.compile(r"^Bis")
+"""
+For temp. code compatibility, dup code moved to polysign module
+"""
+
+
+def address_validate(address:str) -> bool:
+    return SignerFactory.address_is_valid(address)
+
+
+def address_is_rsa(address: str) -> bool:
+    return SignerFactory.address_is_rsa(address)
+
+
+"""
+End compatibility
+"""
 
 
 def format_raw_tx(raw: list) -> dict:
@@ -35,7 +49,11 @@ def format_raw_tx(raw: list) -> dict:
     transaction['recipient'] = raw[3]
     transaction['amount'] = raw[4]
     transaction['signature'] = raw[5]
-    transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
+    transaction['txid'] = raw[5][:56]
+    try:
+        transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
+    except:
+        transaction['pubkey'] = raw[6] #support new pubkey schemes
     transaction['block_hash'] = raw[7]
     transaction['fee'] = raw[8]
     transaction['reward'] = raw[9]
@@ -99,10 +117,9 @@ def round_down(number, order):
     return int(math.floor(number / order)) * order
 
 
-def checkpoint_set(node, block_reference):
-    if block_reference > 2000:
-        node.checkpoint = round_down(block_reference, 1000) - 1000
-        node.logger.app_log.warning(f"Checkpoint set to {node.checkpoint}")
+def checkpoint_set(node):
+    node.checkpoint = round_down(node.last_block, 1000) - 1000
+    node.logger.app_log.warning(f"Checkpoint set to {node.checkpoint}")
 
 
 def ledger_balance3(address, cache, db_handler):
@@ -129,7 +146,8 @@ def ledger_balance3(address, cache, db_handler):
     return cache[address]
 
 
-def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, public_key_hashed) -> Union[bool, tuple]:
+def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, public_key_b64encoded) -> Union[bool, tuple]:
+    # TODO: move, make use of polysign module
     if not key:
         raise BaseException("The wallet is locked, you need to provide a decrypted key")
     try:
@@ -139,9 +157,9 @@ def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, p
         signer = SignerFactory.from_private_key(key.exportKey().decode("utf-8"), SignerType.RSA)
         signature_enc = signer.sign_buffer_for_bis(buffer)
         # Extra: recheck - Raises if Error
-        SignerFactory.verify_bis_signature(signature_enc, public_key_hashed, buffer, address)
+        SignerFactory.verify_bis_signature(signature_enc, public_key_b64encoded, buffer, address)
         full_tx = str(timestamp), str(address), str(recipient), '%.8f' % float(amount), \
-                  str(signature_enc.decode("utf-8")), str(public_key_hashed.decode("utf-8")), \
+                  str(signature_enc.decode("utf-8")), str(public_key_b64encoded.decode("utf-8")), \
                   str(operation), str(openfield)
         return full_tx
     except:
@@ -149,6 +167,7 @@ def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, p
 
 
 def keys_check(app_log, keyfile_name: str) -> None:
+    # TODO: move, make use of polysign module
     # key maintenance
     if os.path.isfile("privkey.der") is True:
         app_log.warning("privkey.der found")
@@ -197,7 +216,8 @@ def keys_load(privkey_filename: str= "privkey.der", pubkey_filename: str= "pubke
         # print("loaded",privkey, pubkey)
         # import keys
         try:  # unencrypted
-            key = RSA.importKey(open(privkey_filename).read())
+            with open(privkey_filename) as fp:
+                key = RSA.importKey(fp.read())
             private_key_readable = key.exportKey().decode("utf-8")
             # public_key = key.publickey()
             encrypted = False
@@ -206,21 +226,23 @@ def keys_load(privkey_filename: str= "privkey.der", pubkey_filename: str= "pubke
             encrypted = True
             unlocked = False
             key = None
-            private_key_readable = open(privkey_filename).read()
+            with open(privkey_filename) as fp:
+                private_key_readable = fp.read()
 
         # public_key_readable = str(key.publickey().exportKey())
-        public_key_readable = open(pubkey_filename.encode('utf-8')).read()
+        with open(pubkey_filename.encode('utf-8')) as fp:
+            public_key_readable = fp.read()
 
         if len(public_key_readable) not in (271, 799):
             raise ValueError("Invalid public key length: {}".format(len(public_key_readable)))
 
-        public_key_hashed = base64.b64encode(public_key_readable.encode('utf-8'))
+        public_key_b64encoded = base64.b64encode(public_key_readable.encode('utf-8'))
         address = hashlib.sha224(public_key_readable.encode('utf-8')).hexdigest()
 
         print("Upgrading wallet")
         keys_save(private_key_readable, public_key_readable, address, keyfile)
 
-        return key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_hashed, address, keyfile
+        return key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address, keyfile
 
 
 def keys_unlock(private_key_encrypted: str) -> tuple:
@@ -256,42 +278,9 @@ def keys_load_new(keyfile="wallet.der"):
     if len(public_key_readable) not in (271, 799):
         raise ValueError("Invalid public key length: {}".format(len(public_key_readable)))
 
-    public_key_hashed = base64.b64encode(public_key_readable.encode('utf-8'))
+    public_key_b64encoded = base64.b64encode(public_key_readable.encode('utf-8'))
 
-    return key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_hashed, address, keyfile
-
-
-# Dup code, not pretty, but would need address module to avoid dup - Belongs to polysign module.
-
-def address_validate(address:str) -> bool:
-    if RE_RSA_ADDRESS.match(address):
-        return True  # RSA
-    elif RE_ECDSA_ADDRESS.match(address):
-        if 100 > len(address) > 50:
-            return True  # SignerED25519
-        elif len(address) > 30:
-            return True  # SignerECDSA
-    return False
-
-
-def address_is_rsa(address: str) -> bool:
-    """Returns wether the given address is a legacy RSA one"""
-    return RE_RSA_ADDRESS.match(address)
-
-
-# Dup code, not pretty - belong to polysign
-def validate_pem(public_key: str) -> None:
-    # verify pem as cryptodome does
-    pem_data = base64.b64decode(public_key).decode("utf-8")
-    regex = re.compile("\s*-----BEGIN (.*)-----\s+")
-    match = regex.match(pem_data)
-    if not match:
-        raise ValueError("Not a valid PEM pre boundary")
-    marker = match.group(1)
-    regex = re.compile("-----END (.*)-----\s*$")
-    match = regex.search(pem_data)
-    if not match or match.group(1) != marker:
-        raise ValueError("Not a valid PEM post boundary")
+    return key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address, keyfile
 
 
 def fee_calculate(openfield: str, operation: str='', block: int=0) -> Decimal:
@@ -301,6 +290,8 @@ def fee_calculate(openfield: str, operation: str='', block: int=0) -> Decimal:
         fee = Decimal(fee) + Decimal("10")
     if openfield.startswith("alias="):
         fee = Decimal(fee) + Decimal("1")
+    #if operation == "alias:register": #add in the future, careful about forking
+    #    fee = Decimal(fee) + Decimal("1")
     return quantize_eight(fee)
 
 

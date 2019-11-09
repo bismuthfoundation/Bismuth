@@ -1,11 +1,13 @@
+#!/usr/bin/env python3
+
 import socks, connections, time, sys, json
 import options
 config = options.Get()
 config.read()
 version = config.version
 
-print ('Number of arguments:', len(sys.argv), 'arguments.')
-print ('Argument List:', str(sys.argv))
+# print ('Number of arguments:', len(sys.argv), 'arguments.')
+# print ('Argument List:', str(sys.argv))
 
 try:
     command = sys.argv[1]
@@ -85,17 +87,8 @@ else:
     #s.connect(("34.192.6.105", 5658))
     #s.connect(("bismuth.live", 5658))
 
-def stop(socket):
-    connections.send(s, "stop")
-
-
-def annverget(socket):
-    connections.send(s, "annverget")
-    result = connections.receive(s)
-    print (result)
-
-def annget(socket):
-    connections.send(s, "annget")
+def api_getconfig(socket):
+    connections.send(s, "api_getconfig")
     result = connections.receive(s)
     print (result)
 
@@ -210,6 +203,14 @@ def blocklastjson(socket):
     print(json.dumps(response))
     #get last block
 
+def api_getblocksince(socket, arg1=None):
+    #get last block
+    connections.send(s, "api_getblocksince")
+    if arg1:
+        connections.send(s, arg1)
+    response = connections.receive(s)
+    print(json.dumps(response))
+    #get last block
 
 def keygen(socket):
     #generate address
@@ -309,6 +310,12 @@ def listlim(socket, arg1):
     for row in tx_list:
         print (row)
 
+def api_getblockfromhash(socket, arg1):
+    connections.send(s, "api_getblockfromhash")
+    connections.send(s, arg1)
+    reply = connections.receive(s)
+    print(reply)
+
 def listlimjson(socket, arg1):
     #get x last txs
     connections.send(s, "listlimjson")
@@ -364,6 +371,11 @@ def statusget(socket):
     response = connections.receive(s)
     print(json.dumps(response))
 
+def portget(socket):
+    connections.send(s, "portget")
+    response = connections.receive(s)
+    print(json.dumps(response))
+
 def addvalidate(socket, arg1):
     connections.send(s, "addvalidate")
     connections.send(s, arg1)
@@ -391,7 +403,6 @@ if command == "getversion":
     connections.send(s, "getversion")
     print(connections.receive(s))
 
-
 if command == "generate":
     if not is_regnet:
         print("Only available on regnet")
@@ -407,7 +418,6 @@ if command == "mpfill":
     connections.send(s, "regtest_mpfill")
     connections.send(s, arg1)
     print(connections.receive(s))
-
 
 if command == "mpinsert":
     #arg1 = '1520788207.69', '4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed', '4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed', '0.00000000', 'e0piKXvc636t0fYmxdOti3fJZ+G1vQYAJ2IZv4inPGQYgG4nS0lU+61LDQQVqeGvmsDOsxFhM6VVLpYExPmc5HF6e1ZAr5IXQ69s88sJBx/XVl1YavAdo0katGDyvZpQf609F8PVbtD0zzBinQjfkoXU/NXo00CEyniyYPxAXuI=', 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlHZk1BMEdDU3FHU0liM0RRRUJBUVVBQTRHTkFEQ0JpUUtCZ1FES3ZMVGJEeDg1YTF1Z2IvNnhNTWhWT3E2VQoyR2VZVDgrSXEyejlGd0lNUjQwbDJ0dEdxTks3dmFyTmNjRkxJdThLbjRvZ0RRczNXU1dRQ3hOa2haaC9GcXpGCllZYTMvSXRQUGZ6clhxZ2Fqd0Q4cTRadDRZbWp0OCsyQmtJbVBqakZOa3VUUUl6Mkl1M3lGcU9JeExkak13N24KVVZ1OXRGUGlVa0QwVm5EUExRSURBUUFCCi0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQ==', '0', ''
@@ -449,11 +459,8 @@ elif command == "balancegethyper":
 elif command == "balancegethyperjson":
     balancegethyperjson(s, arg1)
 
-elif command == "annget":
-    annget(s)
-
-elif command == "annverget":
-    annverget(s)
+elif command == "api_getconfig":
+    api_getconfig(s)
 
 elif command == "mpget":
     mpget(s)
@@ -463,6 +470,9 @@ elif command == "mpgetjson":
 
 elif command == "statusget":
     statusget(s)
+
+elif command == "portget":
+    portget(s)
 
 elif command == "peersget":
     peersget(s)
@@ -503,11 +513,18 @@ elif command == "addlistlimmirjson":
 elif command == "listlim":
     listlim(s, arg1)
 
-elif command == "stop":
-    stop(s)
+elif command == "api_getblockfromhash":
+    api_getblockfromhash(s, arg1)
+
+elif command == "api_getblocksince":
+    try:
+        api_getblocksince(s, int(arg1))
+    except:
+        api_getblocksince(s)
 
 elif command == "stop":
     connections.send(s, "stop")
+    print("Asked to Stop")
 
 elif command == "addfromalias":
     addfromalias(s, arg1)

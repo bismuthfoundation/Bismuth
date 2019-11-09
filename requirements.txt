@@ -1,4 +1,4 @@
-# Pip3 requirements for a node and wallet setup
+# Pip3 requirements - synced with requirements-node since wallet is now separate.
 
 # You need to manually run the following line first
 # pip3 install simple-crypt --no-deps
@@ -7,16 +7,8 @@
 
 PySocks
 pycryptodomex
-pillow
-pyqrcode
-matplotlib
-ed25519
-base58
-coincurve
-
-# request may be needed by helper scripts
 requests
-
-# These are no more used
-# pypng
-# pyinstaller
+polysign>=0.1.0
+base58
+# coincurve
+# ed25519

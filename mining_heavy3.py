@@ -12,14 +12,15 @@ import struct
 import sys
 from hashlib import sha224
 from hmac_drbg import DRBG
-from quantizer import *
+from quantizer import quantize_two, quantize_eight, quantize_ten
+from decimal import Decimal
 
 import regnet
 
 from fork import Fork
 fork = Fork()
 
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 
 print("Mining_Heavy3 v{}".format(__version__))
@@ -46,7 +47,7 @@ def anneal3(mmap, n):
     h7 = n & 0xffffffff
     n = n >> 32
     index = ((h7 & ~0x7) % RND_LEN) * 4
-    f1 = struct.unpack('I', mmap[index:index + 4])[0]
+    # f1 = struct.unpack('I', mmap[index:index + 4])[0]
     value = h7 ^ struct.unpack('I', mmap[index:index + 4])[0]
     res = "{:08x}".format(value)
     for i in range(6):
@@ -66,9 +67,9 @@ def diffme_heavy3(pool_address, nonce, db_block_hash):
     # minimum possible diff
     diff = 1
     diff_result = 0
-    hash = sha224((pool_address + nonce + db_block_hash).encode("utf-8")).digest()
-    hash = int.from_bytes(hash, 'big')
-    annealed_sha = anneal3(MMAP, hash)
+    hash224 = sha224((pool_address + nonce + db_block_hash).encode("utf-8")).digest()
+    hash224 = int.from_bytes(hash224, 'big')
+    annealed_sha = anneal3(MMAP, hash224)
     bin_annealed_sha = bin_convert(annealed_sha)
     mining_condition = bin_convert(db_block_hash)
     while mining_condition[:diff] in bin_annealed_sha:
@@ -135,7 +136,7 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
     return diff_save
 
 
-def create_heavy3a(file_name):
+def create_heavy3a(file_name="heavy3a.bin"):
     print("Creating Junction Noise file, this usually takes a few minutes...")
     gen = DRBG(b"Bismuth is a chemical element with symbol Bi and atomic number 83. It is a pentavalent post-transition metal and one of the pnictogens with chemical properties resembling its lighter homologs arsenic and antimony.")
     # Size in Gb - No more than 4Gb from a single seed
@@ -148,26 +149,34 @@ def create_heavy3a(file_name):
             f.write(gen.generate(CHUNK_SIZE))
 
 
-def mining_open():
+def mining_open(file_name="heavy3a.bin"):
     """
     Opens the Junction MMapped file
     """
     global F
     global MMAP
     global RND_LEN
-    map = './heavy3a.bin' if os.path.isfile('./heavy3a.bin') else '../CSPRNG/rnd.bin'
-    if not os.path.isfile(map):
-        create_heavy3a('./heavy3a.bin')
-        map = './heavy3a.bin'
+    if os.path.isfile(file_name):
+        size = os.path.getsize(file_name)
+        if size != 1073741824:
+            print("Invalid size of heavy file {}.".format(file_name))
+            try:
+                os.remove(file_name)
+                print("Deleted, Will be re-created")
+            except Exception as e:
+                print(e)
+                sys.exit()
+    if not os.path.isfile(file_name):
+        create_heavy3a(file_name)
     try:
-        F = open(map, "rb+")
+        F = open(file_name, "rb+")
         # memory-map the file, size 0 means whole file
         MMAP = mmap.mmap(F.fileno(), 0)
-        RND_LEN = os.path.getsize(map) // 4
+        RND_LEN = os.path.getsize(file_name) // 4
         if read_int_from_map(MMAP, 0) != 3786993664:
-            raise ValueError("Wrong file: {}".format(map))
+            raise ValueError("Wrong file: {}".format(file_name))
         if read_int_from_map(MMAP, 1024) != 1742706086:
-            raise ValueError("Wrong file: {}".format(map))
+            raise ValueError("Wrong file: {}".format(file_name))
     except Exception as e:
         print("Error while loading Junction file: {}".format(e))
         sys.exit()

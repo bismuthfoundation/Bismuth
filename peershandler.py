@@ -3,25 +3,23 @@ Peers handler module for Bismuth nodes
 @EggPoolNet
 """
 
-import connections
 import json
 import os
-import re
+import shutil
+# import re
 import sys
 import threading
-import time
-import shutil
+from time import time
+import random
 
 import socks
 
+import connections
 import regnet
+from essentials import most_common_dict, percentage_in
 
-from essentials import most_common, most_common_dict, percentage_in
+__version__ = "0.0.18"
 
-__version__ = "0.0.12"
-
-
-# TODO : some config options are  and others without => clean up later on
 
 class Peers:
     """The peers manager. A thread safe peers manager"""
@@ -29,15 +27,14 @@ class Peers:
     __slots__ = ('app_log','config','logstats','node','peersync_lock','startup_time','reset_time','warning_list','stats',
                  'connection_pool','peer_opinion_dict','consensus_percentage','consensus',
                  'tried','peer_dict','peerfile','suggested_peerfile','banlist','whitelist','ban_threshold',
-                 'ip_to_mainnet', 'peers', 'first_run', 'accept_peers', 'peerlist_updated')
+                 'ip_to_mainnet', 'peers', 'accept_peers', 'peerlist_updated')
 
     def __init__(self, app_log, config=None, logstats=True, node=None):
         self.app_log = app_log
         self.config = config
         self.logstats = logstats
-
         self.peersync_lock = threading.Lock()
-        self.startup_time = time.time()
+        self.startup_time = time()
         self.reset_time = self.startup_time
         self.warning_list = []
         self.stats = []
@@ -56,7 +53,6 @@ class Peers:
 
         self.peerfile = "peers.txt"
         self.suggested_peerfile = "suggested_peers.txt"
-        self.first_run = True
         self.peerlist_updated = False
 
         self.node = node
@@ -87,6 +83,11 @@ class Peers:
             return True
         return "regnet" in self.config.version
 
+    def dict_shuffle(self, dictinary):
+        l = list(dictinary.items())
+        random.shuffle(l)
+        return dict(l)
+
     def status_dict(self):
         """Returns a status as a dict"""
         status = {"version": self.config.VERSION, "stats": self.stats}
@@ -109,65 +110,70 @@ class Peers:
             return True
         return self.ip_to_mainnet[ip] in version_allow
 
-    def peer_dump(self, file, peer):
-        """saves single peer to drive"""
-        with open(file, "r") as peer_file:
-            peers_pairs = json.load(peer_file)
-            peers_pairs[peer] = self.config.port #make this dynamic once
-        with open(file, "w") as peer_file:
-            json.dump(peers_pairs, peer_file)
-
-    def peers_dump(self, file, peerdict):
+    def peers_test(self, file, peerdict: dict, strict=True):
         """Validates then adds a peer to the peer list on disk"""
         # called by Sync, should not be an issue, but check if needs to be thread safe or not.
+        # also called by self.client_loop, which is to be reworked
+        # Egg: Needs to be thread safe.
         self.peerlist_updated = False
+        try:
+            with open(file, "r") as peer_file:
+                peers_pairs = json.load(peer_file)
+            # TODO: rework, because this takes too much time and freezes the status thread.
+            # to be done in a dedicated thread, with one peer per xx seconds, not all at once, and added properties.
+            for ip, port in dict(peerdict).items():
+                # I do create a new dict copy above, because logs showed that the dict can change while iterating
+                if self.node.IS_STOPPING:
+                    # Early exit if stopping
+                    return
+                try:
+                    if ip not in peers_pairs:
+                        self.app_log.info(f"Testing connectivity to: {ip}:{port}")
+                        s = socks.socksocket()
+                        try:
+                            # connect timeout
+                            s.settimeout(5)
+                            if self.config.tor:
+                                s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
+                            if strict:
+                                s.connect((ip, int(port)))
+                                connections.send(s, "getversion")
+                                versiongot = connections.receive(s, timeout=1)
+                                if versiongot == "*":
+                                    raise ValueError("peer busy")
+                                if versiongot not in self.config.version_allow:
+                                    raise ValueError(f"cannot save {ip}, incompatible protocol version {versiongot} "
+                                                     f"not in {self.config.version_allow}")
+                                self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
+                            else:
+                                s.connect((ip, int(port)))
+                        finally:
+                            # properly end the connection in all cases
+                            try:
+                                s.close()
+                            except:
+                                pass
+                        peers_pairs[ip] = port
+                        self.app_log.info(f"Inbound: Peer {ip}:{port} saved to peers")
+                        self.peerlist_updated = True
+                    else:
+                        self.app_log.info("Distant peer already in peers")
 
-        with open(file, "r") as peer_file:
-            peers_pairs = json.load(peer_file)
+                except Exception as e:
+                    # exception for a single peer
+                    self.app_log.info(f"Inbound: Distant peer not connectible ({e})")
 
-        for ip, port in peerdict.items():
+            if self.peerlist_updated:
+                self.app_log.warning(f"{file} peerlist updated ({len(peers_pairs)}) total")  # the whole dict is saved
+                with open(f"{file}.tmp", "w") as peer_file:
+                    json.dump(peers_pairs, peer_file)
+                shutil.move(f"{file}.tmp",file)
+            else:
+                self.app_log.warning(f"{file} peerlist update skipped, no changes")
 
-            try:
-                if ip not in peers_pairs:
-                    self.app_log.info(f"Testing connectivity to: {ip}:{port}")
-                    s = socks.socksocket()
-                    if self.config.tor:
-                        s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
-
-                    s.connect((ip, port))
-                    connections.send(s, "getversion")
-                    versiongot = connections.receive(s, timeout=1)
-                    if versiongot == "*":
-                        raise ValueError("Peer busy")
-                    self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
-
-                    try:
-                        connections.send(s,"getversion")
-                        versiongot = connections.receive(s, timeout=1)
-                        self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
-                    except Exception as e:
-                        self.app_log.info(f"Inbound: Distant peer {ip}:{port} not responding: {e}")
-
-                    s.close()
-                    # properly end the connection
-
-                    #peers_pairs[ip] = port
-
-                    self.app_log.info(f"Inbound: Peer {ip}:{port} saved to peer list")
-                    self.peerlist_updated = True
-
-                else:
-                    self.app_log.info("Distant peer already in peer list")
-
-            except:
-                self.app_log.info("Inbound: Distant peer not connectible")
-                pass
-
-        if self.peerlist_updated:
-            self.app_log.warning("Peerlist updated")
-            with open(f"{file}.tmp", "w") as peer_file:
-                json.dump(peers_pairs, peer_file)
-            shutil.move(f"{file}.tmp",file)
+        except Exception as e:
+            # Exception for the file itself.
+            self.app_log.info(f"Error reading {file}: '{e}'")
 
     def append_client(self, client):
         """
@@ -198,11 +204,11 @@ class Peers:
         """Adds a weighted warning to a peer."""
         # TODO: Not thread safe atm. Should use a thread aware list or some lock
         if ip not in self.whitelist:
-            # TODO: use a dict instead of several occurences in a list
+            # TODO: use a dict instead of several occurrences in a list
             for x in range(count):
                 self.warning_list.append(ip)
-            self.app_log.warning(f"Added {count} warning(s) to {ip}: {reason} ({self.warning_list.count(ip)} / {self.ban_threshold})")
-
+            self.app_log.warning(f"Added {count} warning(s) to {ip}: {reason} "
+                                 f"({self.warning_list.count(ip)} / {self.ban_threshold})")
             if self.warning_list.count(ip) >= self.ban_threshold:
                 self.banlist.append(ip)
                 self.app_log.warning(f"{ip} is banned: {reason}")
@@ -210,17 +216,22 @@ class Peers:
             else:
                 return False
 
-    def peers_get(self, peerfile=''):
-        """Returns a peerfile from disk as a dict {ip:port}"""
+    def peers_get(self, peer_file=''):
+        """Returns a peer_file from disk as a dict {ip:port}"""
         peer_dict = {}
-        if not peerfile:
-            peerfile = self.peerfile
-        if not os.path.exists(peerfile):
-            with open(peerfile, "a"):
-                self.app_log.warning("Peer file created")
-        else:
-            with open(peerfile, "r") as peer_file:
-                peer_dict = json.load(peer_file)
+        try:
+            if not peer_file:
+                peer_file = self.peerfile
+            if not os.path.exists(peer_file):
+                with open(peer_file, "w") as fp:
+                    # was "a": append would risk adding stuff to a file create in the mean time.
+                    self.app_log.warning("Peer file created")
+                    fp.write("{}")  # empty dict. An empty string is not json valid.
+            else:
+                with open(peer_file, "r") as fp:
+                    peer_dict = json.load(fp)
+        except Exception as e:
+            self.app_log.warning(f"Error peers_get {e} reading {peer_file}")
         return peer_dict
 
     def peer_list_disk_format(self):
@@ -258,8 +269,11 @@ class Peers:
         # Always allow whitelisted ip to post as block
         if 'block' == command and self.is_whitelisted(peer_ip):
             return True
-        # only allow local host for "stop" command
-        if 'stop' == command:
+        # always allowed commands, only required and non cpu intensive.
+        if command in ('portget',):
+            return True
+        # only allow local host for "stop" and addpeers command
+        if command in ('stop', 'addpeers'):
             return peer_ip == '127.0.0.1'
         return peer_ip in self.config.allowed or "any" in self.config.allowed
 
@@ -267,124 +281,67 @@ class Peers:
         # TODO: could be handled later on via "allowed" and rights.
         return peer_ip in self.whitelist or "127.0.0.1" == peer_ip
 
-    def is_banned(self, peer_ip):
+    def is_banned(self, peer_ip) -> bool:
         return peer_ip in self.banlist
 
-    def peers_test(self, peerfile):
-        """Tests all peers from a list."""
-        # TODO: lengthy, no need to test everyone at once?
-        if not self.peersync_lock.locked() and self.config.accept_peers:
-            self.peersync_lock.acquire()
-            try:
-                peer_dict = self.peers_get(peerfile)
-                peers_remove = {}
+    def dict_validate(self, json_dict: str) -> str:
+        """temporary fix for broken peerlists"""
+        if json_dict.count("}") > 1:
+            result = json_dict.split("}")[0] + "}"
+        else:
+            result = json_dict
+        return result
 
-                for key, value in peer_dict.items():
-                    ip, port = key, int(value)
-                    try:
-                        s = socks.socksocket()
-                        if self.config.tor:
-                            s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
-
-                        s.connect((ip, port))
-                        connections.send(s, "getversion")
-                        versiongot = connections.receive(s, timeout=1)
-                        if versiongot == "*":
-                            raise ValueError ("Peer busy")
-                        self.app_log.info(f"Inbound: Distant peer {ip}:{port} responding: {versiongot}")
-                        s.close()
-
-                        self.app_log.warning(f"Connection to {ip}:{port} successful, keeping the peer")
-                    except Exception as e:
-                        if self.config.purge and not self.is_testnet:
-                            # remove from peerfile if not connectible
-                            self.app_log.info(f"Inbound: Distant peer {ip}:{port} not responding: {e}")
-
-                            peers_remove[key] = value
-                        pass
-
-                for key in peers_remove:
-                    del peer_dict[key]
-                    self.app_log.info(f"Removed formerly active peer {key}")
-
-                with open(peerfile, "w") as output:
-                    json.dump(peer_dict, output)
-            finally:
-                self.peersync_lock.release()
-
-    def peersync(self, subdata):
-        """Got a peers list from a peer, process. From worker()."""
+    def peersync(self, subdata: str) -> int:
+        """Got a peers list from a peer, process. From worker().
+        returns the number of added peers, -1 if it was locked or not accepting new peers
+        subdata is a dict, { 'ip': 'port'}"""
 
         # early exit to reduce future levels
         if not self.config.accept_peers:
-            return
+            return -1
         if self.peersync_lock.locked():
+            # TODO: means we will lose those peers forever.
+            # TODO: buffer, and keep track of recently tested peers.
             self.app_log.info("Outbound: Peer sync occupied")
-            return
-        self.peersync_lock.acquire()
-        try:
-            if "(" in str(subdata):  # OLD WAY
-                server_peer_tuples = re.findall("'([\d.]+)', '([\d]+)'", subdata)
+            return -1
+        with self.peersync_lock:
+            try:
+                total_added = 0
 
-                self.app_log.info(f"Received following {len(server_peer_tuples)} peers: {server_peer_tuples}")
-                with open(self.peerfile, "r") as peer_file:
-                    peers = json.load(peer_file)
-
-                for pair in set(server_peer_tuples):  # set removes duplicates
-                    if pair not in peers and self.accept_peers:
-                        self.app_log.info(f"Outbound: {pair} is a new peer, saving if connectible")
-                        try:
-                            s_purge = socks.socksocket()
-                            if self.config.tor:
-                                s_purge.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
-
-                            s_purge.connect((pair[0], int(pair[1])))  # save a new peer file with only active nodes
-                            s_purge.close()
-                            # suggested
-
-                            with open(self.suggested_peerfile) as peers_existing:
-                                peers_suggested = json.load(peers_existing)
-                                if pair not in peers_suggested:
-                                    peers_suggested[pair[0]] = pair[1]
-
-                                    with open(self.suggested_peerfile, "w") as peer_list_file:
-                                        json.dump(peers_suggested, peer_list_file)
-                            # suggested
-                            peers[pair[0]] = pair[1]
-                            with open(self.peerfile, "w") as peer_file:
-                                json.dump(peers, peer_file)
-
-                        except:
-                            pass
-                            self.app_log.info("Not connectible")
-                    else:
-                        self.app_log.info(f"Outbound: {pair} is not a new peer")
-
-            else:
                 # json format
-                self.app_log.info(f"Received following {len(json.loads(subdata))} peers: {subdata}")
 
-                for ip,port in json.loads(subdata).items():
+                subdata = self.dict_validate(subdata)
+                data_dict = json.loads(subdata)
 
-                    if ip not in self.peer_dict.keys():
+                self.app_log.info(f"Received {len(data_dict)} peers.")
+                # Simplified the log, every peers then has a ok or ko status anyway.
+                for ip, port in data_dict.items():
+                    if ip not in self.peer_dict:
                         self.app_log.info(f"Outbound: {ip}:{port} is a new peer, saving if connectible")
                         try:
                             s_purge = socks.socksocket()
+                            s_purge.settimeout(5)
                             if self.config.tor:
                                 s_purge.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
                             s_purge.connect((ip, int(port)))  # save a new peer file with only active nodes
                             s_purge.close()
-
-                            if ip not in self.peer_dict.keys():
+                            # This only adds to our local dict, does not force save.
+                            if ip not in self.peer_dict:
+                                total_added += 1
                                 self.peer_dict[ip] = port
-
+                                self.app_log.info(f"Inbound: Peer {ip}:{port} saved to local peers")
                         except:
-                            pass
                             self.app_log.info("Not connectible")
                     else:
                         self.app_log.info(f"Outbound: {ip}:{port} is not a new peer")
-        finally:
-            self.peersync_lock.release()
+            except Exception as e:
+                self.app_log.warning(e)
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
+                raise
+        return total_added
 
     def consensus_add(self, peer_ip, consensus_blockheight, sdef, last_block):
         # obviously too old blocks, we have half a day worth of validated blocks after them
@@ -414,7 +371,6 @@ class Peers:
             print(exc_type, fname, exc_tb.tb_lineno)
             raise
 
-
     def consensus_remove(self, peer_ip):
         if peer_ip in self.peer_opinion_dict:
             try:
@@ -424,7 +380,6 @@ class Peers:
                 raise
 
     def can_connect_to(self, host, port):
-
         """
         Tells if we can connect to this host
         :param host:
@@ -440,7 +395,7 @@ class Peers:
             tries, timeout = self.tried[host_port]
         except:
             tries, timeout = 0, 0  # unknown host for now, never tried.
-        if timeout > time.time():
+        if timeout > time():
             return False  # We tried before, timeout is not expired.
         if self.is_whitelisted(host):
             return True  # whitelisted peers are always connectible, without variability condition.
@@ -478,7 +433,7 @@ class Peers:
         tries += 1
         if tries > 3:
             tries = 3
-        self.tried[host_port] = (tries, time.time() + delay)
+        self.tried[host_port] = (tries, time() + delay)
         # Temp
         self.app_log.info(f"Set timeout {delay} try {tries} for {host_port}")
 
@@ -507,7 +462,7 @@ class Peers:
         Remove the older timeouts from the tried list.
         Keep the recent ones or we end up trying the first ones again and again
         """
-        limit = time.time() + 12*60  # matches 2.5 tries :)
+        limit = time() + 12*60  # matches 2.5 tries :)
         remove = [client for client in self.tried if self.tried[client][1] > limit]
         for client in remove:
             del self.tried[client]
@@ -515,7 +470,9 @@ class Peers:
     def client_loop(self, node, this_target):
         """Manager loop called every 30 sec. Handles maintenance"""
         try:
-            for key, value in self.peer_dict.items():
+            for key, value in dict(self.dict_shuffle(self.peer_dict)).items():
+                # The dict() above is not an error or a cast, 
+                # it's to make a copy of the dict and avoid "dictionary changed size during iteration"
                 host = key
                 port = int(value)
 
@@ -529,12 +486,12 @@ class Peers:
                     t.daemon = True
                     t.start()
 
-            if len(self.peer_dict) < 3 and int(time.time() - self.startup_time) > 60:
+            if len(self.peer_dict) < 6 and int(time() - self.startup_time) > 30:
                 # join in random peers after x seconds
                 self.app_log.warning("Not enough peers in consensus, joining in peers suggested by other nodes")
                 self.peer_dict.update(self.peers_get(self.suggested_peerfile))
 
-            if len(self.connection_pool) < self.config.nodes_ban_reset and int(time.time() - self.startup_time) > 15:
+            if len(self.connection_pool) < self.config.nodes_ban_reset and int(time() - self.startup_time) > 15:
                 # do not reset before 30 secs have passed
                 self.app_log.warning(f"Only {len(self.connection_pool)} connections active, resetting banlist")
                 del self.banlist[:]
@@ -542,35 +499,38 @@ class Peers:
                 del self.warning_list[:]
 
             if len(self.connection_pool) < 10:
-                self.app_log.warning(f"Only {len(self.connection_pool)} connections active, resetting the connection history")
+                self.app_log.warning(f"Only {len(self.connection_pool)} connections active, "
+                                     f"resetting the connection history")
                 # TODO: only reset large timeouts, or we end up trying the sames over and over if we never get to 10.
                 # self.
                 self.reset_tried()
 
-            if self.config.nodes_ban_reset and len(self.connection_pool) <= len(self.banlist) \
-                    and int(time.time() - self.reset_time) > 60*10:
+            if self.config.nodes_ban_reset <= len(self.banlist) and len(self.connection_pool) <= len(self.banlist) \
+                    and (time() - self.reset_time) > 60 * 10:
                 # do not reset too often. 10 minutes here
-                self.app_log.warning(f"Less active connections ({len(self.connection_pool)}) than banlist ({len(self.banlist)}), resetting banlist and tried list")
+                self.app_log.warning(f"Less active connections ({len(self.connection_pool)}) "
+                                     f"than banlist ({len(self.banlist)}), resetting banlist and tried list")
                 del self.banlist[:]
                 self.banlist.extend(self.config.banlist)  # reset to config version
                 del self.warning_list[:]
                 self.reset_tried()
-                self.reset_time = time.time()
+                self.reset_time = time()
 
-            if self.first_run and int(time.time() - self.startup_time) > 60:
-                self.app_log.warning("Status: Testing peers")
-                self.peers_test(self.peerfile)
-                self.peers_test(self.suggested_peerfile)
-                self.first_run = False
+            self.app_log.warning("Status: Testing peers")
+            self.peer_dict.update(self.peers_get(self.peerfile))
+            # self.peer_dict.update(self.peers_get(self.suggested_peerfile))
 
-            if int(time.time() - self.startup_time) > 15:  # refreshes peers from drive
-                self.peer_dict.update(self.peers_get(self.peerfile))
-
-            self.peers_dump(self.suggested_peerfile,self.peer_dict)
-
+            # TODO: this is not OK. client_loop is called every 30 sec and should NOT contain any lengthy calls.
+            self.peers_test(self.suggested_peerfile, self.peer_dict, strict=False)
+            self.peers_test(self.peerfile, self.peer_dict, strict=True)
 
         except Exception as e:
-            self.app_log.warning(f"Status: Manager run skipped due to error: {e}")
+            self.app_log.warning(f"Status: peers client loop skipped due to error: {e}")
+            # raise
+            """We do not want to raise here, since the rest of the calling method would be skipped also.
+            It's ok to skip this part only
+            The calling method has other important subsequent calls that have to be done.
+            """
 
     def status_log(self):
         """Prints the peers part of the node status"""

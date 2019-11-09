@@ -1,14 +1,14 @@
 class Fork():
     def __init__(self):
-        self.POW_FORK = 1200000
+        self.POW_FORK = 1450000
         self.POW_FORK_TESTNET = 894170
         self.FORK_AHEAD = 5
-        self.versions_remove = ['mainnet0019', 'mainnet0018', 'mainnet0017']
+        self.versions_remove = ['mainnet0020', 'mainnet0019', 'mainnet0018', 'mainnet0017']
         self.FORK_REWARD = None
         self.FORK_REWARD_TESTNET = None
         self.PASSED = False
         self.PASSED_TESTNET = False
-        self.REWARD_MAX = 11
+        self.REWARD_MAX = 6
 
         #self.POW_FORK = 1168860 #HACK
         #self.versions_remove = [] #HACK

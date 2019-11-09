@@ -3,10 +3,11 @@
 #todo: rollbacks inside node; make sure delagete/ip is only allowed characters
 
 #operation: staking:register
+#last working integrated implementation: https://github.com/bismuthfoundation/Bismuth/commit/69fd3aafd31cce6def1b09ffc64c95d457243c8a
 
 import sqlite3
 import log
-from quantizer import *
+from quantizer import quantize_two, quantize_eight, quantize_ten
 import mempool as mp
 from hashlib import blake2b
 import re
@@ -201,7 +202,7 @@ if __name__ == "__main__":
     mp.MEMPOOL = mp.Mempool (app_log,config,None,False)
 
 
-    conn = sqlite3.connect('static/test.db')
+    conn = sqlite3.connect('static/ledger_test.db')
     conn.text_factory = str
     c = conn.cursor()
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 
 Demo script for the api_getaddresssince api command.
@@ -30,7 +31,7 @@ import socks
 import sys
 
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 
 def get_address_since(since, min_conf, address):

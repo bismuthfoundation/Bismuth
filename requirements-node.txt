@@ -8,6 +8,7 @@
 PySocks
 pycryptodomex
 requests
-ed25519
+polysign>=0.1.0
 base58
-coincurve
+# coincurve
+# ed25519

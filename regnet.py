@@ -8,6 +8,7 @@ import os
 import sqlite3
 import sys
 import time
+import functools
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Hash import SHA
 from Cryptodome.Signature import PKCS1_v1_5
@@ -31,7 +32,6 @@ REGNET_PEERS = "peers_reg.txt"
 REGNET_SUGGESTED_PEERS = "peers_reg.txt"
 
 SQL_INDEX = [ "CREATE TABLE aliases (block_height INTEGER, address, alias)",
-              "CREATE TABLE staking (block_height INTEGER, timestamp NUMERIC, address, balance)",
               "CREATE TABLE tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)" ]
 
 SQL_LEDGER = [ "CREATE TABLE misc (block_height INTEGER, difficulty TEXT)",
@@ -63,12 +63,16 @@ TX_PER_BLOCK = 2
 ADDRESS = 'This is a fake address placeholder for regtest mode only'
 KEY = None
 PRIVATE_KEY_READABLE = 'matching priv key'
-PUBLIC_KEY_HASHED = 'matching pub key b64'
+PUBLIC_KEY_B64ENCODED = 'matching pub key b64'
 
 DIGEST_BLOCK = None
 
 # because of compatibility - huge node refactor wanted.
 
+
+def sql_trace_callback(log, id, statement):
+    line = f"SQL[{id}] {statement}"
+    log.warning(line)
 
 
 def generate_one_block(blockhash, mempool_txs, node, db_handler):
@@ -121,7 +125,7 @@ def generate_one_block(blockhash, mempool_txs, node, db_handler):
                     if signer.verify(hash, signature):
                         node.logger.app_log.warning("Signature valid")
                         block_send.append((str(block_timestamp), str(ADDRESS[:56]), str(ADDRESS[:56]), '%.8f' % float(0),
-                                           str(signature_enc.decode("utf-8")), str(PUBLIC_KEY_HASHED.decode("utf-8")),
+                                           str(signature_enc.decode("utf-8")), str(PUBLIC_KEY_B64ENCODED.decode("utf-8")),
                                            "0", str(nonce)))  # mining reward tx
                         node.logger.app_log.warning("Block to send: {}".format(block_send))
                     # calc hash
@@ -137,6 +141,7 @@ def generate_one_block(blockhash, mempool_txs, node, db_handler):
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         node.logger.app_log.warning(exc_type, fname, exc_tb.tb_lineno)
+
 
 def command(sdef, data, blockhash, node, db_handler):
     try:
@@ -168,14 +173,14 @@ def init(app_log, trace_db_calls=False):
     # create empty index db
     with sqlite3.connect(REGNET_DB) as source_db:
         if trace_db_calls:
-            upgrade.set_trace_callback(functools.partial(sql_trace_callback,app_log,"REGNET-INIT"))
+            source_db.set_trace_callback(functools.partial(sql_trace_callback,app_log,"REGNET-INIT"))
         for request in SQL_LEDGER:
             source_db.execute(request)
         source_db.commit()
     # create empty reg db
     with sqlite3.connect(REGNET_INDEX) as source_db:
         if trace_db_calls:
-            upgrade.set_trace_callback(functools.partial(sql_trace_callback,app_log,"REGNET-INIT-INDEX"))
+            source_db.set_trace_callback(functools.partial(sql_trace_callback,app_log,"REGNET-INIT-INDEX"))
         for request in SQL_INDEX:
             source_db.execute(request)
         source_db.commit()

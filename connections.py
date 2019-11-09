@@ -9,7 +9,7 @@ def send(sdef, data, slen=SLEN):
     sdef.setblocking(1)
     # Make sure the packet is sent in one call
 
-    sdef.sendall(str(len(str(json.dumps(data)))).encode("utf-8").zfill(slen) + str(json.dumps(data)).encode("utf-8"))
+    sdef.sendall(str(len(json.dumps(data))).encode("utf-8").zfill(slen) + json.dumps(data).encode("utf-8"))
 
 if "Linux" in platform.system():
     READ_OR_ERROR = select.POLLIN | select.POLLPRI | select.POLLHUP | select.POLLERR | select.POLLNVAL

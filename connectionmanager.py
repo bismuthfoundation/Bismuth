@@ -2,6 +2,7 @@ import threading
 import time
 from worker import worker
 
+
 class ConnectionManager (threading.Thread):
     def __init__(self, node, mp):
         threading.Thread.__init__(self, name="ConnectionManagerThread")
@@ -18,23 +19,20 @@ class ConnectionManager (threading.Thread):
         self.logger.app_log.warning("Status: Starting connection manager")
         until_purge = 0
 
-        while not self.node.IS_STOPPING or self.db_lock.locked():
+        while not self.node.IS_STOPPING:
             try:
                 # dict_keys = peer_dict.keys()
                 # random.shuffle(peer_dict.items())
-                if until_purge == 0:
+                if until_purge <= 0 and not self.db_lock.locked:
                     # will purge once at start, then about every hour (120 * 30 sec)
                     self.mp.MEMPOOL.purge()
                     until_purge = 120
-
                 until_purge -= 1
 
                 # peer management
-            
                 if not self.node.is_regnet:
                     # regnet never tries to connect
-                    self.node.peers.client_loop(self.node, this_target = worker)
-
+                    self.node.peers.client_loop(self.node, this_target=worker)
                 self.logger.app_log.warning(f"Status: Threads at {threading.active_count()} / {self.node.thread_limit}")
                 self.logger.app_log.info(f"Status: Syncing nodes: {self.node.syncing}")
                 self.logger.app_log.info(f"Status: Syncing nodes: {len(self.node.syncing)}/3")
@@ -42,14 +40,13 @@ class ConnectionManager (threading.Thread):
                 # Status display for Peers related info
                 self.node.peers.status_log()
                 self.mp.MEMPOOL.status()
-
+                # last block
                 if self.node.last_block_ago:
                     self.node.last_block_ago = time.time() - int(self.node.last_block_timestamp)
-                    self.logger.app_log.warning(f"Status: Last block {self.node.last_block} was generated {'%.2f' % (self.node.last_block_ago / 60) } minutes ago")
-                # last block
+                    self.logger.app_log.warning(f"Status: Last block {self.node.last_block} was generated "
+                                                f"{'%.2f' % (self.node.last_block_ago / 60) } minutes ago")
                 # status Hook
                 uptime = int(time.time() - self.node.startup_time)
-
                 status = {"protocolversion": self.node.version,
                           "walletversion": self.node.app_version,
                           "testnet": self.node.is_testnet,
@@ -68,21 +65,11 @@ class ConnectionManager (threading.Thread):
                 self.node.plugin_manager.execute_action_hook('status', status)
                 # end status hook
 
-                if self.node.peerfile_suggested:  # if it is not empty
-                    try:
-                        self.node.peers.peers_dump(self.node.peerfile_suggested, self.node.peers.peer_dict)
-                    except Exception as e:
-                        self.logger.app_log.warning(f"There was an issue saving peers ({e}), skipped")
-                        pass
-
                 # logger.app_log.info(threading.enumerate() all threads)
-                time.sleep(30)
-                """
+                # time.sleep(30)
                 for i in range(30):
                     # faster stop
-                    if not node.IS_STOPPING:
+                    if not self.node.IS_STOPPING:
                         time.sleep(1)
-                """
             except Exception as e:
                 self.logger.app_log.warning(f"Error in connection manger ({e})")
-
