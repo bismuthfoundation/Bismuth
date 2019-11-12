@@ -61,9 +61,11 @@ SQL_CLEAR = "DELETE FROM transactions"
 
 # Check for presence of a given tx signature
 SQL_SIG_CHECK = 'SELECT timestamp FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1'
+SQL_SIG_CHECK_OLD = 'SELECT timestamp FROM transactions WHERE signature = ?1'
 
 # delete a single tx
 SQL_DELETE_TX = 'DELETE FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1'
+SQL_DELETE_TX_OLD = 'DELETE FROM transactions WHERE signature = ?1'
 
 # Selects all tx from mempool - list fields so we don't send mergedts and keep compatibility
 SQL_SELECT_ALL_TXS = 'SELECT timestamp, address, recipient, amount, signature, public_key, operation, openfield FROM transactions'
@@ -289,7 +291,10 @@ class Mempool:
         :return:
         """
         with self.lock:
-            self.execute(SQL_DELETE_TX, (signature,))
+            if self.config.old_sqlite:
+                self.execute(SQL_DELETE_TX_OLD, (signature,))
+            else:
+                self.execute(SQL_DELETE_TX, (signature,))
             self.commit()
 
     def sig_check(self, signature):
@@ -298,7 +303,10 @@ class Mempool:
         :param signature:
         :return: boolean
         """
-        return bool(self.fetchone(SQL_SIG_CHECK, (signature,)))
+        if self.config.old_sqlite:
+            return bool(self.fetchone(SQL_SIG_CHECK_OLD, (signature,)))
+        else:
+            return bool(self.fetchone(SQL_SIG_CHECK, (signature,)))
 
     def status(self):
         """
@@ -578,14 +586,22 @@ class Mempool:
                         # reject transactions which are already in the ledger
                         # TODO: not clean, will need to have ledger as a module too.
                         # TODO: need better txid index, this is very sloooooooow
-                        essentials.execute_param_c(c, "SELECT timestamp FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) AND signature = ?1",
-                                                   (mempool_signature_enc,), self.app_log)
+                        if self.config.old_sqlite:
+                            essentials.execute_param_c(c, "SELECT timestamp FROM transactions WHERE signature = ?1",
+                                                       (mempool_signature_enc,), self.app_log)
+                        else:
+                            essentials.execute_param_c(c,
+                                                       "SELECT timestamp FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) AND signature = ?1",
+                                                       (mempool_signature_enc,), self.app_log)
                         ledger_in = bool(c.fetchone())
                         # remove from mempool if it's in both ledger and mempool already
                         if mempool_in and ledger_in:
                             try:
                                 # Do not lock, we already have the lock for the whole merge.
-                                self.execute(SQL_DELETE_TX, (mempool_signature_enc,))
+                                if self.config.old_sqlite:
+                                    self.execute(SQL_DELETE_TX_OLD, (mempool_signature_enc,))
+                                else:
+                                    self.execute(SQL_DELETE_TX, (mempool_signature_enc,))
                                 self.commit()
                                 mempool_result.append("Mempool: Transaction deleted from our mempool")
                             except:  # experimental try and except

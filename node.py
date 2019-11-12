@@ -1974,15 +1974,20 @@ def add_indices(db_handler: dbhandler.DbHandler):
     node.logger.app_log.warning("Creating indices")
 
     # ledger.db
-    db_handler.execute(db_handler.h, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
+    if not node.old_sqlite:
+        db_handler.execute(db_handler.h, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
+    else:
+        node.logger.app_log.warning("Setting old_sqlite is True, lookups will be slower.")
     db_handler.execute(db_handler.h, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
 
     # hyper.db
-    db_handler.execute(db_handler.h2, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
+    if not node.old_sqlite:
+        db_handler.execute(db_handler.h2, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
     db_handler.execute(db_handler.h2, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
 
     # RAM or hyper.db
-    db_handler.execute(db_handler.c, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
+    if not node.old_sqlite:
+        db_handler.execute(db_handler.c, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
     db_handler.execute(db_handler.c, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
 
     node.logger.app_log.warning("Finished creating indices")
@@ -2009,6 +2014,7 @@ if __name__ == "__main__":
     # or just do node.config = config
     # and use node.config.port... aso
 
+    # TODO: Simplify. Just do node.config = config, then use node.config.required_option
     node.version = config.version
     node.debug_level = config.debug_level
     node.port = config.port
@@ -2032,6 +2038,7 @@ if __name__ == "__main__":
     node.full_ledger = config.full_ledger
     node.trace_db_calls = config.trace_db_calls
     node.heavy3_path = config.heavy3_path
+    node.old_sqlite = config.old_sqlite
 
     node.logger.app_log = log.log("node.log", node.debug_level, node.terminal_output)
     node.logger.app_log.warning("Configuration settings loaded")

@@ -108,17 +108,26 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             if entry_signature:  # prevent empty signature database retry hack
                 signature_list.append(entry_signature)
                 # reject block with transactions which are already in the ledger ram
+                if node.old_sqlite:
+                    db_handler.execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE signature = ?1;",
+                                             (entry_signature,))
+                else:
+                    db_handler.execute_param(db_handler.h,
+                                             "SELECT block_height FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1;",
+                                             (entry_signature,))
 
-                db_handler.execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1;",
-                                         (entry_signature,))
                 tx_presence_check = db_handler.h.fetchone()
                 if tx_presence_check:
                     # print(node.last_block)
                     raise ValueError(f"That transaction {entry_signature[:10]} is already in our ledger, "
                                      f"block_height {tx_presence_check[0]}")
-
-                db_handler.execute_param(db_handler.c, "SELECT block_height FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1;",
-                                         (entry_signature,))
+                if node.old_sqlite:
+                    db_handler.execute_param(db_handler.c, "SELECT block_height FROM transactions WHERE signature = ?1;",
+                                             (entry_signature,))
+                else:
+                    db_handler.execute_param(db_handler.c,
+                                             "SELECT block_height FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1;",
+                                             (entry_signature,))
                 tx_presence_check = db_handler.c.fetchone()
                 if tx_presence_check:
                     # print(node.last_block)
