@@ -21,7 +21,11 @@ from typing import Union
 from polysign.signer import SignerType
 from polysign.signerfactory import SignerFactory
 
-__version__ = "0.0.6"
+__version__ = "0.0.7"
+
+"""
+0.0.7 : decrease checkpoint limit to 30 blocks at 1450000 (meaning max 59 blocks rollback)
+"""
 
 """
 For temp. code compatibility, dup code moved to polysign module
@@ -118,8 +122,13 @@ def round_down(number, order):
 
 
 def checkpoint_set(node):
-    node.checkpoint = round_down(node.last_block, 1000) - 1000
-    node.logger.app_log.warning(f"Checkpoint set to {node.checkpoint}")
+    limit = 30
+    if node.last_block < 1450000:
+        limit = 1000
+    checkpoint = round_down(node.last_block, limit) - limit
+    if checkpoint != node.checkpoint:
+        node.checkpoint = checkpoint
+        node.logger.app_log.warning(f"Checkpoint set to {node.checkpoint}")
 
 
 def ledger_balance3(address, cache, db_handler):

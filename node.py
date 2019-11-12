@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.4.0.2"  # Post fork candidate 2
+VERSION = "4.4.0.3"  # Post fork candidate 3
 
 import functools
 import glob
