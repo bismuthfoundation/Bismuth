@@ -121,7 +121,7 @@ class Get:
         if path.isfile(file_name):
             try:
                 with open(file_name) as fp:
-                    data = json.load(file_name)
+                    data = json.load(fp)
                     if type(data) != dict:
                         raise RuntimeWarning("Bad file format")
                     self.mandatory_message = data
