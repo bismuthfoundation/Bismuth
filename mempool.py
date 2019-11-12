@@ -20,7 +20,7 @@ from quantizer import quantize_two, quantize_eight, quantize_ten
 # from Cryptodome.PublicKey import RSA
 # from Cryptodome.Signature import PKCS1_v1_5
 
-__version__ = "0.0.6c"
+__version__ = "0.0.7a"
 
 """
 0.0.5g - Add default param to mergedts for compatibility
@@ -30,6 +30,7 @@ __version__ = "0.0.6c"
          less strict freezing
 0.0.6b - Raise freeze tolerance to > 15 minutes old txs.
 0.0.6c - Return last exception to client in all cases
+0.0.7a - Add support for mandatory message addresses
 """
 
 MEMPOOL = None
@@ -506,7 +507,6 @@ class Mempool:
                     block_list = [block_list]
 
                 for transaction in block_list:
-
                     if size_bypass or self.space_left_for_tx(transaction, mempool_size):
                         # all transactions in the mempool need to be cycled to check for special cases,
                         # therefore no while/break loop here
@@ -549,6 +549,12 @@ class Mempool:
                             mempool_result.append("Mempool: Invalid openfield len{}".format(len(transaction[7])))
                             continue
                         mempool_openfield = str(transaction[7])[:100000]
+
+                        if len(mempool_openfield) <= 4:
+                            # no or short message for a mandatory message
+                            if mempool_recipient in self.config.mandatory_message.keys():
+                                mempool_result.append("Mempool: Missing message - {}".format(self.config.mandatory_message[mempool_recipient]))
+                                continue
 
                         # Begin with the easy tests that do not require cpu or disk access
                         if mempool_amount_float < 0:

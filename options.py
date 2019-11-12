@@ -42,6 +42,7 @@ class Get:
         "heavy3_path": ["str"],
         "mempool_path": ["str"],
         "old_sqlite": ["bool"],
+        "mandatory_message": ["list"],
     }
 
     # Optional default values so we don't bug if they are not in the config.
@@ -54,6 +55,15 @@ class Get:
         "heavy3_path": "./heavy3a.bin",
         "mempool_path": "./mempool.db",
         "old_sqlite": False,
+        "mandatory_message": {
+            "Address": "Comment - Dict for addresses that require a message. tx to these addresses withjout a message will not be accepted by mempool.",
+            "f6c0363ca1c5aa28cc584252e65a63998493ff0a5ec1bb16beda9bac": "qTrade Exchange needs a message to route the deposit to your account",
+            "d11ea307ea6de821bc28c645b1ff8dd25c6e8a9f70b3a6aeb9928754": "VGate/ViteX Exchange needs a message to route the deposit to your account",
+            "14c1b5851634f0fa8145ceea1a52cabe2443dc10350e3febf651bd3a": "Graviex Exchange needs a message to route the deposit to your account",
+            "1a174d7fdc2036e6005d93cc985424021085cc4335061307985459ce": "Finexbox Exchange needs a message to route the deposit to your account",
+            "49ca873779b36c4a503562ebf5697fca331685d79fd3deef64a46888": "Tradesatoshi is no more listing bis but needed a message to route the deposit to your account",
+            "edf2d63cdf0b6275ead22c9e6d66aa8ea31dc0ccb367fad2e7c08a25": "Old Cryptopia address, memo",
+        },  # setup here by safety, but will use the json if present for easier updates.
     }
 
     def load_file(self, filename):
@@ -107,6 +117,18 @@ class Get:
         # then override with optional custom config
         if path.exists("config_custom.txt"):
             self.load_file("config_custom.txt")
+        file_name = "./mandatory_message.json"
+        if path.isfile(file_name):
+            try:
+                with open(file_name) as fp:
+                    data = json.load(file_name)
+                    if type(data) != dict:
+                        raise RuntimeWarning("Bad file format")
+                    self.mandatory_message = data
+                    print("mandatory_message file loaded")
+            except Exception as e:
+                print("Error loading mandatory_message.json {}".format(e))
+
         """
         if "regnet" in self.version:
             print("Regnet, forcing ram = False")

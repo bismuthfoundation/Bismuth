@@ -577,7 +577,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             client_instance.connected = True
         else:
             try:
-                node.logger.app_log.warning(f"Free capacity for {peer_ip} unavailable, disconnected")
+                node.logger.app_log.info(f"Free capacity for {peer_ip} unavailable, disconnected")
                 self.request.close()
                 # if you raise here, you kill the whole server
             except Exception as e:
