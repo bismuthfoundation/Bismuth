@@ -20,7 +20,7 @@ from quantizer import quantize_two, quantize_eight, quantize_ten
 # from Cryptodome.PublicKey import RSA
 # from Cryptodome.Signature import PKCS1_v1_5
 
-__version__ = "0.0.7a"
+__version__ = "0.0.7b"
 
 """
 0.0.5g - Add default param to mergedts for compatibility
@@ -31,6 +31,7 @@ __version__ = "0.0.7a"
 0.0.6b - Raise freeze tolerance to > 15 minutes old txs.
 0.0.6c - Return last exception to client in all cases
 0.0.7a - Add support for mandatory message addresses
+0.0.7b - Reduce age of valid txns to 2 hours
 """
 
 MEMPOOL = None
@@ -40,7 +41,9 @@ MEMPOOL = None
 DEBUG_DO_NOT_SEND_TX = False
 
 # Tx age limit (in seconds) - Default 82800
-REFUSE_OLDER_THAN = 82800
+# REFUSE_OLDER_THAN = 82800
+REFUSE_OLDER_THAN = 60 * 60 * 2  # reduced to 2 hours
+# See also SQL_PURGE a few lines down.
 
 # How long for freeze nodes that send late enough tx we already have in ledger
 FREEZE_MIN = 5
@@ -55,7 +58,7 @@ SQL_CREATE = "CREATE TABLE IF NOT EXISTS transactions (" \
              "public_key TEXT, operation TEXT, openfield TEXT, mergedts INTEGER(4) not null default (strftime('%s','now')) )"
 
 # Purge old txs that may be stuck
-SQL_PURGE = "DELETE FROM transactions WHERE timestamp <= strftime('%s', 'now', '-1 day')"
+SQL_PURGE = "DELETE FROM transactions WHERE timestamp <= strftime('%s', 'now', '-2 hour')"
 
 # Delete all transactions
 SQL_CLEAR = "DELETE FROM transactions"

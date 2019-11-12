@@ -193,7 +193,17 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
         # Cache for multiple tx from same address
         balances = {}
 
+        # TODO: remove condition after HF
+        if block_instance.block_height_new >= 1450000:
+            oldest_possible_tx = miner_tx.q_block_timestamp - 60 * 60 * 2
+        else:
+            # Was 24 h before
+            oldest_possible_tx = miner_tx.q_block_timestamp - 60 * 60 * 24
+
         for tx_index, transaction in enumerate(block):
+            if float(transaction[0]) < oldest_possible_tx:
+                raise ValueError("txid {} from {} is older ({}) than oldest possible date ({})"
+                                 .format(transaction[4][:56], transaction[1], transaction[0], oldest_possible_tx))
             db_timestamp = '%.2f' % quantize_two(transaction[0])
             db_address = str(transaction[1])[:56]
             db_recipient = str(transaction[2])[:56]
