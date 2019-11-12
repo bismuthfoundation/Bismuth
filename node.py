@@ -869,7 +869,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         mined = {"timestamp": time.time(), "last": node.last_block, "ip": peer_ip, "miner": "",
                                  "result": False, "reason": ''}
                         try:
-                            mined['miner'] = segments[0][-1][2]
+                            mined['miner'] = segments[0][-1][1]  # sender, to be consistent with block event.
                         except:
                             # Block is sent by miners/pools, we can drop the connection
                             # If there is a reason not to, use "continue" here and below instead of returns.

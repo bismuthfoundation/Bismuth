@@ -166,7 +166,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             if tx_index == block_instance.tx_count - 1:  # faster than comparing the whole tx
                 if float(tx.received_amount) != 0:
                     raise ValueError("Coinbase (Mining) transaction must have zero amount")
-                if not address_is_rsa(tx.received_recipient):
+                if not address_is_rsa(tx.received_address):
                     # Compare address rather than sig, as sig could be made up
                     raise ValueError("Coinbase (Mining) transaction only supports legacy RSA Bismuth addresses")
 
