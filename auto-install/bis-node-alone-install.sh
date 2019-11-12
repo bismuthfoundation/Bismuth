@@ -8,7 +8,7 @@
 
 # BEWARE: check configure_firewall to activate.
 
-VERSION="0.1.1"
+VERSION="0.1.2"
 
 create_swap() {
 	if [ -d /swapfile ]; then
@@ -36,7 +36,7 @@ config_os() {
 	fi
 	if ! cat /etc/sysctl.conf | grep "vm.vfs_cache_pressure = 50"; then
 	    echo "vm.vfs_cache_pressure = 50" >> /etc/sysctl.conf
-        fi	    
+        fi
         sysctl -p
 	echo 1 > /proc/sys/net/ipv4/tcp_low_latency
 }
@@ -83,14 +83,14 @@ configure_firewall() {
 download_node() {
 	echo "Fetching Node"
 	cd
-    if [ -f ./v4.3.0.1-beta.1.tar.gz ]; then
-        rm v4.3.0.1-beta.1.tar.gz
+    if [ -f ./master.zip ]; then
+        rm master.zip
 	fi
-    wget https://github.com/bismuthfoundation/Bismuth/archive/v4.3.0.1-beta.1.tar.gz
-    tar -zxf v4.3.0.1-beta.1.tar.gz
-    mv Bismuth-4.3.0.1-beta.1 Bismuth
+    wget https://github.com/bismuthfoundation/Bismuth/archive/master.zip
+    unzip master.zip
+    mv Bismuth-master Bismuth
     cd Bismuth
-    echo "Configuring node"    
+    echo "Configuring node"
     echo "ram=False" >> config_custom.txt
     echo "full_ledger=True" >> config_custom.txt
     echo "mempool_ram=False" >> config_custom.txt
