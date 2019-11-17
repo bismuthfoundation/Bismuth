@@ -1583,7 +1583,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if node.peers.is_allowed(peer_ip, data):
                         data = receive(self.request)
                         # peersync expects a dict encoded as json string, not a straight dict
-                        res = node.peers.peersync(data)
+                        try:
+                            res = node.peers.peersync(data)
+                        except:
+                            node.logger.app_log.warning(f"{peer_ip} sent invalid peers list")
+                            raise
                         send(self.request, {"added": res})
                         node.logger.app_log.warning(f"{res} peers added")
                     else:
