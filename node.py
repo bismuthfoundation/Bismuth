@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.4.0.4"  # Post fork candidate 4
+VERSION = "4.4.0.5"  # Post fork candidate 5
 
 import functools
 import glob
@@ -779,10 +779,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                             node.logger.app_log.info(f"Inbound: Will seek the following block: {data}")
 
-                            try:
-
-                                client_block = db_handler_instance.block_height_from_hash(data)
-                            except Exception:
+                            client_block = db_handler_instance.block_height_from_hash(data)
+                            if client_block is None:
                                 node.logger.app_log.warning(f"Inbound: Block {data[:8]} of {peer_ip} not found")
                                 if node.full_ledger:
                                     send(self.request, "blocknf")  # announce block hash was not found
