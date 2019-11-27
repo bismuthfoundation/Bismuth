@@ -823,7 +823,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                             "Inbound: Client rejected to sync from us because we're don't have the latest block")
 
                     except Exception as e:
-                        node.logger.app_log.info(f"Inbound: Sync failed {e}")
+                        node.logger.app_log.warning(f"Inbound: Sync failed {e}")
 
                 elif data == "nonewblk":
                     send(self.request, "sync")

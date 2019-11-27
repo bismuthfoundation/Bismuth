@@ -217,7 +217,7 @@ def worker(host, port, node):
                         # consensus pool 2 (active connection)
 
                 except Exception as e:
-                    node.logger.app_log.info(f"Outbound: Sync failed {e}")
+                    node.logger.app_log.warning(f"Outbound: Sync failed {e}")
                 finally:
                     node.syncing.remove(peer_ip)
 
