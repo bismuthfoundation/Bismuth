@@ -3,10 +3,10 @@
 .idea/
 *.project
 build/
-test1/
 dist/
-gui.build/
 node.build/
+commands.build/
+node_stop.build/
 workspace/
 *.log
 *.log.*
@@ -15,15 +15,17 @@ wallet.log.*
 privkey.der
 pubkey.der
 wallet.der
-address.txt
 mempool.db
 ledger.db
 index.db
 static/regmode.
 static/regmode.*
 static/index_reg.*
+static/*.db-shm
+static/*.db-wal
+static/*.tar.gz
+static/*.db
 heavy3a.bin
-/theme
 config_custom.txt
 sequencing_last
 # ignore polysign, so devs can have a symlink or local dev version.
