@@ -438,7 +438,7 @@ class Mempool:
                 return True
         # Medium prio: 5 BIS or more
         if mempool_size < 0.5:
-            if transaction[3] > 5:
+            if float(transaction[3]) > 5:
                 return True
         # High prio: allowed by config
         if mempool_size < 0.6:
