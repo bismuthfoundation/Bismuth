@@ -95,45 +95,52 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
     :param app_log:
     :return:
     """
+    try:
+        if is_regnet:
+            diff0 = regnet.REGNET_DIFF - 8
 
-    if is_regnet:
-        diff0 = regnet.REGNET_DIFF - 8
-
-    real_diff = diffme_heavy3(miner_address, nonce, db_block_hash)
-    diff_drop_time = Decimal(180)
-    mining_condition = bin_convert(db_block_hash)[0:int(diff0)]
-    # simplified comparison, no backwards mining
-    if real_diff >= int(diff0):
-        if app_log:
-            app_log.info("Difficulty requirement satisfied for block {} from {}. {} >= {}"
-                         .format(block_height_new, peer_ip, real_diff, int(diff0)))
-        diff_save = diff0
-
-    elif Decimal(received_timestamp) > q_db_timestamp_last + Decimal(diff_drop_time):
-        # uses block timestamp, don't merge with diff() for security reasons
-        factor = 1
-        time_difference = q_received_timestamp - q_db_timestamp_last
-        diff_dropped = quantize_ten(diff0) + quantize_ten(1) - quantize_ten(time_difference / diff_drop_time)
-        # Emergency diff drop
-        if Decimal(received_timestamp) > q_db_timestamp_last + Decimal(2 * diff_drop_time):
-            factor = 10
-            diff_dropped = quantize_ten(diff0) - quantize_ten(1) - quantize_ten(factor * (time_difference-2*diff_drop_time) / diff_drop_time)
-
-        if diff_dropped < 50:
-            diff_dropped = 50
-        if real_diff >= int(diff_dropped):
+        real_diff = diffme_heavy3(miner_address, nonce, db_block_hash)
+        diff_drop_time = Decimal(180)
+        mining_condition = bin_convert(db_block_hash)[0:int(diff0)]
+        # simplified comparison, no backwards mining
+        if real_diff >= int(diff0):
             if app_log:
-                app_log.info ("Readjusted difficulty requirement satisfied for block {} from {}, {} >= {} (factor {})"
-                              .format(block_height_new, peer_ip, real_diff, int(diff_dropped), factor))
+                app_log.info("Difficulty requirement satisfied for block {} from {}. {} >= {}"
+                             .format(block_height_new, peer_ip, real_diff, int(diff0)))
             diff_save = diff0
-            # lie about what diff was matched not to mess up the diff algo
+
+        elif Decimal(received_timestamp) > q_db_timestamp_last + Decimal(diff_drop_time):
+            # uses block timestamp, don't merge with diff() for security reasons
+            factor = 1
+            time_difference = q_received_timestamp - q_db_timestamp_last
+            diff_dropped = quantize_ten(diff0) + quantize_ten(1) - quantize_ten(time_difference / diff_drop_time)
+            # Emergency diff drop
+            if Decimal(received_timestamp) > q_db_timestamp_last + Decimal(2 * diff_drop_time):
+                factor = 10
+                diff_dropped = quantize_ten(diff0) - quantize_ten(1) - quantize_ten(factor * (time_difference-2*diff_drop_time) / diff_drop_time)
+
+            if diff_dropped < 50:
+                diff_dropped = 50
+            if real_diff >= int(diff_dropped):
+                if app_log:
+                    app_log.info ("Readjusted difficulty requirement satisfied for block {} from {}, {} >= {} (factor {})"
+                                  .format(block_height_new, peer_ip, real_diff, int(diff_dropped), factor))
+                diff_save = diff0
+                # lie about what diff was matched not to mess up the diff algo
+            else:
+                raise ValueError ("Readjusted difficulty too low for block {} from {}, {} should be at least {}"
+                                  .format(block_height_new, peer_ip, real_diff, diff_dropped))
         else:
-            raise ValueError ("Readjusted difficulty too low for block {} from {}, {} should be at least {}"
-                              .format(block_height_new, peer_ip, real_diff, diff_dropped))
-    else:
-        raise ValueError ("Difficulty {} too low for block {} from {}, should be at least {}"
-                          .format(real_diff, block_height_new, peer_ip, diff0))
-    return diff_save
+            raise ValueError ("Difficulty {} too low for block {} from {}, should be at least {}"
+                              .format(real_diff, block_height_new, peer_ip, diff0))
+        return diff_save
+    except Exception as e:
+            # Left for edge cases debug
+            print("MH3 check block", e)
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            raise
 
 
 def create_heavy3a(file_name="heavy3a.bin"):
