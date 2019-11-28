@@ -243,7 +243,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                     if block_instance.mining_reward < 0.5:
                         block_instance.mining_reward = 0.5
 
-                    reward = '{:.8f}'.format(block_instance.mining_reward + sum(fees_block))
+                    reward = '{:.8f}'.format(Decimal(block_instance.mining_reward) + sum(fees_block))
 
                     # don't request a fee for mined block so new accounts can mine
                     fee = 0
