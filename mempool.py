@@ -20,7 +20,7 @@ from quantizer import quantize_two, quantize_eight, quantize_ten
 # from Cryptodome.PublicKey import RSA
 # from Cryptodome.Signature import PKCS1_v1_5
 
-__version__ = "0.0.7b"
+__version__ = "0.0.7c"
 
 """
 0.0.5g - Add default param to mergedts for compatibility
@@ -32,6 +32,7 @@ __version__ = "0.0.7b"
 0.0.6c - Return last exception to client in all cases
 0.0.7a - Add support for mandatory message addresses
 0.0.7b - Reduce age of valid txns to 2 hours
+0.0.7c - Remove unnecessary Decimal
 """
 
 MEMPOOL = None
@@ -437,7 +438,7 @@ class Mempool:
                 return True
         # Medium prio: 5 BIS or more
         if mempool_size < 0.5:
-            if Decimal(transaction[3]) > Decimal(5):
+            if transaction[3] > 5:
                 return True
         # High prio: allowed by config
         if mempool_size < 0.6:
