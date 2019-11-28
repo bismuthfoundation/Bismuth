@@ -187,95 +187,102 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             transaction_validate()
 
     def process_transactions(block):
-        fees_block = []
-        block_instance.mining_reward = 0  # avoid warning
+        try:
+            fees_block = []
+            block_instance.mining_reward = 0  # avoid warning
 
-        # Cache for multiple tx from same address
-        balances = {}
+            # Cache for multiple tx from same address
+            balances = {}
 
-        # TODO: remove condition after HF
-        if block_instance.block_height_new >= 1450000:
-            oldest_possible_tx = miner_tx.q_block_timestamp - 60 * 60 * 2
-        else:
-            # Was 24 h before
-            oldest_possible_tx = miner_tx.q_block_timestamp - 60 * 60 * 24
-
-        for tx_index, transaction in enumerate(block):
-            if float(transaction[0]) < oldest_possible_tx:
-                raise ValueError("txid {} from {} is older ({}) than oldest possible date ({})"
-                                 .format(transaction[4][:56], transaction[1], transaction[0], oldest_possible_tx))
-            db_timestamp = '%.2f' % quantize_two(transaction[0])
-            db_address = str(transaction[1])[:56]
-            db_recipient = str(transaction[2])[:56]
-            db_amount = '%.8f' % quantize_eight(transaction[3])
-            db_signature = str(transaction[4])[:684]
-            db_public_key_b64encoded = str(transaction[5])[:1068]
-            db_operation = str(transaction[6])[:30]
-            db_openfield = str(transaction[7])[:100000]
-
-            block_debit_address = 0
-            block_fees_address = 0
-
-            # this also is redundant on many tx per address block
-            for x in block:
-                if x[1] == db_address:  # make calculation relevant to a particular address in the block
-                    block_debit_address = quantize_eight(Decimal(block_debit_address) + Decimal(x[3]))
-
-                    if x != block[-1]:
-                        block_fees_address = quantize_eight(Decimal(block_fees_address) + Decimal(
-                            essentials.fee_calculate(db_openfield, db_operation,
-                                                     node.last_block)))  # exclude the mining tx from fees
-
-            # node.logger.app_log.info("Fee: " + str(fee))
-
-            # decide reward
-            if tx_index == block_instance.tx_count - 1:
-                db_amount = 0  # prevent spending from another address, because mining txs allow delegation
-
-                if node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET:
-                    block_instance.mining_reward = 15 - (block_instance.block_height_new - fork.POW_FORK_TESTNET) / 1100000 - 9.5
-                elif node.is_mainnet and node.last_block >= fork.POW_FORK:
-                    block_instance.mining_reward = 15 - (block_instance.block_height_new - fork.POW_FORK) / 1100000 - 9.5
-                else:
-                    block_instance.mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("2.4")
-
-                if block_instance.mining_reward < 0.5:
-                    block_instance.mining_reward = 0.5
-
-                reward = '{:.8f}'.format(block_instance.mining_reward + sum(fees_block))
-
-                # don't request a fee for mined block so new accounts can mine
-                fee = 0
+            # TODO: remove condition after HF
+            if block_instance.block_height_new >= 1450000:
+                oldest_possible_tx = miner_tx.q_block_timestamp - 60 * 60 * 2
             else:
-                reward = 0
-                fee = essentials.fee_calculate(db_openfield, db_operation, node.last_block)
-                fees_block.append(quantize_eight(fee))
-                balance_pre = ledger_balance3(db_address, balances, db_handler)  # keep this as c (ram hyperblock access)
-                balance = quantize_eight(balance_pre - block_debit_address)
+                # Was 24 h before
+                oldest_possible_tx = miner_tx.q_block_timestamp - 60 * 60 * 24
 
-                if quantize_eight(balance_pre) < quantize_eight(db_amount):
-                    raise ValueError(f"{db_address} sending more than owned: {db_amount}/{balance_pre}")
+            for tx_index, transaction in enumerate(block):
+                if float(transaction[0]) < oldest_possible_tx:
+                    raise ValueError("txid {} from {} is older ({}) than oldest possible date ({})"
+                                     .format(transaction[4][:56], transaction[1], transaction[0], oldest_possible_tx))
+                db_timestamp = '%.2f' % quantize_two(transaction[0])
+                db_address = str(transaction[1])[:56]
+                db_recipient = str(transaction[2])[:56]
+                db_amount = '%.8f' % quantize_eight(transaction[3])
+                db_signature = str(transaction[4])[:684]
+                db_public_key_b64encoded = str(transaction[5])[:1068]
+                db_operation = str(transaction[6])[:30]
+                db_openfield = str(transaction[7])[:100000]
 
-                if quantize_eight(balance) - quantize_eight(block_fees_address) < 0:
-                    # exclude fee check for the mining/header tx
-                    raise ValueError(f"{db_address} Cannot afford to pay fees (balance: {balance}, "
-                                 f"block fees: {block_fees_address})")
+                block_debit_address = 0
+                block_fees_address = 0
 
-            # append, but do not insert to ledger before whole block is validated,
-            # note that it takes already validated values (decimals, length)
-            node.logger.app_log.info(f"Chain: Appending transaction back to block with "
-                                     f"{len(block_transactions)} transactions in it")
-            block_transactions.append((str(block_instance.block_height_new), str(db_timestamp), str(db_address),
-                                       str(db_recipient), str(db_amount), str(db_signature),
-                                       str(db_public_key_b64encoded), str(block_instance.block_hash), str(fee),
-                                       str(reward), str(db_operation), str(db_openfield)))
-            try:
-                mp.MEMPOOL.delete_transaction(db_signature)
-                node.logger.app_log.info(f"Chain: Removed processed transaction {db_signature[:56]}"
-                                         f" from the mempool while digesting")
-            except:
-                # tx was not or is no more in the local mempool
-                pass
+                # this also is redundant on many tx per address block
+                for x in block:
+                    if x[1] == db_address:  # make calculation relevant to a particular address in the block
+                        block_debit_address = quantize_eight(Decimal(block_debit_address) + Decimal(x[3]))
+
+                        if x != block[-1]:
+                            block_fees_address = quantize_eight(Decimal(block_fees_address) + Decimal(
+                                essentials.fee_calculate(db_openfield, db_operation,
+                                                         node.last_block)))  # exclude the mining tx from fees
+
+                # node.logger.app_log.info("Fee: " + str(fee))
+
+                # decide reward
+                if tx_index == block_instance.tx_count - 1:
+                    db_amount = 0  # prevent spending from another address, because mining txs allow delegation
+
+                    if node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET:
+                        block_instance.mining_reward = 15 - (block_instance.block_height_new - fork.POW_FORK_TESTNET) / 1100000 - 9.5
+                    elif node.is_mainnet and node.last_block >= fork.POW_FORK:
+                        block_instance.mining_reward = 15 - (block_instance.block_height_new - fork.POW_FORK) / 1100000 - 9.5
+                    else:
+                        block_instance.mining_reward = 15 - (quantize_eight(block_instance.block_height_new) / quantize_eight(1000000 / 2)) - Decimal("2.4")
+
+                    if block_instance.mining_reward < 0.5:
+                        block_instance.mining_reward = 0.5
+
+                    reward = '{:.8f}'.format(block_instance.mining_reward + sum(fees_block))
+
+                    # don't request a fee for mined block so new accounts can mine
+                    fee = 0
+                else:
+                    reward = 0
+                    fee = essentials.fee_calculate(db_openfield, db_operation, node.last_block)
+                    fees_block.append(quantize_eight(fee))
+                    balance_pre = ledger_balance3(db_address, balances, db_handler)  # keep this as c (ram hyperblock access)
+                    balance = quantize_eight(balance_pre - block_debit_address)
+
+                    if quantize_eight(balance_pre) < quantize_eight(db_amount):
+                        raise ValueError(f"{db_address} sending more than owned: {db_amount}/{balance_pre}")
+
+                    if quantize_eight(balance) - quantize_eight(block_fees_address) < 0:
+                        # exclude fee check for the mining/header tx
+                        raise ValueError(f"{db_address} Cannot afford to pay fees (balance: {balance}, "
+                                     f"block fees: {block_fees_address})")
+
+                # append, but do not insert to ledger before whole block is validated,
+                # note that it takes already validated values (decimals, length)
+                node.logger.app_log.info(f"Chain: Appending transaction back to block with "
+                                         f"{len(block_transactions)} transactions in it")
+                block_transactions.append((str(block_instance.block_height_new), str(db_timestamp), str(db_address),
+                                           str(db_recipient), str(db_amount), str(db_signature),
+                                           str(db_public_key_b64encoded), str(block_instance.block_hash), str(fee),
+                                           str(reward), str(db_operation), str(db_openfield)))
+                try:
+                    mp.MEMPOOL.delete_transaction(db_signature)
+                    node.logger.app_log.info(f"Chain: Removed processed transaction {db_signature[:56]}"
+                                             f" from the mempool while digesting")
+                except:
+                    # tx was not or is no more in the local mempool
+                    pass
+        except Exception as e:
+            print(e)
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            raise
 
     def process_blocks(block_data):
         # TODO: block_data shadows block_data from outer scope. Very error prone.
@@ -434,12 +441,10 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 # NEW: returns new block sha_hash
         except Exception as e:
             # Left for edge cases debug
-            """
             print(e)
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
-            """
             raise
 
 
