@@ -5,12 +5,12 @@ Peers handler module for Bismuth nodes
 
 import json
 import os
+import random
 import shutil
 # import re
 import sys
 import threading
 from time import time
-import random
 
 import socks
 
@@ -18,7 +18,7 @@ import connections
 import regnet
 from essentials import most_common_dict, percentage_in
 
-__version__ = "0.0.18"
+__version__ = "0.0.19"
 
 
 class Peers:
@@ -296,7 +296,6 @@ class Peers:
         """Got a peers list from a peer, process. From worker().
         returns the number of added peers, -1 if it was locked or not accepting new peers
         subdata is a dict, { 'ip': 'port'}"""
-
         # early exit to reduce future levels
         if not self.config.accept_peers:
             return -1
@@ -305,11 +304,14 @@ class Peers:
             # TODO: buffer, and keep track of recently tested peers.
             self.app_log.info("Outbound: Peer sync occupied")
             return -1
+        # Temp fix: subdata is typed str, but we have a dict sometimes.
+        if type(subdata) == dict:
+            # Enforce expected type.
+            self.app_log.warning("Enforced expected type for peersync subdata")
+            subdata = json.dumps(subdata)
         with self.peersync_lock:
             try:
                 total_added = 0
-
-                # json format
 
                 subdata = self.dict_validate(subdata)
                 data_dict = json.loads(subdata)
@@ -471,7 +473,7 @@ class Peers:
         """Manager loop called every 30 sec. Handles maintenance"""
         try:
             for key, value in dict(self.dict_shuffle(self.peer_dict)).items():
-                # The dict() above is not an error or a cast, 
+                # The dict() above is not an error or a cast,
                 # it's to make a copy of the dict and avoid "dictionary changed size during iteration"
                 host = key
                 port = int(value)
