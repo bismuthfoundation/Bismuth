@@ -9,6 +9,7 @@ import os
 import sqlite3
 import sys
 import threading
+from decimal import Decimal
 import time
 
 from polysign.signerfactory import SignerFactory
@@ -20,7 +21,7 @@ from quantizer import quantize_two, quantize_eight, quantize_ten
 # from Cryptodome.PublicKey import RSA
 # from Cryptodome.Signature import PKCS1_v1_5
 
-__version__ = "0.0.7d"
+__version__ = "0.0.7e"
 
 """
 0.0.5g - Add default param to mergedts for compatibility
@@ -33,7 +34,10 @@ __version__ = "0.0.7d"
 0.0.7a - Add support for mandatory message addresses
 0.0.7b - Reduce age of valid txns to 2 hours
 0.0.7c - Remove unnecessary Decimal
+0.0.7e - exclude too old txs from mempool balance, simplify mempool merge.
 """
+
+DECIMAL0 = Decimal(0)
 
 MEMPOOL = None
 
@@ -44,7 +48,9 @@ DEBUG_DO_NOT_SEND_TX = False
 # Tx age limit (in seconds) - Default 82800
 # REFUSE_OLDER_THAN = 82800
 REFUSE_OLDER_THAN = 60 * 60 * 2  # reduced to 2 hours
-# See also SQL_PURGE a few lines down.
+# See also SQL_PURGE, SQL_MEMPOOL_GET and SQL_SELECT_ALL_VALID_TXS a few lines down.
+# I used a filter on some requests rather than calling purge() every time.
+# Maybe a systematic purge() would be easier and faster. To be tested.
 
 # How long for freeze nodes that send late enough tx we already have in ledger
 FREEZE_MIN = 5
@@ -75,6 +81,9 @@ SQL_DELETE_TX_OLD = 'DELETE FROM transactions WHERE signature = ?1'
 # Selects all tx from mempool - list fields so we don't send mergedts and keep compatibility
 SQL_SELECT_ALL_TXS = 'SELECT timestamp, address, recipient, amount, signature, public_key, operation, openfield FROM transactions'
 
+# Selects all tx from mempool - list fields so we don't send mergedts and keep compatibility
+SQL_SELECT_ALL_VALID_TXS = "SELECT timestamp, address, recipient, amount, signature, public_key, operation, openfield FROM transactions WHERE timestamp > strftime('%s', 'now', '-2 hour')"
+
 # Counts distinct senders from mempool
 SQL_COUNT_DISTINCT_SENDERS = 'SELECT COUNT(DISTINCT(address)) FROM transactions'
 
@@ -90,7 +99,7 @@ SQL_SELECT_TX_TO_SEND = 'SELECT * FROM transactions ORDER BY amount DESC'
 # Select Tx to be sent to a peer since the given ts - what counts is the merged time, not the tx time.
 SQL_SELECT_TX_TO_SEND_SINCE = 'SELECT * FROM transactions where mergedts > ? ORDER BY amount DESC'
 
-SQL_MEMPOOL_GET = "SELECT amount, openfield, operation FROM transactions WHERE address = ?;"
+SQL_MEMPOOL_GET = "SELECT amount, openfield, operation FROM transactions WHERE address = ? and timestamp > strftime('%s', 'now', '-2 hour')"
 
 
 def sql_trace_callback(log, id, statement):
@@ -347,7 +356,7 @@ class Mempool:
         :return:
         """
         try:
-            mempool_txs = self.fetchall(SQL_SELECT_ALL_TXS)
+            mempool_txs = self.fetchall(SQL_SELECT_ALL_VALID_TXS)
             mempool_size = sys.getsizeof(str(mempool_txs)) / 1000000.0
             return mempool_size
         except:
@@ -451,7 +460,7 @@ class Mempool:
 
     def merge(self, data: list, peer_ip: str, c, size_bypass: bool=False, wait: bool=False, revert: bool =False) -> list:
         """
-        Checks and merge the tx list in out mempool
+        Checks and merge the tx list in our mempool
         :param data:
         :param peer_ip:
         :param c:
@@ -494,7 +503,6 @@ class Mempool:
                 self.app_log.warning("Waiting for block digestion to finish before merging mempool")
                 time.sleep(1)
         # if reverting, don't bother with main lock, go on.
-
         # Let's really dig
         mempool_result.append("Mempool merging started from {}".format(peer_ip))
         # Single time reference here for the whole merge.
@@ -641,54 +649,46 @@ class Mempool:
 
                         # verify balance
                         mempool_result.append("Mempool: Received address: {}".format(mempool_address))
-                        # include mempool fees
-                        result = self.fetchall("SELECT amount, openfield, operation FROM transactions WHERE address = ?",
-                                               (mempool_address,))
-                        debit_mempool = 0
+                        # include mempool fees - excluding the old ones.
+                        result = self.fetchall(SQL_MEMPOOL_GET, (mempool_address, ))
+                        debit_mempool = DECIMAL0
                         if result:
                             for x in result:
                                 debit_tx = quantize_eight(x[0])
-                                fee = quantize_eight(essentials.fee_calculate(x[1], x[2], last_block))
-                                debit_mempool = quantize_eight(debit_mempool + debit_tx + fee)
+                                fee = essentials.fee_calculate(x[1], x[2], last_block)  # fee_calculate sends back a Decimal 8
+                                debit_mempool += debit_tx + fee
 
-                        credit = 0
+                        credit = DECIMAL0
+                        rewards = DECIMAL0
                         for entry in essentials.execute_param_c(c,
-                                                                "SELECT amount FROM transactions WHERE recipient = ?",
-                                                                (mempool_address,), self.app_log):
-                            credit = quantize_eight(credit) + quantize_eight(entry[0])
+                                                                "SELECT amount, reward FROM transactions WHERE recipient = ?",
+                                                                (mempool_address, ), self.app_log):
+                            credit += quantize_eight(entry[0])
+                            rewards += quantize_eight(entry[1])
 
-                        debit_ledger = 0
+                        debit_ledger = DECIMAL0
+                        fees = DECIMAL0
                         for entry in essentials.execute_param_c(c,
-                                                                "SELECT amount FROM transactions WHERE address = ?",
+                                                                "SELECT amount, fee FROM transactions WHERE address = ?",
                                                                 (mempool_address,), self.app_log):
-                            debit_ledger = quantize_eight(debit_ledger) + quantize_eight(entry[0])
+                            debit_ledger += quantize_eight(entry[0])
+                            fees += quantize_eight(entry[1])
+
                         debit = debit_ledger + debit_mempool
 
-                        fees = 0
-                        for entry in essentials.execute_param_c(c,
-                                                                "SELECT fee FROM transactions WHERE address = ?",
-                                                                (mempool_address,), self.app_log):
-                            fees = quantize_eight(fees) + quantize_eight(entry[0])
-
-                        rewards = 0
-                        for entry in essentials.execute_param_c(c,
-                                                                "SELECT sum(reward) FROM transactions WHERE recipient = ?",
-                                                                (mempool_address,), self.app_log):
-                            rewards = quantize_eight(rewards) + quantize_eight(entry[0])
-                            # error conversion from NoneType to Decimal is not supported
-
-                        balance = quantize_eight(credit - debit - fees + rewards - quantize_eight(mempool_amount))
-                        balance_pre = quantize_eight(credit - debit_ledger - fees + rewards)
+                        # both are Decimals
+                        balance = credit - debit - fees + rewards - quantize_eight(mempool_amount)
+                        balance_pre = credit - debit_ledger - fees + rewards
 
                         fee = essentials.fee_calculate(mempool_openfield, mempool_operation, last_block)
 
                         # print("Balance", balance, fee)
 
-                        if quantize_eight(mempool_amount) > quantize_eight(balance_pre):
+                        if quantize_eight(mempool_amount) > balance_pre:  # mempool_amount is a 0.8f string for some reason
                             # mp amount is already included in "balance" var! also, that tx might already be in the mempool
                             mempool_result.append("Mempool: Sending more than owned")
                             continue
-                        if quantize_eight(balance) - quantize_eight(fee) < 0:
+                        if balance - fee < 0:
                             mempool_result.append("Mempool: Cannot afford to pay fees")
                             continue
 
