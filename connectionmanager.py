@@ -20,13 +20,14 @@ class ConnectionManager (threading.Thread):
         until_purge = 0
 
         while not self.node.IS_STOPPING:
+            # one loop every 30 sec
             try:
                 # dict_keys = peer_dict.keys()
                 # random.shuffle(peer_dict.items())
-                if until_purge <= 0 and not self.db_lock.locked:
-                    # will purge once at start, then about every hour (120 * 30 sec)
+                if until_purge <= 0:
+                    # will purge once at start, then about every half hour (60 * 30 sec)
                     self.mp.MEMPOOL.purge()
-                    until_purge = 120
+                    until_purge = 60
                 until_purge -= 1
 
                 # peer management

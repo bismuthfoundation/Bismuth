@@ -20,7 +20,7 @@ from quantizer import quantize_two, quantize_eight, quantize_ten
 # from Cryptodome.PublicKey import RSA
 # from Cryptodome.Signature import PKCS1_v1_5
 
-__version__ = "0.0.7c"
+__version__ = "0.0.7d"
 
 """
 0.0.5g - Add default param to mergedts for compatibility
@@ -275,11 +275,13 @@ class Mempool:
         Purge old txs
         :return:
         """
-        while self.lock.locked():
-            time.sleep(0.5)
         with self.lock:
-            self.execute(SQL_PURGE)
-            self.commit()
+            self.app_log.warning("Purging mempool")
+            try:
+                self.execute(SQL_PURGE)
+                self.commit()
+            except Exception as e:
+                self.app_log.error("Error {} on mempool purge".format(e))
 
     def clear(self):
         """
