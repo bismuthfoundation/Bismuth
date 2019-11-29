@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.4.0.8"  # Post fork candidate 8
+VERSION = "4.4.0.9"  # Post fork candidate 9
 
 import functools
 import glob
@@ -776,7 +776,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                             data = receive(self.request)  # receive client's last block_hash
                             # send all our followup hashes
-
+                            if data == "*":
+                                # connection lost, no need to go on, that was banning the node like it forked.
+                                node.logger.app_log.warning(f"Inbound: {peer_ip} dropped connection")
+                                break
                             node.logger.app_log.info(f"Inbound: Will seek the following block: {data}")
 
                             client_block = db_handler_instance.block_height_from_hash(data)
