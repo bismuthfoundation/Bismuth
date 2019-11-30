@@ -7,8 +7,7 @@ class ConnectionManager (threading.Thread):
     def __init__(self, node, mp):
         threading.Thread.__init__(self, name="ConnectionManagerThread")
         self.node = node
-        self.db_lock = node.db_lock
-        self.logger = node.logger
+        self.logger = self.node.logger
         self.mp = mp
 
     def run(self):
