@@ -7,7 +7,6 @@ class ConnectionManager (threading.Thread):
     def __init__(self, node, mp):
         threading.Thread.__init__(self, name="ConnectionManagerThread")
         self.node = node
-        self.logger = self.node.logger
         self.mp = mp
 
     def run(self):
@@ -15,7 +14,7 @@ class ConnectionManager (threading.Thread):
         self.connection_manager()
 
     def connection_manager(self):
-        self.logger.app_log.warning("Status: Starting connection manager")
+        self.node.logger.app_log.warning("Status: Starting connection manager")
         until_purge = 0
 
         while not self.node.IS_STOPPING:
@@ -33,9 +32,9 @@ class ConnectionManager (threading.Thread):
                 if not self.node.is_regnet:
                     # regnet never tries to connect
                     self.node.peers.client_loop(self.node, this_target=worker)
-                self.logger.app_log.warning(f"Status: Threads at {threading.active_count()} / {self.node.thread_limit}")
-                self.logger.app_log.info(f"Status: Syncing nodes: {self.node.syncing}")
-                self.logger.app_log.info(f"Status: Syncing nodes: {len(self.node.syncing)}/3")
+                self.node.logger.app_log.warning(f"Status: Threads at {threading.active_count()} / {self.node.thread_limit}")
+                self.node.logger.app_log.info(f"Status: Syncing nodes: {self.node.syncing}")
+                self.node.logger.app_log.info(f"Status: Syncing nodes: {len(self.node.syncing)}/3")
 
                 # Status display for Peers related info
                 self.node.peers.status_log()
@@ -43,7 +42,7 @@ class ConnectionManager (threading.Thread):
                 # last block
                 if self.node.last_block_ago:
                     self.node.last_block_ago = time.time() - int(self.node.last_block_timestamp)
-                    self.logger.app_log.warning(f"Status: Last block {self.node.last_block} was generated "
+                    self.node.logger.app_log.warning(f"Status: Last block {self.node.last_block} was generated "
                                                 f"{'%.2f' % (self.node.last_block_ago / 60) } minutes ago")
                 # status Hook
                 uptime = int(time.time() - self.node.startup_time)
@@ -72,4 +71,4 @@ class ConnectionManager (threading.Thread):
                     if not self.node.IS_STOPPING:
                         time.sleep(1)
             except Exception as e:
-                self.logger.app_log.warning(f"Error in connection manger ({e})")
+                self.node.logger.app_log.warning(f"Error in connection manger ({e})")
