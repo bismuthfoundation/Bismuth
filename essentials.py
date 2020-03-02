@@ -142,14 +142,14 @@ def ledger_balance3(address, cache, db_handler):
         return cache[address]
     credit_ledger = Decimal(0)
 
-    db_handler.execute_param(db_handler.c, "SELECT amount, reward FROM transactions WHERE recipient = ?;", (address,))
+    db_handler._execute_param(db_handler.c, "SELECT amount, reward FROM transactions WHERE recipient = ?;", (address,))
     entries = db_handler.c.fetchall()
 
     for entry in entries:
         credit_ledger += quantize_eight(entry[0]) + quantize_eight(entry[1])
 
     debit_ledger = Decimal(0)
-    db_handler.execute_param(db_handler.c, "SELECT amount, fee FROM transactions WHERE address = ?;", (address,))
+    db_handler._execute_param(db_handler.c, "SELECT amount, fee FROM transactions WHERE address = ?;", (address,))
     entries = db_handler.c.fetchall()
 
     for entry in entries:
@@ -309,10 +309,10 @@ def fee_calculate(openfield: str, operation: str='', block: int=0) -> Decimal:
 
 
 def execute_param_c(cursor, query, param, app_log):
-    """Secure execute w/ param for slow nodes"""
+    """Secure _execute w/ param for slow nodes"""
     while True:
         try:
-            cursor.execute(query, param)
+            cursor._execute(query, param)
             break
         except UnicodeEncodeError as e:
             app_log.warning("Database query: {} {} {}".format(cursor, query, param))

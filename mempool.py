@@ -198,7 +198,7 @@ class Mempool:
 
     def execute(self, sql, param=None, cursor=None):
         """
-        Safely execute the request
+        Safely _execute the request
         :param sql:
         :param param:
         :param cursor: optional. will use the locked shared cursor if None
@@ -210,9 +210,9 @@ class Mempool:
                 if not cursor:
                     cursor = self.cursor
                 if param:
-                    cursor.execute(sql, param)
+                    cursor._execute(sql, param)
                 else:
-                    cursor.execute(sql)
+                    cursor._execute(sql)
                 break
             except Exception as e:
                 self.app_log.warning("Database query: {} {}".format(cursor, sql))
@@ -224,7 +224,7 @@ class Mempool:
         Safe commit
         :return:
         """
-        # no lock on execute and commit. locks are on full atomic operations only
+        # no lock on _execute and commit. locks are on full atomic operations only
         while True:
             try:
                 self.db.commit()

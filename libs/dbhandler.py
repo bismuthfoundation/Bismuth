@@ -2,12 +2,12 @@
 Database handler module for Bismuth nodes
 """
 
-import time
+from time import sleep
 import sqlite3
 import essentials
-from quantizer import quantize_two, quantize_eight, quantize_ten
+from bismuthcore.compat import quantize_two
 import functools
-from fork import Fork
+from libs.fork import Fork
 import sys
 
 
@@ -64,17 +64,17 @@ class DbHandler:
         self.SQL_TO_MISC = "INSERT INTO misc VALUES (?,?)"
 
     def last_block_hash(self):
-        self.execute(self.c, "SELECT block_hash FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
+        self._execute(self.c, "SELECT block_hash FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
         result = self.c.fetchone()[0]
         return result
 
     def pubkeyget(self, address):
-        self.execute_param(self.c, "SELECT public_key FROM transactions WHERE address = ? and reward = 0 LIMIT 1", (address,))
+        self._execute_param(self.c, "SELECT public_key FROM transactions WHERE address = ? and reward = 0 LIMIT 1", (address,))
         result = self.c.fetchone()[0]
         return result
 
     def addfromalias(self, alias):
-        self.execute_param(self.index_cursor, "SELECT address FROM aliases WHERE alias = ? ORDER BY block_height ASC LIMIT 1;", (alias,))
+        self._execute_param(self.index_cursor, "SELECT address FROM aliases WHERE alias = ? ORDER BY block_height ASC LIMIT 1;", (alias,))
         try:
             address_fetch = self.index_cursor.fetchone()[0]
         except:
@@ -87,17 +87,17 @@ class DbHandler:
         return result
 
     def last_block_timestamp(self):
-        self.execute(self.c, "SELECT timestamp FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
+        self._execute(self.c, "SELECT timestamp FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
         return quantize_two(self.c.fetchone()[0])
 
     def difflast(self):
-        self.execute(self.h, "SELECT block_height, difficulty FROM misc ORDER BY block_height DESC LIMIT 1")
+        self._execute(self.h, "SELECT block_height, difficulty FROM misc ORDER BY block_height DESC LIMIT 1")
         difflast = self.h.fetchone()
         return difflast
 
     def annverget(self, node):
         try:
-            self.execute_param(self.h, "SELECT openfield FROM transactions WHERE address = ? AND operation = ? ORDER BY block_height DESC LIMIT 1", (node.genesis, "annver",))
+            self._execute_param(self.h, "SELECT openfield FROM transactions WHERE address = ? AND operation = ? ORDER BY block_height DESC LIMIT 1", (node.genesis, "annver",))
             result = self.h.fetchone()[0]
         except:
             result = "?"
@@ -105,18 +105,18 @@ class DbHandler:
 
     def annget(self, node):
         try:
-            self.execute_param(self.h, "SELECT openfield FROM transactions WHERE address = ? AND operation = ? ORDER BY block_height DESC LIMIT 1", (node.genesis, "ann",))
+            self._execute_param(self.h, "SELECT openfield FROM transactions WHERE address = ? AND operation = ? ORDER BY block_height DESC LIMIT 1", (node.genesis, "ann",))
             result = self.h.fetchone()[0]
         except:
             result = "No announcement"
         return result
 
     def block_max_ram(self):
-        self.execute(self.c, 'SELECT * FROM transactions ORDER BY block_height DESC LIMIT 1')
+        self._execute(self.c, 'SELECT * FROM transactions ORDER BY block_height DESC LIMIT 1')
         return essentials.format_raw_tx(self.c.fetchone())
 
     def aliasget(self, alias_address):
-        self.execute_param(self.index_cursor, "SELECT alias FROM aliases WHERE address = ? ", (alias_address,))
+        self._execute_param(self.index_cursor, "SELECT alias FROM aliases WHERE address = ? ", (alias_address,))
         result = self.index_cursor.fetchall()
         if not result:
             result = [[alias_address]]
@@ -125,7 +125,7 @@ class DbHandler:
     def aliasesget(self, aliases_request):
         results = []
         for alias_address in aliases_request:
-            self.execute_param(self.index_cursor, (
+            self._execute_param(self.index_cursor, (
                 "SELECT alias FROM aliases WHERE address = ? ORDER BY block_height ASC LIMIT 1"), (alias_address,))
             try:
                 result = self.index_cursor.fetchall()[0][0]
@@ -136,7 +136,7 @@ class DbHandler:
 
     def block_height_from_hash(self, data):
         try:
-            self.execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?;",(data,))
+            self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?;", (data,))
             result = self.h.fetchone()[0]
         except:
             result = None
@@ -147,10 +147,10 @@ class DbHandler:
         blocks_fetched = []
         while sys.getsizeof(
                 str(blocks_fetched)) < 500000:  # limited size based on txs in blocks
-            # db_handler.execute_param(db_handler.h, ("SELECT block_height, timestamp,address,recipient,amount,signature,public_key,keep,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),(str(int(client_block)),) + (str(int(client_block + 1)),))
-            self.execute_param(self.h, (
+            # db_handler._execute_param(db_handler.h, ("SELECT block_height, timestamp,address,recipient,amount,signature,public_key,keep,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),(str(int(client_block)),) + (str(int(client_block + 1)),))
+            self._execute_param(self.h, (
                 "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),
-                                              (str(int(block)), str(int(block + 1)),))
+                                (str(int(block)), str(int(block + 1)),))
             result = self.h.fetchall()
             if not result:
                 break
@@ -176,13 +176,13 @@ class DbHandler:
 
     def backup_higher(self, block_height):
         "backup higher blocks than given, takes data from c, which normally means RAM"
-        self.execute_param(self.c, "SELECT * FROM transactions WHERE block_height >= ?;", (block_height,))
+        self._execute_param(self.c, "SELECT * FROM transactions WHERE block_height >= ?;", (block_height,))
         backup_data = self.c.fetchall()
 
-        self.execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height)) #this belongs to rollback_under
+        self._execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height)) #this belongs to rollback_under
         self.commit(self.conn) #this belongs to rollback_under
 
-        self.execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,)) #this belongs to rollback_under
+        self._execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,)) #this belongs to rollback_under
         self.commit(self.conn)  #this belongs to rollback_under
 
         return backup_data
@@ -216,7 +216,7 @@ class DbHandler:
         returns None
         """
         try:
-            self.execute_param(self.index_cursor, "DELETE FROM tokens WHERE block_height >= ?;", (height,))
+            self._execute_param(self.index_cursor, "DELETE FROM tokens WHERE block_height >= ?;", (height,))
             self.commit(self.index)
 
             node.logger.app_log.warning(f"Rolled back the token index below {(height)}")
@@ -234,7 +234,7 @@ class DbHandler:
         returns None
         """
         try:
-            self.execute_param(self.index_cursor, "DELETE FROM aliases WHERE block_height >= ?;", (height,))
+            self._execute_param(self.index_cursor, "DELETE FROM aliases WHERE block_height >= ?;", (height,))
             self.commit(self.index)
 
             node.logger.app_log.warning(f"Rolled back the alias index below {(height)}")
@@ -242,8 +242,8 @@ class DbHandler:
             node.logger.app_log.warning(f"Failed to roll back the alias index below {(height)} due to {e}")
 
     def dev_reward(self,node,block_array,miner_tx,mining_reward,mirror_hash):
-        self.execute_param(self.c, self.SQL_TO_TRANSACTIONS,
-                                 (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Development Reward", str(node.genesis),
+        self._execute_param(self.c, self.SQL_TO_TRANSACTIONS,
+                            (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Development Reward", str(node.genesis),
                                   str(mining_reward), "0", "0", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
 
@@ -263,22 +263,22 @@ class DbHandler:
 
         self.reward_sum = '{:.8f}'.format(self.reward_sum)
 
-        self.execute_param(self.c, self.SQL_TO_TRANSACTIONS,
-                           (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Hypernode Payouts",
+        self._execute_param(self.c, self.SQL_TO_TRANSACTIONS,
+                            (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Hypernode Payouts",
                             "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16",
                             self.reward_sum, "0", "0", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
 
     def to_db(self, block_array, diff_save, block_transactions):
-        self.execute_param(self.c, "INSERT INTO misc VALUES (?, ?)",
-                                 (block_array.block_height_new, diff_save))
+        self._execute_param(self.c, "INSERT INTO misc VALUES (?, ?)",
+                            (block_array.block_height_new, diff_save))
         self.commit(self.conn)
 
         # db_handler.execute_many(db_handler.c, self.SQL_TO_TRANSACTIONS, block_transactions)
 
         for transaction2 in block_transactions:
-            self.execute_param(self.c, self.SQL_TO_TRANSACTIONS,
-                                     (str(transaction2[0]), str(transaction2[1]), str(transaction2[2]),
+            self._execute_param(self.c, self.SQL_TO_TRANSACTIONS,
+                                (str(transaction2[0]), str(transaction2[1]), str(transaction2[2]),
                                       str(transaction2[3]), str(transaction2[4]), str(transaction2[5]),
                                       str(transaction2[6]), str(transaction2[7]), str(transaction2[8]),
                                       str(transaction2[9]), str(transaction2[10]), str(transaction2[11])))
@@ -289,24 +289,24 @@ class DbHandler:
 
         def transactions_to_h(data):
             for x in data:  # we want to save to ledger.db
-                self.execute_param(self.h, self.SQL_TO_TRANSACTIONS,
-                                   (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
+                self._execute_param(self.h, self.SQL_TO_TRANSACTIONS,
+                                    (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
             self.commit(self.hdd)
 
         def misc_to_h(data):
             for x in data:  # we want to save to ledger.db from RAM/hyper.db depending on ram conf
-                self.execute_param(self.h, self.SQL_TO_MISC, (x[0], x[1]))
+                self._execute_param(self.h, self.SQL_TO_MISC, (x[0], x[1]))
             self.commit(self.hdd)
 
         def transactions_to_h2(data):
             for x in data:
-                self.execute_param(self.h2, self.SQL_TO_TRANSACTIONS,
-                                   (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
+                self._execute_param(self.h2, self.SQL_TO_TRANSACTIONS,
+                                    (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
             self.commit(self.hdd2)
 
         def misc_to_h2(data):
             for x in data:
-                self.execute_param(self.h2, self.SQL_TO_MISC, (x[0], x[1]))
+                self._execute_param(self.h2, self.SQL_TO_MISC, (x[0], x[1]))
             self.commit(self.hdd2)
 
 
@@ -314,9 +314,9 @@ class DbHandler:
 
             node.logger.app_log.warning(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
 
-            self.execute_param(self.c, "SELECT * FROM transactions WHERE block_height > ? "
+            self._execute_param(self.c, "SELECT * FROM transactions WHERE block_height > ? "
                                                    "OR block_height < ? ORDER BY block_height ASC",
-                                     (node.hdd_block, -node.hdd_block))
+                                (node.hdd_block, -node.hdd_block))
 
             result1 = self.c.fetchall()
 
@@ -324,8 +324,8 @@ class DbHandler:
             if node.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
                 transactions_to_h2(result1)
 
-            self.execute_param(self.c, "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
-                                     (node.hdd_block,))
+            self._execute_param(self.c, "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
+                                (node.hdd_block,))
             result2 = self.c.fetchall()
 
             misc_to_h(result2)
@@ -349,10 +349,10 @@ class DbHandler:
             except Exception as e:
                 self.logger.app_log.warning(f"Database connection: {connection}")
                 self.logger.app_log.warning(f"Database retry reason: {e}")
-                time.sleep(1)
+                sleep(1)
 
-    def execute(self, cursor, query):
-        """Secure execute for slow nodes"""
+    def _execute(self, cursor, query):
+        """Secure _execute for slow nodes"""
         while True:
             try:
                 cursor.execute(query)
@@ -368,10 +368,10 @@ class DbHandler:
             except Exception as e:
                 self.logger.app_log.warning(f"Database query: {cursor} {query[:100]}")
                 self.logger.app_log.warning(f"Database retry reason: {e}")
-                time.sleep(1)
+                sleep(1)
 
-    def execute_param(self, cursor, query, param):
-        """Secure execute w/ param for slow nodes"""
+    def _execute_param(self, cursor, query, param):
+        """Secure _execute w/ param for slow nodes"""
 
         while True:
             try:
@@ -388,22 +388,22 @@ class DbHandler:
             except Exception as e:
                 self.logger.app_log.warning(f"Database query: {cursor} {str(query)[:100]} {str(param)[:100]}")
                 self.logger.app_log.warning(f"Database retry reason: {e}")
-                time.sleep(1)
+                sleep(1)
 
     def fetchall(self, cursor, query, param=None):
-        """Helper to simplify calling code, execute and fetch in a single line instead of 2"""
+        """Helper to simplify calling code, _execute and fetch in a single line instead of 2"""
         if param is None:
-            self.execute(cursor, query)
+            self._execute(cursor, query)
         else:
-            self.execute_param(cursor, query, param)
+            self._execute_param(cursor, query, param)
         return cursor.fetchall()
 
     def fetchone(self, cursor, query, param=None):
-        """Helper to simplify calling code, execute and fetch in a single line instead of 2"""
+        """Helper to simplify calling code, _execute and fetch in a single line instead of 2"""
         if param is None:
-            self.execute(cursor, query)
+            self._execute(cursor, query)
         else:
-            self.execute_param(cursor, query, param)
+            self._execute_param(cursor, query, param)
         res = cursor.fetchone()
         if res:
             return res[0]

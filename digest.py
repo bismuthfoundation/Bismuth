@@ -8,7 +8,7 @@ import mining_heavy3
 from difficulty import *
 from essentials import address_is_rsa, checkpoint_set, ledger_balance3
 from polysign.signerfactory import SignerFactory
-from fork import Fork
+from libs.fork import Fork
 import tokensv2 as tokens
 from decimal import Decimal
 
@@ -109,12 +109,12 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 signature_list.append(entry_signature)
                 # reject block with transactions which are already in the ledger ram
                 if node.old_sqlite:
-                    db_handler.execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE signature = ?1;",
-                                             (entry_signature,))
+                    db_handler._execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE signature = ?1;",
+                                              (entry_signature,))
                 else:
-                    db_handler.execute_param(db_handler.h,
+                    db_handler._execute_param(db_handler.h,
                                              "SELECT block_height FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1;",
-                                             (entry_signature,))
+                                              (entry_signature,))
 
                 tx_presence_check = db_handler.h.fetchone()
                 if tx_presence_check:
@@ -122,12 +122,12 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                     raise ValueError(f"That transaction {entry_signature[:10]} is already in our ledger, "
                                      f"block_height {tx_presence_check[0]}")
                 if node.old_sqlite:
-                    db_handler.execute_param(db_handler.c, "SELECT block_height FROM transactions WHERE signature = ?1;",
-                                             (entry_signature,))
+                    db_handler._execute_param(db_handler.c, "SELECT block_height FROM transactions WHERE signature = ?1;",
+                                              (entry_signature,))
                 else:
-                    db_handler.execute_param(db_handler.c,
+                    db_handler._execute_param(db_handler.c,
                                              "SELECT block_height FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1;",
-                                             (entry_signature,))
+                                              (entry_signature,))
                 tx_presence_check = db_handler.c.fetchone()
                 if tx_presence_check:
                     # print(node.last_block)
@@ -338,8 +338,8 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 # node.logger.app_log.info("Nonce: {}".format(nonce))
 
                 # check if we already have the sha_hash
-                db_handler.execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
-                                         (block_instance.block_hash,))
+                db_handler._execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
+                                          (block_instance.block_hash,))
                 dummy = db_handler.h.fetchone()
                 if dummy:
                     raise ValueError(
@@ -406,11 +406,11 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                 db_handler.to_db(block_instance, diff_save, block_transactions)
 
                 # new sha_hash
-                db_handler.execute(db_handler.c, "SELECT * FROM transactions "
+                db_handler._execute(db_handler.c, "SELECT * FROM transactions "
                                                  "WHERE block_height = (SELECT max(block_height) FROM transactions)")
                 # Was trying to simplify, but it's the latest mirror sha_hash.
                 # not the latest block, nor the mirror of the latest block.
-                # c.execute("SELECT * FROM transactions WHERE block_height = ?", (block_instance.block_height_new -1,))
+                # c._execute("SELECT * FROM transactions WHERE block_height = ?", (block_instance.block_height_new -1,))
                 tx_list_to_hash = db_handler.c.fetchall()
                 block_instance.mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).hexdigest()
                 # /new sha_hash

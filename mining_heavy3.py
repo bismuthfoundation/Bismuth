@@ -12,12 +12,12 @@ import struct
 import sys
 from hashlib import sha224
 from hmac_drbg import DRBG
-from quantizer import quantize_two, quantize_eight, quantize_ten
+from quantizer import quantize_ten
 from decimal import Decimal
 
 import regnet
 
-from fork import Fork
+from libs.fork import Fork
 fork = Fork()
 
 __version__ = '0.1.4'

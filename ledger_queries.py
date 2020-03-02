@@ -81,7 +81,7 @@ class LedgerQueries:
     @classmethod
     def execute(cls, db, sql: str, param: tuple = None, many: bool = False):
         """
-        Safely execute the request
+        Safely _execute the request
 
         :param db:
         :param sql:
@@ -95,9 +95,9 @@ class LedgerQueries:
                 if many:
                     cursor = db.executemany(sql, param)
                 elif param:
-                    cursor = db.execute(sql, param)
+                    cursor = db._execute(sql, param)
                 else:
-                    cursor = db.execute(sql)
+                    cursor = db._execute(sql)
                 break
             except Exception as e:
                 app_log.warning("LedgerQueries: {}".format(sql))

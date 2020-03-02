@@ -15,10 +15,10 @@ from essentials import percentage
 
 
 def execute_param(cursor, query, param):
-    """Secure execute w/ param for slow nodes"""
+    """Secure _execute w/ param for slow nodes"""
     while True:
         try:
-            cursor.execute(query, param)
+            cursor._execute(query, param)
             break
         except Exception as e:
             app_log.warning("Database query: {} {} {}".format(cursor, query, param))
@@ -67,7 +67,7 @@ def balanceget_at_block(balance_address,block, h3):
     return str(balance) #, str (credit_ledger), str (debit), str (fees), str (rewards)
 
 def check_db(index,index_cursor):
-    index_cursor.execute("CREATE TABLE IF NOT EXISTS staking (block_height INTEGER, timestamp NUMERIC, address, balance)")
+    index_cursor._execute("CREATE TABLE IF NOT EXISTS staking (block_height INTEGER, timestamp NUMERIC, address, balance)")
     index.commit()
 
 def staking_update(conn,c,index,index_cursor, mode, reg_phase_end, app_log):
@@ -79,14 +79,14 @@ def staking_update(conn,c,index,index_cursor, mode, reg_phase_end, app_log):
 
     if mode == "reindex":
         app_log.warning("staking database will be reindexed")
-        index_cursor.execute("DELETE FROM staking")
+        index_cursor._execute("DELETE FROM staking")
         index.commit()
 
     reg_phase_start = reg_phase_end - 10000
     app_log.warning("reg_phase_start: {}".format(reg_phase_start))
     app_log.warning("reg_phase_end: {}".format(reg_phase_end))
 
-    c.execute("SELECT block_height, timestamp, address, recipient,operation, openfield FROM transactions WHERE block_height >= ? AND block_height <= ? AND operation = ? ORDER BY block_height, timestamp LIMIT 100", (reg_phase_start, reg_phase_end, "staking:register",))
+    c._execute("SELECT block_height, timestamp, address, recipient,operation, openfield FROM transactions WHERE block_height >= ? AND block_height <= ? AND operation = ? ORDER BY block_height, timestamp LIMIT 100", (reg_phase_start, reg_phase_end, "staking:register",))
     results = c.fetchall() #more efficient than "for row in"
 
     for row in results:
@@ -96,7 +96,7 @@ def staking_update(conn,c,index,index_cursor, mode, reg_phase_end, app_log):
             address = row[2]
 
             try:
-                index_cursor.execute("SELECT * from staking WHERE address = ?", (address,))
+                index_cursor._execute("SELECT * from staking WHERE address = ?", (address,))
                 dummy = index_cursor.fetchall()[0] #check for uniqueness
                 app_log.warning("staking already registered: {}".format(address))
             except:
@@ -104,7 +104,7 @@ def staking_update(conn,c,index,index_cursor, mode, reg_phase_end, app_log):
                 balance = balanceget_at_block(address, reg_phase_end, c)
 
                 if quantize_eight(balance) >= 10000:
-                    index_cursor.execute("INSERT INTO staking VALUES (?, ?, ?, ?)", (block_height, timestamp, address, balance))
+                    index_cursor._execute("INSERT INTO staking VALUES (?, ?, ?, ?)", (block_height, timestamp, address, balance))
                     index.commit()
 
                     app_log.warning ("Staking added: {} {}".format (block_height, address))
@@ -118,7 +118,7 @@ def staking_update(conn,c,index,index_cursor, mode, reg_phase_end, app_log):
 
 def mirror_hash_generate(c):
     # new hash
-    c.execute("SELECT * FROM transactions WHERE block_height = (SELECT block_height FROM transactions ORDER BY block_height ASC LIMIT 1)")
+    c._execute("SELECT * FROM transactions WHERE block_height = (SELECT block_height FROM transactions ORDER BY block_height ASC LIMIT 1)")
     result = c.fetchall()
     mirror_hash = blake2b(str (result).encode(), digest_size=20).hexdigest()
     return mirror_hash
@@ -127,7 +127,7 @@ def mirror_hash_generate(c):
 def staking_payout(conn,c,index,index_cursor,block_height,timestamp,app_log):
     "payout, to be run every 10k blocks"
 
-    index_cursor.execute("SELECT * FROM staking")
+    index_cursor._execute("SELECT * FROM staking")
     staking = index_cursor.fetchall()
     app_log.warning("staking: {}".format(staking))
     staking_total = len(staking)
@@ -144,13 +144,13 @@ def staking_payout(conn,c,index,index_cursor,block_height,timestamp,app_log):
             app_log.warning("stake: {}".format(stake))
 
             try:
-                c.execute ("SELECT * from transactions WHERE block_height = ? AND recipient = ?", (-block_height,address,))
+                c._execute ("SELECT * from transactions WHERE block_height = ? AND recipient = ?", (-block_height, address,))
                 dummy = c.fetchall ()[0]  # check for uniqueness
                 app_log.warning ("staking payout already processed: {} {}".format(block_height,address))
 
             except:
                 """skip direct bis payouts
-                c.execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",(-block_height,timestamp,"staking",address,stake,"0","0",mirror_hash,"0","0","mnpayout","0"))
+                c._execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",(-block_height,timestamp,"staking",address,stake,"0","0",mirror_hash,"0","0","mnpayout","0"))
                 conn.commit()
                 app_log.warning ("staking payout added: {} {}".format (block_height, address))
                 """
@@ -160,7 +160,7 @@ def staking_payout(conn,c,index,index_cursor,block_height,timestamp,app_log):
                 if stake_int < 1:
                     stake_int = 1
 
-                c.execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",(-block_height,timestamp,"staking",address,"0","0","0",mirror_hash,"0","0","token:transfer","fuel:{}".format(stake_int)))
+                c._execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (-block_height, timestamp, "staking", address, "0", "0", "0", mirror_hash, "0", "0", "token:transfer", "fuel:{}".format(stake_int)))
                 conn.commit()
                 app_log.warning ("Staking fuel payout added: {} {}".format (block_height, address))
                 #fuel
@@ -170,7 +170,7 @@ def staking_payout(conn,c,index,index_cursor,block_height,timestamp,app_log):
 def staking_revalidate(conn,c,index,index_cursor,block,app_log):
     "remove nodes that removed balance, to be run every 10k blocks"
 
-    index_cursor.execute("SELECT * FROM staking")
+    index_cursor._execute("SELECT * FROM staking")
     staking = index_cursor.fetchall()
 
     for staking in staking:
@@ -183,10 +183,10 @@ def staking_revalidate(conn,c,index,index_cursor,block,app_log):
         app_log.warning ("balance: {}".format(balance))
 
         if quantize_eight(balance) < 10000:
-            index_cursor.execute("DELETE FROM staking WHERE address = ?",(address,))
+            index_cursor._execute("DELETE FROM staking WHERE address = ?", (address,))
             index.commit()
         else: #update balance
-            index_cursor.execute("UPDATE staking SET balance = ? WHERE address = ?",(balance,address))
+            index_cursor._execute("UPDATE staking SET balance = ? WHERE address = ?", (balance, address))
             index.commit ()
             app_log.warning("staking balance updated from {} to {} for {}".format(balance_savings,balance,address))
 

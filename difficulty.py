@@ -2,15 +2,14 @@ from decimal import Decimal
 import regnet
 import math
 import time
-from fork import *
-from quantizer import quantize_two, quantize_eight, quantize_ten
-from fork import Fork
+from quantizer import quantize_two, quantize_ten
+from libs.fork import Fork
 
 def difficulty(node, db_handler):
     try:
         fork = Fork()
 
-        db_handler.execute(db_handler.c, "SELECT * FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 2")
+        db_handler._execute(db_handler.c, "SELECT * FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 2")
         result = db_handler.c.fetchone()
 
         timestamp_last = Decimal(result[1])
@@ -26,16 +25,16 @@ def difficulty(node, db_handler):
         # Failsafe for regtest starting at block 1}
         timestamp_before_last = timestamp_last if previous is None else Decimal(previous[1])
 
-        db_handler.execute_param(db_handler.c, (
+        db_handler._execute_param(db_handler.c, (
             "SELECT timestamp FROM transactions WHERE block_height > ? AND reward != 0 ORDER BY block_height ASC LIMIT 2"),
-                                 (block_height - 1441,))
+                                  (block_height - 1441,))
         timestamp_1441 = Decimal(db_handler.c.fetchone()[0])
         block_time_prev = (timestamp_before_last - timestamp_1441) / 1440
         temp = db_handler.c.fetchone()
         timestamp_1440 = timestamp_1441 if temp is None else Decimal(temp[0])
         block_time = Decimal(timestamp_last - timestamp_1440) / 1440
 
-        db_handler.execute(db_handler.c, "SELECT difficulty FROM misc ORDER BY block_height DESC LIMIT 1")
+        db_handler._execute(db_handler.c, "SELECT difficulty FROM misc ORDER BY block_height DESC LIMIT 1")
         diff_block_previous = Decimal(db_handler.c.fetchone()[0])
 
         time_to_generate = timestamp_last - timestamp_before_last

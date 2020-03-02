@@ -14,10 +14,10 @@ if "testnet" in version:
     hyper_path = "static/ledger_test.db"
 
 def execute(cursor, query):
-    """Secure execute for slow nodes"""
+    """Secure _execute for slow nodes"""
     while True:
         try:
-            cursor.execute(query)
+            cursor._execute(query)
             break
         except Exception as e:
             print("Database query: {} {}".format(cursor, query))
