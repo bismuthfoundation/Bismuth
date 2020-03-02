@@ -16,7 +16,7 @@ from Cryptodome.PublicKey import RSA
 
 from quantizer import quantize_two, quantize_eight, quantize_ten
 from decimal import Decimal
-from simplecrypt import encrypt, decrypt
+from bismuthcore.simplecrypt import encrypt, decrypt
 from typing import Union
 from polysign.signer import SignerType
 from polysign.signerfactory import SignerFactory
