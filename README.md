@@ -1,5 +1,11 @@
 Bismuth Readme
 =======
+
+**dev-dbevolution is an unstable, dev onlybranch for DB upgrade.**
+
+NOT to be used in production, likely to be in non functional state unless further notice.
+
+
 ##### Warning: For production purposes, please only use code from the "releases" page, which is not in pre-release state.
 
 ### Official website:
