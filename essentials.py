@@ -31,8 +31,12 @@ __version__ = "0.0.7"
 For temp. code compatibility, dup code moved to polysign module
 """
 
+# EGG_EVO : most of the helpers here can move to helpers into bismuthcore, or already are into polysign.
+# No emergency, but some clean up will allow to completely remove that file
+# Some helpers also can be optimized (extraneous casting)
 
-def address_validate(address:str) -> bool:
+
+def address_validate(address: str) -> bool:
     return SignerFactory.address_is_valid(address)
 
 
@@ -70,7 +74,7 @@ def percentage(percent, whole):
     return Decimal(percent) * Decimal(whole) / 100
 
 
-def replace_regex(string: str, replace:str) -> str:
+def replace_regex(string: str, replace: str) -> str:
     replaced_string = re.sub(r'^{}'.format(replace), "", string)
     return replaced_string
 
@@ -204,7 +208,7 @@ def keys_check(app_log, keyfile_name: str) -> None:
         # export to single file
 
 
-def keys_save(private_key_readable :str, public_key_readable: str, address: str, file) -> None:
+def keys_save(private_key_readable: str, public_key_readable: str, address: str, file) -> None:
     wallet_dict = dict()
     wallet_dict['Private Key'] = private_key_readable
     wallet_dict['Public Key'] = public_key_readable
@@ -263,7 +267,7 @@ def keys_unlock(private_key_encrypted: str) -> tuple:
     return key, private_key_readable
 
 
-def keys_load_new(keyfile="wallet.der"):
+def keys_load_new(keyfile: str="wallet.der"):
     # import keys
 
     with open(keyfile, 'r') as keyfile:
