@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.4.0.9"  # Post fork candidate 9
+VERSION = "5.0.0-evo"  # Experimental db-evolution branch
 
 import functools
 import glob
