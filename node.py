@@ -42,6 +42,8 @@ from essentials import fee_calculate, download_file
 from libs import node, logger, keys, client
 from fork import Fork
 
+from bismuthcore.transaction import Transaction
+
 #todo: migrate this to polysign\signer_crw.py
 from Cryptodome.Hash import SHA
 from Cryptodome.PublicKey import RSA
@@ -924,7 +926,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for block command")
 
                 elif data == "blocklast":
-                    # if (peer_ip in allowed or "any" in allowed):  # only sends the miner part of the block!
+                    # Beware: name is misleading: only sends the miner part of the block! (only one transaction)
                     if node.peers.is_allowed(peer_ip, data):
                         db_handler_instance.execute(db_handler_instance.c, "SELECT * FROM transactions "
                                                                            "WHERE reward != 0 "
@@ -936,12 +938,17 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for blocklast command")
 
                 elif data == "blocklastjson":
-                    # if (peer_ip in allowed or "any" in allowed):  # only sends the miner part of the block!
+                    # Beware: name is misleading: only sends the miner part of the block! (only one transaction)
                     if node.peers.is_allowed(peer_ip, data):
+                        # TODO: this will come from a db_handler object, because it has to be independent of the underlying db
+                        # something like db_handler.get_last_block(), that returns a Block instance.
+                        # But since it sends back a single tx, not a block, we can mockup it here for the time being.
                         db_handler_instance.execute(db_handler_instance.c,
                                                     "SELECT * FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
                         block_last = db_handler_instance.c.fetchall()[0]
-
+                        transaction = Transaction.from_legacy(block_last)
+                        # TODO: previous version left for comparison, will need clean up.
+                        """
                         response = {"block_height": block_last[0],
                                     "timestamp": block_last[1],
                                     "address": block_last[2],
@@ -954,8 +961,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                     "reward": block_last[9],
                                     "operation": block_last[10],
                                     "nonce": block_last[11]}
-
                         send(self.request, response)
+                        """
+                        send(self.request, transaction.to_dict(legacy=True))  # send will convert the dict to json.
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for blocklastjson command")
 
