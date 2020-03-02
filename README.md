@@ -1,9 +1,12 @@
 Bismuth Readme
 =======
 
-**dev-dbevolution is an unstable, dev onlybranch for DB upgrade.**
+**dev-dbevolution is an unstable, dev only branch for DB upgrade.**
 
 NOT to be used in production, likely to be in non functional state unless further notice.
+
+Relies on bleeding edge of https://github.com/bismuthfoundation/BismuthCore  
+Devs: Please add a symlink from bismuthcore/bismuth core to the node repo, so you use the local version of BismuthCore code when "from BismuthCore.??? import ???"
 
 
 ##### Warning: For production purposes, please only use code from the "releases" page, which is not in pre-release state.
