@@ -4,6 +4,10 @@ config = options.Get()
 config.read()
 version = config.version
 
+
+# EGG_EVO: dup with `commands.py stop`, I would remove it.
+# Less files at first level, less troubles.
+
 s = socks.socksocket()
 
 port = 5658
