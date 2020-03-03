@@ -47,7 +47,7 @@ def execute_param(cursor, query, param):
     """Secure _execute w/ param for slow nodes"""
     while True:
         try:
-            cursor._execute(query, param)
+            cursor.execute(query, param)
             break
         except sqlite3.InterfaceError as e:
             print("Database query to abort: {} {} {}".format(cursor, query, param))

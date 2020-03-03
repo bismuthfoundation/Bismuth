@@ -119,8 +119,8 @@ def rollback(node, db_handler, block_height):
     db_handler.rollback_under(block_height)
 
     # rollback indices
-    db_handler.tokens_rollback(node, block_height)
-    db_handler.aliases_rollback(node, block_height)
+    db_handler.tokens_rollback(block_height)
+    db_handler.aliases_rollback(block_height)
     # rollback indices
 
     node.logger.app_log.warning(f"Status: Chain rolled back below {block_height} and will be resynchronized")
@@ -353,9 +353,9 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
         reason = ""
 
         try:
-            block_max_ram = db_handler.block_max_ram()
-            db_block_height = block_max_ram ['block_height']
-            db_block_hash = block_max_ram ['block_hash']
+            block_max_ram = db_handler.last_block()
+            db_block_height = block_max_ram['block_height']
+            db_block_hash = block_max_ram['block_hash']
 
             ip = {'ip': peer_ip}
             node.plugin_manager.execute_filter_hook('filter_rollback_ip', ip)
@@ -387,8 +387,8 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
                 # /roll back hdd too
 
                 # rollback indices
-                db_handler.tokens_rollback(node, db_block_height)
-                db_handler.aliases_rollback(node, db_block_height)
+                db_handler.tokens_rollback(db_block_height)
+                db_handler.aliases_rollback(db_block_height)
                 # /rollback indices
 
                 node.last_block_timestamp = db_handler.last_block_timestamp()
@@ -488,8 +488,8 @@ def sequencing_check(db_handler):
                     conn2.commit()
 
                     # rollback indices
-                    db_handler.tokens_rollback(node, y)
-                    db_handler.aliases_rollback(node, y)
+                    db_handler.tokens_rollback(y)
+                    db_handler.aliases_rollback(y)
 
                     # rollback indices
 
@@ -536,8 +536,8 @@ def sequencing_check(db_handler):
                     conn2.close()
 
                     # rollback indices
-                    db_handler.tokens_rollback(node, y)
-                    db_handler.aliases_rollback(node, y)
+                    db_handler.tokens_rollback(y)
+                    db_handler.aliases_rollback(y)
                     # rollback indices
 
                     node.logger.app_log.warning(f"Status: Due to a sequencing issue at block {y}, {chain} has been rolled back and will be resynchronized")
@@ -1448,7 +1448,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         # with open(peerlist, "r") as peer_list:
                         #    peers_file = peer_list.read()
 
-                        result = db_handler.annget(node)
+                        result = db_handler.annget(node.genesis)
 
                         send(self.request, result)
                     else:
@@ -1456,7 +1456,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "annverget":
                     if node.peers.is_allowed(peer_ip):
-                        result = db_handler.annverget(node)
+                        result = db_handler.annverget(node.genesis)
                         send(self.request, result)
 
                     else:
@@ -1946,7 +1946,7 @@ def verify(db_handler):
         }
         invalid = 0
 
-        for row in db_handler.h._execute('SELECT * FROM transactions WHERE block_height > 0 and reward = 0 ORDER BY block_height'):  # native sql fx to keep compatibility
+        for row in db_handler.h.execute('SELECT * FROM transactions WHERE block_height > 0 and reward = 0 ORDER BY block_height'):  # native sql fx to keep compatibility
 
             db_block_height = str(row[0])
             db_timestamp = '%.2f' % (quantize_two(row[1]))

@@ -210,9 +210,9 @@ class Mempool:
                 if not cursor:
                     cursor = self.cursor
                 if param:
-                    cursor._execute(sql, param)
+                    cursor.execute(sql, param)
                 else:
-                    cursor._execute(sql)
+                    cursor.execute(sql)
                 break
             except Exception as e:
                 self.app_log.warning("Database query: {} {}".format(cursor, sql))

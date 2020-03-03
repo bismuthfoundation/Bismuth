@@ -13,16 +13,18 @@ if "testnet" in version:
     port = 2829
     hyper_path = "static/ledger_test.db"
 
+
 def execute(cursor, query):
     """Secure _execute for slow nodes"""
     while True:
         try:
-            cursor._execute(query)
+            cursor.execute(query)
             break
         except Exception as e:
             print("Database query: {} {}".format(cursor, query))
             print("Database retry reason: {}".format(e))
     return cursor
+
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):

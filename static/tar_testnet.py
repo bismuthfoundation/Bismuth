@@ -31,13 +31,13 @@ tar_obj = Tar()
 
 def vacuum(cursor, name):
     print(f"Vacuuming {name}")
-    cursor._execute("VACUUM")
+    cursor.execute("VACUUM")
 
 
 def dupes_check_sigs(cursor, name):
     print (f"Testing {name} for sig duplicates")
 
-    cursor._execute("SELECT * FROM transactions WHERE signature IN (SELECT signature FROM transactions WHERE signature != '0' GROUP BY signature HAVING COUNT(*) >1)")
+    cursor.execute("SELECT * FROM transactions WHERE signature IN (SELECT signature FROM transactions WHERE signature != '0' GROUP BY signature HAVING COUNT(*) >1)")
     results = cursor.fetchall()
 
     dupes_allowed = [708334,708335]
@@ -51,7 +51,7 @@ def dupes_check_sigs(cursor, name):
 def dupes_check_rows_transactions(cursor, name):
     print (f"Testing {name} for transaction row duplicates")
 
-    cursor._execute("SELECT block_height, timestamp, address, recipient, amount, signature, public_key, block_hash, fee, reward, operation, openfield, COUNT(*) FROM transactions GROUP BY block_height, timestamp, address, recipient, amount, signature, public_key, block_hash, fee, reward, operation, openfield HAVING COUNT(*) > 1")
+    cursor.execute("SELECT block_height, timestamp, address, recipient, amount, signature, public_key, block_hash, fee, reward, operation, openfield, COUNT(*) FROM transactions GROUP BY block_height, timestamp, address, recipient, amount, signature, public_key, block_hash, fee, reward, operation, openfield HAVING COUNT(*) > 1")
     result = cursor.fetchall()
     for entry in result:
         print(f"Duplicate entry on block: {entry}")
@@ -61,7 +61,7 @@ def dupes_check_rows_transactions(cursor, name):
 def dupes_check_rows_misc(cursor, name):
     print (f"Testing {name} for misc row duplicates")
 
-    cursor._execute("SELECT block_height, difficulty, COUNT(*) FROM misc GROUP BY block_height, difficulty HAVING COUNT(*) > 1")
+    cursor.execute("SELECT block_height, difficulty, COUNT(*) FROM misc GROUP BY block_height, difficulty HAVING COUNT(*) > 1")
     result = cursor.fetchall()
     for entry in result:
         print(f"Duplicate entry on block: {entry}")
@@ -71,7 +71,7 @@ def dupes_check_rows_misc(cursor, name):
 def balance_from_cursor(cursor, address):
     credit = Decimal("0")
     debit = Decimal("0")
-    for entry in cursor._execute("SELECT amount,reward FROM transactions WHERE recipient = ? ", (address,)):
+    for entry in cursor.execute("SELECT amount,reward FROM transactions WHERE recipient = ? ", (address,)):
         try:
             #result = cursor.fetchall()
             credit = credit + quantize_eight(entry[0]) + quantize_eight(entry[1])
@@ -81,7 +81,7 @@ def balance_from_cursor(cursor, address):
             credit = 0
         #print (credit)
 
-    for entry in cursor._execute("SELECT amount,fee FROM transactions WHERE address = ? ", (address,)):
+    for entry in cursor.execute("SELECT amount,fee FROM transactions WHERE address = ? ", (address,)):
         try:
             # result = cursor.fetchall()
             debit = debit + quantize_eight(entry[0]) + quantize_eight(entry[1])
@@ -104,7 +104,7 @@ def balance_differences():
         address = address[0]
         balance1 = balance_from_cursor(tar_obj.h, address)
         balance2 = balance_from_cursor(tar_obj.h2, address)
-        if (balance1 == balance2):
+        if balance1 == balance2:
             check = '  Ok'
         else:
             check = '> Ko'

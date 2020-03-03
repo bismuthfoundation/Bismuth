@@ -95,9 +95,9 @@ class LedgerQueries:
                 if many:
                     cursor = db.executemany(sql, param)
                 elif param:
-                    cursor = db._execute(sql, param)
+                    cursor = db.execute(sql, param)
                 else:
-                    cursor = db._execute(sql)
+                    cursor = db.execute(sql)
                 break
             except Exception as e:
                 app_log.warning("LedgerQueries: {}".format(sql))

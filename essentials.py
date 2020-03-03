@@ -50,6 +50,8 @@ End compatibility
 
 
 def format_raw_tx(raw: list) -> dict:
+    # Beware: this dict format is no more iso with db or network strcuture, as pubkey is decoded.
+    # To be removed, use Transaction.to_dict instead.
     transaction = dict()
     transaction['block_height'] = raw[0]
     transaction['timestamp'] = raw[1]
@@ -126,6 +128,7 @@ def round_down(number, order):
 
 
 def checkpoint_set(node):
+    # TODO: EGG_EVO This belongs to Node class
     limit = 30
     if node.last_block < 1450000:
         limit = 1000
@@ -136,6 +139,7 @@ def checkpoint_set(node):
 
 
 def ledger_balance3(address, cache, db_handler):
+    # TODO: EGG_EVO This belongs to DbHandler
     # Many heavy blocks are pool payouts, same address.
     # Cache pre_balance instead of recalc for every tx
     if address in cache:
@@ -310,9 +314,10 @@ def fee_calculate(openfield: str, operation: str='', block: int=0) -> Decimal:
 
 def execute_param_c(cursor, query, param, app_log):
     """Secure _execute w/ param for slow nodes"""
+    # EGG_EVO: should disappear, use DbHandler (used by mempool only)
     while True:
         try:
-            cursor._execute(query, param)
+            cursor.execute(query, param)
             break
         except UnicodeEncodeError as e:
             app_log.warning("Database query: {} {} {}".format(cursor, query, param))

@@ -8,11 +8,13 @@ import mining_heavy3
 from difficulty import *
 from essentials import address_is_rsa, checkpoint_set, ledger_balance3
 from polysign.signerfactory import SignerFactory
+from bismuthcore.compat import quantize_two, quantize_eight
 from libs.fork import Fork
 import tokensv2 as tokens
 from decimal import Decimal
 
 fork = Fork()
+
 
 def digest_block(node, data, sdef, peer_ip, db_handler):
     """node param for imports"""
@@ -490,7 +492,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             node.logger.app_log.info(f"Received data dump: {data}")
             block_instance.failed_cause = str(e)
 
-            node.last_block = db_handler.block_max_ram()['block_height'] #get actual data from database on exception
+            node.last_block = db_handler.last_block()['block_height'] #get actual data from database on exception
             node.last_block_hash = db_handler.last_block_hash() #get actual data from database on exception
 
             # Temp
