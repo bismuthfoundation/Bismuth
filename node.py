@@ -990,7 +990,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         block_desired_result = db_handler.h.fetchall()
 
                         response_list = []
-                        for transaction in block_desired_result:
+
+                        for entry in block_desired_result:
+                            transaction = Transaction.from_legacy(entry)
+                            response = transaction.to_dict(legacy=True)
+                            """
                             response = {"block_height": transaction[0],
                                         "timestamp": transaction[1],
                                         "address": transaction[2],
@@ -1003,6 +1007,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                         "reward": transaction[9],
                                         "operation": transaction[10],
                                         "openfield": transaction[11]}
+                            """
 
                             response_list.append(response)
 
