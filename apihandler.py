@@ -9,15 +9,16 @@ import json
 import os
 import sys
 import threading
-from essentials import format_raw_tx
+# from essentials import format_raw_tx
 
 # modular handlers will need access to the database methods under some form, so it needs to be modular too.
 # Here, I just duplicated the minimum needed code from node, further refactoring with classes will follow.
 import connections
 import mempool as mp
 from polysign.signerfactory import SignerFactory
+from bismuthcore.transaction import Transaction
 
-__version__ = "0.0.8"
+__version__ = "0.0.9"
 
 
 class ApiHandler:
@@ -64,7 +65,8 @@ class ApiHandler:
 
         old = None
         for transaction_raw in raw_blocks:
-            transaction = format_raw_tx(transaction_raw)
+            # EGG_EVO: Is decode_pubkey needed? Where is that used?
+            transaction = Transaction.from_legacy(transaction_raw).to_dict(legacy=True, decode_pubkey=True)
             height = transaction['block_height']
             hash = transaction['block_hash']
 
@@ -86,7 +88,7 @@ class ApiHandler:
 
         return blocks
 
-    def blocktojsondiffs(self, list_of_txs:list, list_of_diffs:list):
+    def blocktojsondiffs(self, list_of_txs: list, list_of_diffs: list):
         i = 0
         blocks_dict = {}
         block_dict = {}
@@ -94,7 +96,8 @@ class ApiHandler:
 
         old = None
         for transaction in list_of_txs:
-            transaction_formatted = format_raw_tx(transaction)
+            # EGG_EVO: Is decode_pubkey needed? Where is that used?
+            transaction_formatted = Transaction.from_legacy(transaction).to_dict(legacy=True, decode_pubkey=True)
             height = transaction_formatted["block_height"]
 
             del transaction_formatted["block_height"]

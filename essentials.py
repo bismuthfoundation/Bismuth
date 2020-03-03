@@ -48,9 +48,9 @@ def address_is_rsa(address: str) -> bool:
 End compatibility
 """
 
-
+"""
 def format_raw_tx(raw: list) -> dict:
-    # Beware: this dict format is no more iso with db or network strcuture, as pubkey is decoded.
+    # Beware: this dict format is no more iso with db or network structure, as pubkey is decoded.
     # To be removed, use Transaction.to_dict instead.
     transaction = dict()
     transaction['block_height'] = raw[0]
@@ -70,7 +70,7 @@ def format_raw_tx(raw: list) -> dict:
     transaction['operation'] = raw[10]
     transaction['openfield'] = raw[11]
     return transaction
-
+"""
 
 def percentage(percent, whole):
     return Decimal(percent) * Decimal(whole) / 100
