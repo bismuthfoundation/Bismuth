@@ -33,6 +33,7 @@ polysign
 # ignore ledger queries, for the time being.
 ledger_queries.py
 bismuthcore/
+bismuthcore
 colored.json
 ipresolv.json
 powstatus.json
