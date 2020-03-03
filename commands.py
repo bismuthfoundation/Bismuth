@@ -501,6 +501,9 @@ elif command == "addlist":
 elif command == "addlistlim":
     addlistlim(s, arg1, arg2)
 
+elif command == "listlimjson":
+    listlimjson(s, arg1)
+
 elif command == "addlistlimjson":
     addlistlimjson(s, arg1, arg2)
 

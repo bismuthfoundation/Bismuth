@@ -989,11 +989,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                                   (block_desired,))
                         block_desired_result = db_handler.h.fetchall()
 
-                        response_list = []
+                        transaction_list = []
 
                         for entry in block_desired_result:
                             transaction = Transaction.from_legacy(entry)
-                            response = transaction.to_dict(legacy=True)
+                            transaction_dict = transaction.to_dict(legacy=True)
                             """
                             response = {"block_height": transaction[0],
                                         "timestamp": transaction[1],
@@ -1009,9 +1009,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                         "openfield": transaction[11]}
                             """
 
-                            response_list.append(response)
+                            transaction_list.append(transaction_dict)
 
-                        send(self.request, response_list)
+                        send(self.request, transaction_list)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for blockget command")
 
@@ -1161,8 +1161,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                                   (list_limit,))
                         result = db_handler.h.fetchall()
 
-                        response_list = []
-                        for transaction in result:
+                        transaction_list = []
+                        for entry in result:
+                            transaction = Transaction.from_legacy(entry)
+                            transaction_dict = transaction.to_dict(legacy=True)
+
+                            """
                             response = {"block_height": transaction[0],
                                         "timestamp": transaction[1],
                                         "address": transaction[2],
@@ -1175,10 +1179,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                         "reward": transaction[9],
                                         "operation": transaction[10],
                                         "openfield": transaction[11]}
+                            """
+                            transaction_list.append(transaction_dict)
 
-                            response_list.append(response)
-
-                        send(self.request, response_list)
+                        send(self.request, transaction_list)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for listlimjson command")
 
@@ -1218,8 +1222,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                                   (address_tx_list, address_tx_list, address_tx_list_limit,))
                         result = db_handler.h.fetchall()
 
-                        response_list = []
-                        for transaction in result:
+                        transaction_list = []
+                        for entry in result:
+
+                            transaction = Transaction.from_legacy(entry)
+                            transaction_dict = transaction.to_dict(legacy=True)
+
+                            """
                             response = {"block_height": transaction[0],
                                         "timestamp": transaction[1],
                                         "address": transaction[2],
@@ -1232,10 +1241,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                         "reward": transaction[9],
                                         "operation": transaction[10],
                                         "openfield": transaction[11]}
+                            """
 
-                            response_list.append(response)
+                            transaction_list.append(transaction_dict)
 
-                        send(self.request, response_list)
+                        send(self.request, transaction_list)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for addlistlimjson command")
 
@@ -1264,9 +1274,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                                   (address_tx_list, address_tx_list, address_tx_list_limit,))
                         result = db_handler.h.fetchall()
 
-                        response_list = []
+                        transaction_list = []
                         for transaction in result:
-                            response = {"block_height": transaction[0],
+
+                            transaction_dict = {"block_height": transaction[0],
                                         "timestamp": transaction[1],
                                         "address": transaction[2],
                                         "recipient": transaction[3],
@@ -1279,10 +1290,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                         "operation": transaction[10],
                                         "openfield": transaction[11]}
 
-                            response_list.append(response)
+                            transaction_list.append(transaction_dict)
 
-                        send(self.request, response_list)
-                        send(self.request, result)
+                        send(self.request, transaction_list)
+                        #send(self.request, result) HCL_EVO:REDUNDANT
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for addlistlimmir command")
 
