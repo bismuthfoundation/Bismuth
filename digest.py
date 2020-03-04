@@ -2,13 +2,13 @@ import hashlib
 import os
 import sys
 
-import essentials
 import mempool as mp
 import mining_heavy3
 from difficulty import *
-from essentials import address_is_rsa, checkpoint_set, ledger_balance3
+from essentials import address_validate, address_is_rsa, checkpoint_set, ledger_balance3
 from polysign.signerfactory import SignerFactory
 from bismuthcore.compat import quantize_two, quantize_eight
+from bismuthcore.helpers import fee_calculate
 from libs.fork import Fork
 import tokensv2 as tokens
 from decimal import Decimal
@@ -81,9 +81,9 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
         if float(tx.received_amount) < 0:
             raise ValueError("Negative balance spend attempt")
         # Addresses validity
-        if not essentials.address_validate(tx.received_address):
+        if not address_validate(tx.received_address):
             raise ValueError("Not a valid sender address")
-        if not essentials.address_validate(tx.received_recipient):
+        if not address_validate(tx.received_recipient):
             raise ValueError("Not a valid recipient address")
 
         # Now we can process cpu heavier checks, decode and check sig itself
@@ -226,7 +226,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
                         if x != block[-1]:
                             block_fees_address = quantize_eight(Decimal(block_fees_address) + Decimal(
-                                essentials.fee_calculate(db_openfield, db_operation,
+                                fee_calculate(db_openfield, db_operation,
                                                          node.last_block)))  # exclude the mining tx from fees
 
                 # node.logger.app_log.info("Fee: " + str(fee))
@@ -251,7 +251,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                     fee = 0
                 else:
                     reward = 0
-                    fee = essentials.fee_calculate(db_openfield, db_operation, node.last_block)
+                    fee = fee_calculate(db_openfield, db_operation, node.last_block)
                     fees_block.append(quantize_eight(fee))
                     balance_pre = ledger_balance3(db_address, balances, db_handler)  # keep this as c (ram hyperblock access)
                     balance = quantize_eight(balance_pre - block_debit_address)

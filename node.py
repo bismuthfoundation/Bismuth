@@ -37,19 +37,19 @@ import plugins
 import wallet_keys
 from connections import send, receive
 from digest import *
-from essentials import fee_calculate, download_file
+from bismuthcore.helpers import fee_calculate, download_file
 from libs import node, logger, keys, client
 from libs.fork import Fork
 
 from bismuthcore.transaction import Transaction
 from bismuthcore.compat import quantize_eight, quantize_ten, quantize_two
 
-#todo: migrate this to polysign\signer_crw.py
+# todo: migrate this to polysign
 from Cryptodome.Hash import SHA
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Signature import PKCS1_v1_5
 import base64
-#/todo
+# /todo
 
 fork = Fork()
 

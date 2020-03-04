@@ -15,13 +15,11 @@ import time
 from polysign.signerfactory import SignerFactory
 
 import essentials
-from quantizer import quantize_two, quantize_eight, quantize_ten
+from bismuthcore.compat import quantize_two, quantize_eight
+from bismuthcore.helpers import fee_calculate
 
-# from Cryptodome.Hash import SHA
-# from Cryptodome.PublicKey import RSA
-# from Cryptodome.Signature import PKCS1_v1_5
 
-__version__ = "0.0.7e"
+__version__ = "0.0.7f"
 
 """
 0.0.5g - Add default param to mergedts for compatibility
@@ -35,6 +33,7 @@ __version__ = "0.0.7e"
 0.0.7b - Reduce age of valid txns to 2 hours
 0.0.7c - Remove unnecessary Decimal
 0.0.7e - exclude too old txs from mempool balance, simplify mempool merge.
+0.0.7f - use bismuthcore 1/n
 """
 
 DECIMAL0 = Decimal(0)
@@ -655,7 +654,7 @@ class Mempool:
                         if result:
                             for x in result:
                                 debit_tx = quantize_eight(x[0])
-                                fee = essentials.fee_calculate(x[1], x[2], last_block)  # fee_calculate sends back a Decimal 8
+                                fee = fee_calculate(x[1], x[2], last_block)  # fee_calculate sends back a Decimal 8
                                 debit_mempool += debit_tx + fee
 
                         credit = DECIMAL0
@@ -680,7 +679,7 @@ class Mempool:
                         balance = credit - debit - fees + rewards - quantize_eight(mempool_amount)
                         balance_pre = credit - debit_ledger - fees + rewards
 
-                        fee = essentials.fee_calculate(mempool_openfield, mempool_operation, last_block)
+                        fee = fee_calculate(mempool_openfield, mempool_operation, last_block)
 
                         # print("Balance", balance, fee)
 

@@ -72,6 +72,7 @@ def format_raw_tx(raw: list) -> dict:
     return transaction
 """
 
+
 def percentage(percent, whole):
     return Decimal(percent) * Decimal(whole) / 100
 
@@ -79,33 +80,6 @@ def percentage(percent, whole):
 def replace_regex(string: str, replace: str) -> str:
     replaced_string = re.sub(r'^{}'.format(replace), "", string)
     return replaced_string
-
-
-def download_file(url: str, filename: str) -> None:
-    """Download a file from URL to filename
-
-    :param url: URL to download file from
-    :param filename: Filename to save downloaded data as
-
-    returns `filename`
-    """
-    try:
-        r = requests.get(url, stream=True)
-        total_size = int(r.headers.get('content-length')) / 1024
-
-        with open(filename, 'wb') as fp:
-            chunkno = 0
-            for chunk in r.iter_content(chunk_size=1024):
-                if chunk:
-                    chunkno = chunkno + 1
-                    if chunkno % 10000 == 0:  # every x chunks
-                        print(f"Downloaded {int(100 * (chunkno / total_size))} %")
-
-                    fp.write(chunk)
-                    fp.flush()
-            print("Downloaded 100 %")
-    except:
-        raise
 
 
 def most_common(lst: list):
@@ -298,18 +272,6 @@ def keys_load_new(keyfile: str="wallet.der"):
     public_key_b64encoded = base64.b64encode(public_key_readable.encode('utf-8'))
 
     return key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address, keyfile
-
-
-def fee_calculate(openfield: str, operation: str='', block: int=0) -> Decimal:
-    # block var will be removed after HF
-    fee = Decimal("0.01") + (Decimal(len(openfield)) / Decimal("100000"))  # 0.01 dust
-    if operation == "token:issue":
-        fee = Decimal(fee) + Decimal("10")
-    if openfield.startswith("alias="):
-        fee = Decimal(fee) + Decimal("1")
-    #if operation == "alias:register": #add in the future, careful about forking
-    #    fee = Decimal(fee) + Decimal("1")
-    return quantize_eight(fee)
 
 
 def execute_param_c(cursor, query, param, app_log):
