@@ -929,41 +929,33 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "blocklast":
                     # Beware: name is misleading: only sends the miner part of the block! (only one transaction)
                     if node.peers.is_allowed(peer_ip, data):
+                        send(db_handler.last_mining_transaction().to_tuple())
+                        """
                         db_handler._execute(db_handler.c, "SELECT * FROM transactions "
                                                                            "WHERE reward != 0 "
                                                                            "ORDER BY block_height DESC LIMIT 1;")
                         block_last = db_handler.c.fetchall()[0]
-
                         send(self.request, block_last)
+                        """
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for blocklast command")
 
                 elif data == "blocklastjson":
                     # Beware: name is misleading: only sends the miner part of the block! (only one transaction)
+                    # DOC: possible confusion to be emphasized in the ref. doc.
                     if node.peers.is_allowed(peer_ip, data):
-                        # TODO: this will come from a db_handler object, because it has to be independent of the underlying db
+                        # DONE: this will come from a db_handler object, because it has to be independent of the underlying db
                         # something like db_handler.get_last_block(), that returns a Block instance.
-                        # But since it sends back a single tx, not a block, we can mockup it here for the time being.
+                        """
                         db_handler._execute(db_handler.c,
                                                     "SELECT * FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
                         block_last = db_handler.c.fetchall()[0]
                         transaction = Transaction.from_legacy(block_last)
+                        """
+                        # EGG_EVO: We now have the required clean method we already use in other places.
+                        transaction = db_handler.last_mining_transaction()
                         # TODO: previous version left for comparison, will need clean up.
-                        """
-                        response = {"block_height": block_last[0],
-                                    "timestamp": block_last[1],
-                                    "address": block_last[2],
-                                    "recipient": block_last[3],
-                                    "amount": block_last[4],
-                                    "signature": block_last[5],
-                                    "public_key": block_last[6],
-                                    "block_hash": block_last[7],
-                                    "fee": block_last[8],
-                                    "reward": block_last[9],
-                                    "operation": block_last[10],
-                                    "nonce": block_last[11]}
-                        send(self.request, response)
-                        """
+                        # Was response = {"block_height": block_last[0], .....
                         send(self.request, transaction.to_dict(legacy=True))  # send will convert the dict to json.
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for blocklastjson command")

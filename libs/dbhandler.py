@@ -164,7 +164,7 @@ class DbHandler:
         :return:
         """
         # Only things really used from here are block_height, block_hash.
-        self._execute(self.c, 'SELECT * FROM transactions ORDER BY block_height DESC LIMIT 1')
+        self._execute(self.c, 'SELECT * FROM transactions where reward != 0 ORDER BY block_height DESC LIMIT 1')
         # Q: Does it help or make it safer/faster to add AND reward > 0 ?
         transaction = Transaction.from_legacy(self.c.fetchone())
         # EGG_EVO: now returns the transaction object itself, higher level adjustments processed.
