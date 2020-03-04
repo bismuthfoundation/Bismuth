@@ -929,7 +929,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "blocklast":
                     # Beware: name is misleading: only sends the miner part of the block! (only one transaction)
                     if node.peers.is_allowed(peer_ip, data):
-                        send(db_handler.last_mining_transaction().to_tuple())
+                        send(self.request, db_handler.last_mining_transaction().to_tuple())
                         """
                         db_handler._execute(db_handler.c, "SELECT * FROM transactions "
                                                                            "WHERE reward != 0 "
