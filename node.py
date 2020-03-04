@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "5.0.0-evo"  # Experimental db-evolution branch
+VERSION = "5.0.1-evo"  # Experimental db-evolution branch
 
 import functools
 import glob
@@ -354,7 +354,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
         reason = ""
 
         try:
-            block_max_ram = db_handler.last_block()
+            block_max_ram = db_handler.last_mining_transaction().to_dict(legacy=True)
             db_block_height = block_max_ram['block_height']
             db_block_hash = block_max_ram['block_hash']
 
@@ -969,15 +969,17 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for blocklastjson command")
 
                 elif data == "blockget":
-                    # if (peer_ip in allowed or "any" in allowed):
                     if node.peers.is_allowed(peer_ip, data):
-                        block_desired = receive(self.request)
-
+                        # see blockgetjson below for more comments
+                        block_desired = int(receive(self.request))
+                        block = db_handler.get_block(block_desired)
+                        send(self.request, block.to_listoftuples())
+                        """
                         db_handler._execute_param(db_handler.h, "SELECT * FROM transactions WHERE block_height = ?;",
                                                   (block_desired,))
                         block_desired_result = db_handler.h.fetchall()
-
                         send(self.request, block_desired_result)
+                        """
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for blockget command")
 

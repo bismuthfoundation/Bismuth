@@ -158,17 +158,18 @@ class DbHandler:
 
     # ---- Current state queries ---- #
 
-    def last_block(self) -> dict:
+    def last_mining_transaction(self) -> Transaction:
         """
-        Returns the latest block (last mining transaction). Was "last_block", renamed for consistency.
+        Returns the latest mining (coinbase) transaction. Renamed for consistency since it's not the full block data, just one tx.
         :return:
         """
         # Only things really used from here are block_height, block_hash.
         self._execute(self.c, 'SELECT * FROM transactions ORDER BY block_height DESC LIMIT 1')
-        # Q: Does it help or make it safer to add AND reward > 0 ?
+        # Q: Does it help or make it safer/faster to add AND reward > 0 ?
         transaction = Transaction.from_legacy(self.c.fetchone())
-        # EGG_EVO: should return the transaction object itself, but needs higher level adjustments, so leaving as is for now.
-        return transaction.to_dict(legacy=True)
+        # EGG_EVO: now returns the transaction object itself, higher level adjustments processed.
+        # return transaction.to_dict(legacy=True)
+        return transaction
 
     def last_block_hash(self) -> str:
         # returns last block hash from live data as hex string
