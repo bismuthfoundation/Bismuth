@@ -7,12 +7,13 @@ import sqlite3
 # import essentials
 from bismuthcore.compat import quantize_two
 from bismuthcore.transaction import Transaction
+from bismuthcore.block import Block
 import functools
 from libs.fork import Fork
 import sys
 
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 
 def sql_trace_callback(log, sql_id, statement):
@@ -266,6 +267,21 @@ class DbHandler:
             blocks_fetched.extend([result])
         return blocks_fetched
 
+    def get_block(self, block_height: int) -> Block:
+        """
+        Returns a Block instance matching the requested height. Block will be empty if height is unknown but will throw no exception
+        :param block_height:
+        :return:
+        """
+        # EGG_EVO: This sql request is the same in both cases (int/float), but...
+        self._execute_param(self.h, "SELECT * FROM transactions WHERE block_height = ?", (block_height,))
+        block_desired_result = self.h.fetchall()
+        # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
+        # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
+        # Transaction objects - themselves - are db agnostic.
+        transaction_list = [Transaction.from_legacy(entry) for entry in block_desired_result]
+        return Block(transaction_list)
+
     # ====  TODO: check usage of these methods ====
 
     def block_height_max(self) -> int:
@@ -288,15 +304,15 @@ class DbHandler:
 
     def backup_higher(self, block_height: int):
         # TODO EGG_EVO, returned data is dependent of db format. is this an issue if consistent? What is it then used for?
-        "backup higher blocks than given, takes data from c, which normally means RAM"
+        # "backup higher blocks than given, takes data from c, which normally means RAM"
         self._execute_param(self.c, "SELECT * FROM transactions WHERE block_height >= ?;", (block_height,))
         backup_data = self.c.fetchall()
 
         self._execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height)) #this belongs to rollback_under
-        self.commit(self.conn) #this belongs to rollback_under
+        self.commit(self.conn)  # this belongs to rollback_under
 
         self._execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,)) #this belongs to rollback_under
-        self.commit(self.conn)  #this belongs to rollback_under
+        self.commit(self.conn)  # this belongs to rollback_under
 
         return backup_data
 

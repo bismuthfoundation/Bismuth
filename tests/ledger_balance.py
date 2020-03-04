@@ -5,6 +5,7 @@ Test of various balance check methods
 import sqlite3
 import time
 import sys
+from decimal import Decimal
 
 # custom modules
 sys.path.append('../')

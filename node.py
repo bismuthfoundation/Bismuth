@@ -41,6 +41,7 @@ from bismuthcore.helpers import fee_calculate, download_file
 from libs import node, logger, keys, client
 from libs.fork import Fork
 
+import essentials
 from bismuthcore.transaction import Transaction
 from bismuthcore.compat import quantize_eight, quantize_ten, quantize_two
 
@@ -983,35 +984,27 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "blockgetjson":
                     # if (peer_ip in allowed or "any" in allowed):
                     if node.peers.is_allowed(peer_ip, data):
-                        block_desired = receive(self.request)
+                        block_desired = int(receive(self.request))
+                        # Egg: param comes from the client, so it makes sense to force cast to int as a sanitization precaution
 
+                        # We can't access _execute nor the private cursor from db_handler (it's db dependent, we have no clue on its format.)
+                        # only use its public methods. Here, we need one that sends back a Block (ie, list of transactions)
+                        # since we then want legacy dict for the tx list, as well factorize the code and ask the block to give it,
+                        """
+                        # Previous code kept for comparison
                         db_handler._execute_param(db_handler.h, "SELECT * FROM transactions WHERE block_height = ?;",
                                                   (block_desired,))
                         block_desired_result = db_handler.h.fetchall()
-
                         transaction_list = []
-
                         for entry in block_desired_result:
                             transaction = Transaction.from_legacy(entry)
                             transaction_dict = transaction.to_dict(legacy=True)
-                            """
-                            response = {"block_height": transaction[0],
-                                        "timestamp": transaction[1],
-                                        "address": transaction[2],
-                                        "recipient": transaction[3],
-                                        "amount": transaction[4],
-                                        "signature": transaction[5],
-                                        "public_key": transaction[6],
-                                        "block_hash": transaction[7],
-                                        "fee": transaction[8],
-                                        "reward": transaction[9],
-                                        "operation": transaction[10],
-                                        "openfield": transaction[11]}
-                            """
-
+                            # was response = {"block_height": transaction[0], "timestamp": transaction[1], "address": transaction[2],....                            
                             transaction_list.append(transaction_dict)
-
-                        send(self.request, transaction_list)
+                        send(self.request, transaction_list)                            
+                        """
+                        block = db_handler.get_block(block_desired)
+                        send(self.request, block.to_listofdicts(legacy=True))
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for blockget command")
 
