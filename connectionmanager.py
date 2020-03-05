@@ -4,10 +4,10 @@ from worker import worker
 
 
 class ConnectionManager (threading.Thread):
-    def __init__(self, node, mp):
+    def __init__(self, node, mempool):
         threading.Thread.__init__(self, name="ConnectionManagerThread")
         self.node = node
-        self.mp = mp
+        self.mempool = mempool
 
     def run(self):
 
@@ -24,7 +24,7 @@ class ConnectionManager (threading.Thread):
                 # random.shuffle(peer_dict.items())
                 if until_purge <= 0:
                     # will purge once at start, then about every half hour (60 * 30 sec)
-                    self.mp.MEMPOOL.purge()
+                    self.mempool.purge()
                     until_purge = 60
                 until_purge -= 1
 
@@ -38,7 +38,7 @@ class ConnectionManager (threading.Thread):
 
                 # Status display for Peers related info
                 self.node.peers.status_log()
-                self.mp.MEMPOOL.status()
+                self.mempool.status()
                 # last block
                 if self.node.last_block_ago:
                     self.node.last_block_ago = time.time() - int(self.node.last_block_timestamp)

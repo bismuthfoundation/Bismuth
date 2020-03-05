@@ -12,7 +12,8 @@ from bismuthcore.block import Block
 from bismuthcore.helpers import fee_calculate
 import functools
 from libs.fork import Fork
-from mempool import Mempool
+#import mempool as mp
+from mempool import Mempool  # for type hints
 from typing import Union
 import sys
 
@@ -90,6 +91,21 @@ class DbHandler:
             address_fetch = self.index_cursor.fetchone()[0]
         except:
             address_fetch = "No alias"
+        return address_fetch
+
+    def alias_exists(self, alias: str) -> bool:
+        # very similar to above, but returns a bool
+        """
+        Lookup the address matching the provided alias
+        :param alias:
+        :return:
+        """
+        address_fetch = False
+        self._execute_param(self.index_cursor, "SELECT address FROM aliases WHERE alias = ? ORDER BY block_height ASC LIMIT 1;", (alias,))
+        try:
+            address_fetch = self.index_cursor.fetchone()[0] is not None
+        except:
+            pass
         return address_fetch
 
     def aliasget(self, alias_address):
@@ -231,6 +247,7 @@ class DbHandler:
         """
         # mempool fees
         base_mempool = mempool.mp_get(balance_address)
+        # TODO: EGG_EVO Here, we get raw txs. we should ask the mempool object for its mempool balance, not rely on a specific low level format.
         debit_mempool = 0
         if base_mempool:
             for x in base_mempool:

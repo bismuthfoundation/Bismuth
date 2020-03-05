@@ -14,7 +14,7 @@ import threading
 # modular handlers will need access to the database methods under some form, so it needs to be modular too.
 # Here, I just duplicated the minimum needed code from node, further refactoring with classes will follow.
 import connections
-import mempool as mp
+from mempool import MEMPOOL
 from polysign.signerfactory import SignerFactory
 from bismuthcore.transaction import Transaction
 
@@ -136,8 +136,10 @@ class ApiHandler:
         :param peers:
         :return: list of mempool tx
         """
-        txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
-        connections.send(socket_handler, txs)
+        # txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
+        mempool_txs = MEMPOOL.transactions_to_send()
+        response_tuples = [transaction.to_tuple() for transaction in mempool_txs]
+        connections.send(socket_handler, response_tuples)
 
     def api_getconfig(self, socket_handler, db_handler, peers):
         """
@@ -157,7 +159,7 @@ class ApiHandler:
         :param peers:
         :return: 'ok'
         """
-        mp.MEMPOOL.clear()
+        MEMPOOL.clear()
         connections.send(socket_handler, 'ok')
 
     def api_ping(self, socket_handler, db_handler, peers):

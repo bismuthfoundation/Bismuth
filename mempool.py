@@ -17,9 +17,9 @@ from polysign.signerfactory import SignerFactory
 import essentials
 from bismuthcore.compat import quantize_two, quantize_eight
 from bismuthcore.helpers import fee_calculate
+from bismuthcore.transaction import Transaction
 
-
-__version__ = "0.0.7f"
+g__version__ = "0.0.7g"
 
 """
 0.0.5g - Add default param to mergedts for compatibility
@@ -34,6 +34,7 @@ __version__ = "0.0.7f"
 0.0.7c - Remove unnecessary Decimal
 0.0.7e - exclude too old txs from mempool balance, simplify mempool merge.
 0.0.7f - use bismuthcore 1/n
+0.0.7g - use bismuthcore 2/n
 """
 
 DECIMAL0 = Decimal(0)
@@ -57,6 +58,13 @@ FREEZE_MIN = 5
 """
 Common Sql requests
 """
+
+# EGG_EVO: What format should mempool be?
+# since it's only used for temp storage, is it better to
+# A/ keep it legacy - no convert for in/out network, but heavier balances
+# B/ have it new format - more converts, easy balances
+# C/ hybrid. only convert amounts for fast balances, do not touch/encode/decode pubkey, sig...
+# C looks like the best option.
 
 # Create mempool table
 SQL_CREATE = "CREATE TABLE IF NOT EXISTS transactions (" \
@@ -148,7 +156,7 @@ class Mempool:
         base mempool
         :return:
         """
-        return self.fetchall(SQL_MEMPOOL_GET, (balance_address,))
+        return self._fetchall(SQL_MEMPOOL_GET, (balance_address,))
 
     def check(self):
         """
@@ -191,11 +199,11 @@ class Mempool:
                         self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log,"MEMPOOL"))
                     self.db.text_factory = str
                     self.cursor = self.db.cursor()
-                    self.execute(SQL_CREATE)
-                    self.commit()
+                    self._execute(SQL_CREATE)
+                    self._commit()
                     self.app_log.warning("Status: Recreated mempool file")
 
-    def execute(self, sql, param=None, cursor=None):
+    def _execute(self, sql, param=None, cursor=None):
         """
         Safely _execute the request
         :param sql:
@@ -218,7 +226,7 @@ class Mempool:
                 self.app_log.warning("Database retry reason: {}".format(e))
                 time.sleep(0.1)
 
-    def commit(self):
+    def _commit(self):
         """
         Safe commit
         :return:
@@ -232,7 +240,7 @@ class Mempool:
                 self.app_log.warning("Database retry reason: {}".format(e))
                 time.sleep(0.1)
 
-    def fetchone(self, sql, param=None, write=False):
+    def _fetchone(self, sql, param=None, write=False):
         """
         Fetchs one and Returns data
         :param sql:
@@ -242,14 +250,14 @@ class Mempool:
         """
         if write:
             with self.lock:
-                self.execute(sql, param)
+                self._execute(sql, param)
                 return self.cursor.fetchone()
         else:
             cursor = self.db.cursor()
-            self.execute(sql, param, cursor)
+            self._execute(sql, param, cursor)
             return cursor.fetchone()
 
-    def fetchall(self, sql, param=None, write=False):
+    def _fetchall(self, sql, param=None, write=False):
         """
         Fetchs all and Returns data
         :param sql:
@@ -259,11 +267,11 @@ class Mempool:
         """
         if write:
             with self.lock:
-                self.execute(sql, param)
+                self._execute(sql, param)
                 return self.cursor.fetchall()
         else:
             cursor = self.db.cursor()
-            self.execute(sql, param, cursor)
+            self._execute(sql, param, cursor)
             return cursor.fetchall()
 
     def vacuum(self):
@@ -272,7 +280,7 @@ class Mempool:
         :return:
         """
         with self.lock:
-            self.execute("VACUUM")
+            self._execute("VACUUM")
 
     def close(self):
         if self.db:
@@ -286,8 +294,8 @@ class Mempool:
         with self.lock:
             self.app_log.warning("Purging mempool")
             try:
-                self.execute(SQL_PURGE)
-                self.commit()
+                self._execute(SQL_PURGE)
+                self._commit()
             except Exception as e:
                 self.app_log.error("Error {} on mempool purge".format(e))
 
@@ -297,8 +305,28 @@ class Mempool:
         :return:
         """
         with self.lock:
-            self.execute(SQL_CLEAR)
-            self.commit()
+            self._execute(SQL_CLEAR)
+            self._commit()
+
+    def transactions_to_send(self) -> list:
+        """Returns the list of mempool Transactions as legacy tuples"""
+        mempool_txs = self._fetchall(SQL_SELECT_TX_TO_SEND)
+        # no need to sanitize again, was done at insert.
+        return [Transaction.from_legacy(raw_tx, sanitize=False).to_tuple() for raw_tx in mempool_txs]
+
+    def alias_exists(self, alias: str) -> bool:
+        """
+        Lookup the address matching the provided alias
+        :param alias:
+        :return:
+        """
+        alias_exists = False
+        self._execute("SELECT timestamp FROM transactions WHERE openfield = ? LIMIT 1", ("alias="+alias,))
+        try:
+            alias_exists = self._fetchone()[0] is not None
+        except:
+            pass
+        return alias_exists
 
     def delete_transaction(self, signature):
         """
@@ -307,10 +335,12 @@ class Mempool:
         """
         with self.lock:
             if self.config.old_sqlite:
-                self.execute(SQL_DELETE_TX_OLD, (signature,))
+                self._execute(SQL_DELETE_TX_OLD, (signature,))
             else:
-                self.execute(SQL_DELETE_TX, (signature,))
-            self.commit()
+                self._execute(SQL_DELETE_TX, (signature,))
+            self._commit()
+
+
 
     def sig_check(self, signature):
         """
@@ -319,9 +349,9 @@ class Mempool:
         :return: boolean
         """
         if self.config.old_sqlite:
-            return bool(self.fetchone(SQL_SIG_CHECK_OLD, (signature,)))
+            return bool(self._fetchone(SQL_SIG_CHECK_OLD, (signature,)))
         else:
-            return bool(self.fetchone(SQL_SIG_CHECK, (signature,)))
+            return bool(self._fetchone(SQL_SIG_CHECK, (signature,)))
 
     def status(self):
         """
@@ -340,7 +370,7 @@ class Mempool:
                                    self.peers_sent[peer] > limit}
             self.app_log.warning(
                 "Status: MEMPOOL Live = {}".format(", ".join(set(self.peers_sent.keys()) - set(frozen))))
-            status = self.fetchall(SQL_STATUS)
+            status = self._fetchall(SQL_STATUS)
             count, open_len, senders, recipients = status[0]
             self.app_log.warning(
                 "Status: MEMPOOL {} Txs from {} senders to {} distinct recipients. Openfield len {}".
@@ -355,7 +385,7 @@ class Mempool:
         :return:
         """
         try:
-            mempool_txs = self.fetchall(SQL_SELECT_ALL_VALID_TXS)
+            mempool_txs = self._fetchall(SQL_SELECT_ALL_VALID_TXS)
             mempool_size = sys.getsizeof(str(mempool_txs)) / 1000000.0
             return mempool_size
         except:
@@ -400,7 +430,7 @@ class Mempool:
         :return:
         """
         if DEBUG_DO_NOT_SEND_TX:
-            all = self.fetchall(SQL_SELECT_TX_TO_SEND)
+            all = self._fetchall(SQL_SELECT_TX_TO_SEND)
             tx_count = len(all)
             tx_list = [tx[1] + ' ' + tx[2] + ' : ' + str(tx[3]) for tx in all]
             # print("I have {} txs for {} but won't send: {}".format(tx_count, peer_ip, "\n".join(tx_list)))
@@ -409,11 +439,11 @@ class Mempool:
         # Get our raw txs
         if peer_ip not in self.peers_sent:
             # new peer, never seen, send all
-            raw = self.fetchall(SQL_SELECT_TX_TO_SEND)
+            raw = self._fetchall(SQL_SELECT_TX_TO_SEND)
         else:
             # add some margin to account for tx in the future, 5 sec ?
             last_sent = self.peers_sent[peer_ip] - 5
-            raw = self.fetchall(SQL_SELECT_TX_TO_SEND_SINCE, (last_sent,))
+            raw = self._fetchall(SQL_SELECT_TX_TO_SEND_SINCE, (last_sent,))
         # Now filter out the tx we got from the peer
         if peer_txs:
             peers_sig = [tx[4] for tx in peer_txs]
@@ -618,10 +648,10 @@ class Mempool:
                             try:
                                 # Do not lock, we already have the lock for the whole merge.
                                 if self.config.old_sqlite:
-                                    self.execute(SQL_DELETE_TX_OLD, (mempool_signature_enc,))
+                                    self._execute(SQL_DELETE_TX_OLD, (mempool_signature_enc,))
                                 else:
-                                    self.execute(SQL_DELETE_TX, (mempool_signature_enc,))
-                                self.commit()
+                                    self._execute(SQL_DELETE_TX, (mempool_signature_enc,))
+                                self._commit()
                                 mempool_result.append("Mempool: Transaction deleted from our mempool")
                             except:  # experimental try and except
                                 mempool_result.append("Mempool: Transaction was not present in the pool anymore")
@@ -649,7 +679,7 @@ class Mempool:
                         # verify balance
                         mempool_result.append("Mempool: Received address: {}".format(mempool_address))
                         # include mempool fees - excluding the old ones.
-                        result = self.fetchall(SQL_MEMPOOL_GET, (mempool_address, ))
+                        result = self._fetchall(SQL_MEMPOOL_GET, (mempool_address, ))
                         debit_mempool = DECIMAL0
                         if result:
                             for x in result:
@@ -692,13 +722,13 @@ class Mempool:
                             continue
 
                         # Pfew! we can finally insert into mempool - all is str, type converted and enforced above
-                        self.execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?)",
+                        self._execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?)",
                                      (mempool_timestamp, mempool_address, mempool_recipient, mempool_amount,
                                       mempool_signature_enc, mempool_public_key_b64encoded, mempool_operation,
                                       mempool_openfield, int(time_now)))
                         mempool_result.append("Mempool updated with a received transaction from {}".format(peer_ip))
                         mempool_result.append("Success")  # WARNING: Do not change string or case ever!
-                        self.commit()  # Save (commit) the changes to mempool db
+                        self._commit()  # Save (commit) the changes to mempool db
 
                         mempool_size += sys.getsizeof(str(transaction)) / 1000000.0
                     else:

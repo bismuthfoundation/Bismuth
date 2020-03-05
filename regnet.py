@@ -14,10 +14,13 @@ from Cryptodome.Hash import SHA
 from Cryptodome.Signature import PKCS1_v1_5
 from hashlib import sha224
 from random import getrandbits
+from typing import List
 
 import connections
 import mempool as mp
 import mining_heavy3 as mining
+
+from bismuthcore.transaction import Transaction
 
 # fixed diff for regnet
 REGNET_DIFF = 16
@@ -75,7 +78,7 @@ def sql_trace_callback(log, id, statement):
     log.warning(line)
 
 
-def generate_one_block(blockhash, mempool_txs, node, db_handler):
+def generate_one_block(blockhash: str, mempool_txs: List[Transaction], node, db_handler):
     try:
         if not blockhash:
             node.logger.app_log.warning("Bad blockhash")
@@ -100,7 +103,9 @@ def generate_one_block(blockhash, mempool_txs, node, db_handler):
                     for i in range(TX_PER_BLOCK):
                         if not len(mempool_txs):
                             break
-                        txs.append(mempool_txs.pop(0))
+                        txs.append(mempool_txs.pop(0).to_tuple())
+                        # TODO: EGG_EVO BEWARE ! Converted to Use transaction object, but still relies on legacy format afterward.
+                        # Will need rework, regnet maybe could only use the new db format (it's volatile anyway)
                     block_send = []
                     removal_signature = []
                     for mpdata in txs:
@@ -149,7 +154,8 @@ def command(sdef, data, blockhash, node, db_handler):
         if data == 'regtest_generate':
             how_many = int(connections.receive(sdef))
             node.logger.app_log.warning("regtest_generate {} {}".format(how_many, blockhash))
-            mempool_txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
+            # mempool_txs = mp.mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
+            mempool_txs = mp.MEMPOOL.transactions_to_send()
             for i in range(how_many):
                 blockhash = generate_one_block(blockhash, mempool_txs, node, db_handler)
             connections.send(sdef, 'OK')

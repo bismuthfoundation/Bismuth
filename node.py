@@ -44,6 +44,7 @@ from libs.fork import Fork
 import essentials
 from bismuthcore.transaction import Transaction
 from bismuthcore.compat import quantize_eight, quantize_ten, quantize_two
+import mempool as mp  # EGG: some nasty things to fix here
 
 # todo: migrate this to polysign
 from Cryptodome.Hash import SHA
@@ -1066,8 +1067,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for balancegethyperjson command")
 
                 elif data == "mpgetjson" and node.peers.is_allowed(peer_ip, data):
-                    mempool_txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
-
+                    """
+                    # mempool_txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
                     response_list = []
                     for transaction in mempool_txs:
                         response = {"timestamp": transaction[0],
@@ -1080,21 +1081,16 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                     "openfield": transaction[7]}
 
                         response_list.append(response)
-
-                    # node.logger.app_log.info("Inbound: Extracted from the mempool: " + str(mempool_txs))  # improve: sync based on signatures only
-
-                    # if len(mempool_txs) > 0: #wont sync mempool until we send something, which is bad
-                    # send own
+                    """
+                    mempool_txs = mp.MEMPOOL.transactions_to_send()
+                    response_list = [transaction.to_dict(legacy=True) for transaction in mempool_txs]
                     send(self.request, response_list)
 
                 elif data == "mpget" and node.peers.is_allowed(peer_ip, data):
-                    mempool_txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
-
-                    # node.logger.app_log.info("Inbound: Extracted from the mempool: " + str(mempool_txs))  # improve: sync based on signatures only
-
-                    # if len(mempool_txs) > 0: #wont sync mempool until we send something, which is bad
-                    # send own
-                    send(self.request, mempool_txs)
+                    # mempool_txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
+                    mempool_txs = mp.MEMPOOL.transactions_to_send()
+                    response_tuples = [transaction.to_tuple() for transaction in mempool_txs]
+                    send(self.request, response_tuples)
 
                 elif data == "mpclear" and peer_ip == "127.0.0.1":  # reserved for localhost
                     mp.MEMPOOL.clear()
@@ -1355,16 +1351,18 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "aliascheck":
                     if node.peers.is_allowed(peer_ip, data):
-                        reg_string = receive(self.request)
+                        reg_string = str(receive(self.request))  # sanitize user input
 
-                        registered_pending = mp.MEMPOOL.fetchone(
-                            "SELECT timestamp FROM transactions WHERE openfield = ?;",
-                            ("alias=" + reg_string,))
-
+                        """
+                        # EGG_EVO these requests could have been huge (no limit).
+                        # Moving to mempool and dbhandler to decouple from low level db format.
+                        registered_pending = MEMPOOL.fetchone("SELECT timestamp FROM transactions WHERE openfield = ?;", ("alias=" + reg_string,))
                         db_handler._execute_param(db_handler.h, "SELECT timestamp FROM transactions WHERE openfield = ?;", ("alias=" + reg_string,))
                         registered_already = db_handler.h.fetchone()
-
-                        if registered_already is None and registered_pending is None:
+                        """
+                        registered_pending = mp.MEMPOOL.alias_exists(reg_string)  # this will lookup from mp transactions
+                        registered_already = db_handler.alias_exists(reg_string)  # this looks up in alias table, faster.
+                        if not registered_already and not registered_pending:
                             send(self.request, "Alias free")
                         else:
                             send(self.request, "Alias registered")
@@ -2153,7 +2151,7 @@ if __name__ == "__main__":
                 node.logger.app_log.warning("Status: Not starting a local server to conceal identity on Tor network")
 
             # start connection manager
-            connection_manager = connectionmanager.ConnectionManager(node, mp)
+            connection_manager = connectionmanager.ConnectionManager(node, mp.MEMPOOL)
             connection_manager.start()
             # start connection manager
 
