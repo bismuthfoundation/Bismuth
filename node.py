@@ -1036,43 +1036,31 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     # if (peer_ip in allowed or "any" in allowed):
                     if node.peers.is_allowed(peer_ip, data):
                         balance_address = receive(self.request)  # for which address
-
-                        balanceget_result = db_handler.balance_get_full(balance_address, mp.MEMPOOL)
-                        response = {"balance": balanceget_result[0],
-                                    "credit": balanceget_result[1],
-                                    "debit": balanceget_result[2],
-                                    "fees": balanceget_result[3],
-                                    "rewards": balanceget_result[4],
-                                    "balance_no_mempool": balanceget_result[5]}
-
-                        send(self.request,
-                                         response)  # return balance of the address to the client, including mempool
-                        # send(self.request, balance_pre)  # return balance of the address to the client, no mempool
+                        balance_dict = db_handler.balance_get_full(balance_address, mp.MEMPOOL, as_dict=True)
+                        send(self.request, balance_dict)  # return balance of the address to the client, including mempool
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for balancegetjson command")
 
                 elif data == "balancegethyper":
-                    # if (peer_ip in allowed or "any" in allowed):
+                    # EGG: What is the reason for these hyper commands? look like they use the same data source anyway as the regular one.
+                    # Can tag as deprecated?
                     if node.peers.is_allowed(peer_ip, data):
                         balance_address = receive(self.request)  # for which address
-
-                        balanceget_result = balanceget(balance_address, db_handler)[0]
-
-                        send(self.request,
-                                         balanceget_result)  # return balance of the address to the client, including mempool
+                        balanceget_result =db_handler.balance_get_full(balance_address, mp.MEMPOOL)[0]
+                        send(self.request,balanceget_result)  # return balance of the address to the client, including mempool
                         # send(self.request, balance_pre)  # return balance of the address to the client, no mempool
                     else:
-                        node.logger.app_log.info(f"{peer_ip} not whitelisted for balancegetjson command")
+                        node.logger.app_log.info(f"{peer_ip} not whitelisted for balancegethyper command")
 
                 elif data == "balancegethyperjson":
+                    # EGG: What is the reason for these hyper commands? look like they use the same data source anyway as the regular one.
+                    # Can tag as deprecated?
                     if node.peers.is_allowed(peer_ip, data):
                         balance_address = receive(self.request)  # for which address
-
-                        balanceget_result = balanceget(balance_address, db_handler)
-                        response = {"balance": balanceget_result[0]}
-
-                        send(self.request,
-                                         response)  # return balance of the address to the client, including mempool
+                        balance_dict = db_handler.balance_get_full(balance_address, mp.MEMPOOL, as_dict=True)
+                        # response = {"balance": balanceget_result[0]}
+                        # EGG_EVO: was using yet another format, used the full dict format as above.
+                        send(self.request, balance_dict)  # return balance of the address to the client, including mempool
                         # send(self.request, balance_pre)  # return balance of the address to the client, no mempool
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for balancegethyperjson command")

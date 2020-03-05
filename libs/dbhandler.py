@@ -13,6 +13,7 @@ from bismuthcore.helpers import fee_calculate
 import functools
 from libs.fork import Fork
 from mempool import Mempool
+from typing import Union
 import sys
 
 
@@ -221,11 +222,12 @@ class DbHandler:
             result = "No announcement"
         return result
 
-    def balance_get_full(self, balance_address: str, mempool: Mempool) -> tuple:
+    def balance_get_full(self, balance_address: str, mempool: Mempool, as_dict: bool=False) -> Union[tuple, dict]:
         """Returns full detailed balance info
         Ported from node.py
             return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
         needs db and float/int abstraction
+        Sends a tuple or a structured dict depending on as_dict param
         """
         # mempool fees
         base_mempool = mempool.mp_get(balance_address)
@@ -291,7 +293,16 @@ class DbHandler:
         balance = quantize_eight(credit_ledger - debit - fees + rewards)
         balance_no_mempool = float(credit_ledger) - float(debit_ledger) - float(fees) + float(rewards)
         # self.logger.app_log.info("Mempool: Projected transaction address balance: " + str(balance))
-        return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
+        if as_dict:
+            # To be factorized in a helper function if used elsewhere.
+            {"balance": str(balance),
+             "credit": str(credit_ledger),
+             "debit": str(debit),
+             "fees":  str(fees),
+             "rewards": str(rewards),
+             "balance_no_mempool": str(balance_no_mempool)}
+        else:
+            return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
 
     # ---- Lookup queries ---- #
 
