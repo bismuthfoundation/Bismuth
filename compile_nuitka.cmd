@@ -6,9 +6,6 @@ python -m nuitka --follow-imports commands.py --windows-icon=graphics\icon.ico -
 python -m nuitka --follow-imports node.py --windows-icon=graphics\icon.ico --standalone --show-progress -j 8 --recurse-all
 python -m nuitka --follow-imports node_stop.py --windows-icon=graphics\icon.ico --standalone --show-progress -j 8 --recurse-all
 
-robocopy "C:\Program Files\Python37\Lib\site-packages\Cryptodome" dist\Cryptodome /MIR
-robocopy "C:\Program Files\Python37\Lib\site-packages\coincurve" dist\coincurve /MIR
-
 robocopy node.dist dist /MOVE /E
 robocopy commands.dist dist /MOVE /E
 robocopy node_stop.dist dist /MOVE /E
