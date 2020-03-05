@@ -27,6 +27,13 @@ Note: Amount, fee, reward are given as string, with the proper decimals and no m
 
 TODO: Add more typical vectors
 
+
+4.4.0.9
+python3 commands.py blockgetjson -1589600
+[{"block_height": -1589600, "timestamp": 1583317436.92, "address": "Development Reward", "recipient": "4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed", "amount": 5.373090909090909, "signature": "0", "public_key": "0", "block_hash": "35d12d1a8f4cd36ecea1c5bf209d81ac73a158bb", "fee": 0, "reward": 0, "operation": "0", "openfield": "0"}, {"block_height": -1589600, "timestamp": 1583317436.92, "address": "Hypernode Payouts", "recipient": "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16", "amount": 23.53465, "signature": "0", "public_key": "0", "block_hash": "35d12d1a8f4cd36ecea1c5bf209d81ac73a158bb", "fee": 0, "reward": 0, "operation": "0", "openfield": "0"}]
+
+Warning: empty fields are converted to "0" (operation, openfield, signature, pubkey)
+
 ## blockget
 
 Same notes as blockgetjson above regarding numeric amounts format.
@@ -37,6 +44,20 @@ Requested block: [[1589600, 1583317436.92, 'b54317cb538c6b3a5ae8b84f8b53c8365203
 ```
 Requested block number of transactions: 1
 Requested block height: 1589600
+
+4.4.0.9 version 
+python3 commands.py blockget -1589600
+mandatory_message file loaded
+```
+Requested block: [[-1589600, 1583317436.92, 'Development Reward', '4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed', 5.373090909090909, '0', '0', '35d12d1a8f4cd36ecea1c5bf209d81ac73a158bb', 0, 0, '0', '0'], [-1589600, 1583317436.92, 'Hypernode Payouts', '3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16', 23.53465, '0', '0', '35d12d1a8f4cd36ecea1c5bf209d81ac73a158bb', 0, 0, '0', '0']]
+```
+Requested block number of transactions: 2
+Requested block height: -1589600
+
+Beware: for mirror blocks, "operation" and "openfield" both are "0" - not empty.  
+Most important, signature and pubkey also are "0" and not empty strings - significant when trying to decode to bin...
+Take care to keep that behavior for compatibility.
+
 
 
 New evo version  

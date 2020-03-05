@@ -5,15 +5,18 @@ Sqlite3 Database handler module for Bismuth nodes
 from time import sleep
 import sqlite3
 # import essentials
-from bismuthcore.compat import quantize_two
+from decimal import Decimal
+from bismuthcore.compat import quantize_two, quantize_eight
 from bismuthcore.transaction import Transaction
 from bismuthcore.block import Block
+from bismuthcore.helpers import fee_calculate
 import functools
 from libs.fork import Fork
+from mempool import Mempool
 import sys
 
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 
 def sql_trace_callback(log, sql_id, statement):
@@ -165,6 +168,7 @@ class DbHandler:
         """
         # Only things really used from here are block_height, block_hash.
         self._execute(self.c, 'SELECT * FROM transactions where reward != 0 ORDER BY block_height DESC LIMIT 1')
+        # TODO EGG_EVO: benchmark vs "SELECT * FROM transactions WHERE reward != 0 AND block_height= (select max(block_height) from transactions)")
         # Q: Does it help or make it safer/faster to add AND reward > 0 ?
         transaction = Transaction.from_legacy(self.c.fetchone())
         # EGG_EVO: now returns the transaction object itself, higher level adjustments processed.
@@ -216,6 +220,78 @@ class DbHandler:
         except:
             result = "No announcement"
         return result
+
+    def balance_get_full(self, balance_address: str, mempool: Mempool) -> tuple:
+        """Returns full detailed balance info
+        Ported from node.py
+            return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
+        needs db and float/int abstraction
+        """
+        # mempool fees
+        base_mempool = mempool.mp_get(balance_address)
+        debit_mempool = 0
+        if base_mempool:
+            for x in base_mempool:
+                debit_tx = Decimal(x[0])
+                fee = fee_calculate(x[1], x[2])
+                debit_mempool = quantize_eight(debit_mempool + debit_tx + fee)
+        else:
+            debit_mempool = 0
+        # /mempool fees
+
+        # TODO: EGG_EVO this will be completely rewritten when using int db
+        credit_ledger = Decimal("0")
+        try:
+            self._execute_param(self.h, "SELECT amount FROM transactions WHERE recipient = ?;", (balance_address,))
+            entries = self.h.fetchall()
+        except:
+            entries = []
+        try:
+            for entry in entries:
+                credit_ledger = quantize_eight(credit_ledger) + quantize_eight(entry[0])
+                credit_ledger = 0 if credit_ledger is None else credit_ledger
+        except:
+            credit_ledger = 0
+        fees = Decimal("0")
+        debit_ledger = Decimal("0")
+        try:
+            self._execute_param(self.h, "SELECT fee, amount FROM transactions WHERE address = ?;",
+                                      (balance_address,))
+            entries = self.h.fetchall()
+        except:
+            entries = []
+        try:
+            for entry in entries:
+                fees = quantize_eight(fees) + quantize_eight(entry[0])
+                fees = 0 if fees is None else fees
+        except:
+            fees = 0
+        try:
+            for entry in entries:
+                debit_ledger = debit_ledger + Decimal(entry[1])
+                debit_ledger = 0 if debit_ledger is None else debit_ledger
+        except:
+            debit_ledger = 0
+        debit = quantize_eight(debit_ledger + debit_mempool)
+        rewards = Decimal("0")
+        try:
+            self._execute_param(self.h, "SELECT reward FROM transactions WHERE recipient = ?;",
+                                      (balance_address,))
+            entries = self.h.fetchall()
+        except:
+            entries = []
+        try:
+            for entry in entries:
+                rewards = quantize_eight(rewards) + quantize_eight(entry[0])
+                rewards = 0 if str(rewards) == "0E-8" else rewards
+                rewards = 0 if rewards is None else rewards
+        except:
+            rewards = 0
+
+        balance = quantize_eight(credit_ledger - debit - fees + rewards)
+        balance_no_mempool = float(credit_ledger) - float(debit_ledger) - float(fees) + float(rewards)
+        # self.logger.app_log.info("Mempool: Projected transaction address balance: " + str(balance))
+        return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
 
     # ---- Lookup queries ---- #
 

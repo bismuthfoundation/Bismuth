@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "5.0.1-evo"  # Experimental db-evolution branch
+VERSION = "5.0.2-evo"  # Experimental db-evolution branch
 
 import functools
 import glob
@@ -244,15 +244,22 @@ def ledger_check_heights(node, db_handler):
         node.recompress = True
 
 
-
-
 def bin_convert(string):
-    # TODO: Move to essentials.py
+    # TODO: Move to bismuthcore/helpers.py
     return ''.join(format(ord(x), '8b').replace(' ', '0') for x in string)
 
 
 def balanceget(balance_address, db_handler):
-    # TODO: To move in db_handler, call by db_handler.balance_get(address)
+    # EGG_EVO: Multi step refactoring
+    # Returns full detailled balance info
+    # return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
+    node.logger.app_log.warning("balanceget(balance_address, db_handler) is deprecated, use db_handler.balance_get_full(balance_address, mp.MEMPOOL) instead")
+    return db_handler.balance_get_full(balance_address, mp.MEMPOOL)
+
+# TODO: kept for notice, will disappear in a later clean up
+"""
+def old_balanceget(balance_address, db_handler):
+    # TODO: To move in db_handler, call by db_handler.balance_get(address, mp)
     # verify balance
 
     # node.logger.app_log.info("Mempool: Verifying balance")
@@ -332,7 +339,7 @@ def balanceget(balance_address, db_handler):
     balance_no_mempool = float(credit_ledger) - float(debit_ledger) - float(fees) + float(rewards)
     # node.logger.app_log.info("Mempool: Projected transction address balance: " + str(balance))
     return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
-
+"""
 
 def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
     """
@@ -631,10 +638,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         send(self.request, "notok")
                         return
                     else:
-                        db_handler._execute(db_handler.c, "SELECT block_hash FROM transactions WHERE block_height= (select max(block_height) from transactions)")
+                        """db_handler._execute(db_handler.c, "SELECT block_hash FROM transactions WHERE block_height= (select max(block_height) from transactions)")
                         block_hash = db_handler.c.fetchone()[0]
                         # feed regnet with current thread db handle. refactor needed.
-                        regnet.conn, regnet.c, regnet.hdd, regnet.h, regnet.hdd2, regnet.h2, regnet.h = db_handler.conn, db_handler.c, db_handler.hdd, db_handler.h, db_handler.hdd2, db_handler.h2, db_handler.h
+                        # EGG: unused regnet.conn, regnet.c, regnet.hdd, regnet.h, regnet.hdd2, regnet.h2, regnet.h = db_handler.conn, db_handler.c, db_handler.hdd, db_handler.h, db_handler.hdd2, db_handler.h2, db_handler.h
+                        """
+                        block_hash = db_handler.last_mining_transaction().to_dict(legacy=True)["block_hash"]
+                        # regnet needs a blockhash to generate new chains. only supported regnet_ command for now is regnet_generate.
                         regnet.command(self.request, data, block_hash, node, db_handler)
 
                 if data == 'version':
@@ -1016,13 +1026,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "balanceget":
                     # if (peer_ip in allowed or "any" in allowed):
                     if node.peers.is_allowed(peer_ip, data):
-                        balance_address = receive(self.request)  # for which address
-
-                        balanceget_result = balanceget(balance_address, db_handler)
-
-                        send(self.request,
-                                         balanceget_result)  # return balance of the address to the client, including mempool
-                        # send(self.request, balance_pre)  # return balance of the address to the client, no mempool
+                        balance_address = str(receive(self.request))  # for which address? force casted because unsafe user input.
+                        balanceget_result = db_handler.balance_get_full(balance_address, mp.MEMPOOL)
+                        send(self.request, balanceget_result)  # return balance of the address to the client, including mempool
                     else:
                         node.logger.app_log.info("{peer_ip} not whitelisted for balanceget command")
 
@@ -1031,7 +1037,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if node.peers.is_allowed(peer_ip, data):
                         balance_address = receive(self.request)  # for which address
 
-                        balanceget_result = balanceget(balance_address, db_handler)
+                        balanceget_result = db_handler.balance_get_full(balance_address, mp.MEMPOOL)
                         response = {"balance": balanceget_result[0],
                                     "credit": balanceget_result[1],
                                     "debit": balanceget_result[2],
