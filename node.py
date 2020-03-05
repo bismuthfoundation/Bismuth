@@ -1127,7 +1127,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                                   (address_tx_list, address_tx_list,))
                         result = db_handler.h.fetchall()
                         """
-                        transactions = db_handler.transactions_for_address(address)
+                        transactions = db_handler.transactions_for_address(address, limit=0)
                         result = [transaction.to_tuple() for transaction in transactions]
                         send(self.request, result)
                     else:
@@ -1166,112 +1166,53 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "addlistlim":
                     if node.peers.is_allowed(peer_ip, data):
-                        address_tx_list = receive(self.request)
-                        address_tx_list_limit = receive(self.request)
-
-                        # print(address_tx_list_limit)
-                        db_handler._execute_param(db_handler.h, (
-                            "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) ORDER BY block_height DESC LIMIT ?"),
-                                                  (address_tx_list, address_tx_list, address_tx_list_limit,))
-                        result = db_handler.h.fetchall()
+                        address_tx_list = sanitize_address(receive(self.request))
+                        address_tx_list_limit = int(receive(self.request))
+                        transactions = db_handler.transactions_for_address(address_tx_list, limit=address_tx_list_limit)
+                        # EGG_EVO: instead of handling list comprehension at that high level everywhere , better use a "TransactionList" type - like a block, but not the same semantic,
+                        # or a helper to factorize all these dup snippets.
+                        result = [transaction.to_tuple() for transaction in transactions]
                         send(self.request, result)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for addlistlim command")
 
                 elif data == "addlistlimjson":
                     if node.peers.is_allowed(peer_ip, data):
-                        address_tx_list = receive(self.request)
-                        address_tx_list_limit = receive(self.request)
-
-                        # print(address_tx_list_limit)
-                        db_handler._execute_param(db_handler.h, (
-                            "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) ORDER BY block_height DESC LIMIT ?"),
-                                                  (address_tx_list, address_tx_list, address_tx_list_limit,))
-                        result = db_handler.h.fetchall()
-
-                        transaction_list = []
-                        for entry in result:
-
-                            transaction = Transaction.from_legacy(entry)
-                            transaction_dict = transaction.to_dict(legacy=True)
-
-                            """
-                            response = {"block_height": transaction[0],
-                                        "timestamp": transaction[1],
-                                        "address": transaction[2],
-                                        "recipient": transaction[3],
-                                        "amount": transaction[4],
-                                        "signature": transaction[5],
-                                        "public_key": transaction[6],
-                                        "block_hash": transaction[7],
-                                        "fee": transaction[8],
-                                        "reward": transaction[9],
-                                        "operation": transaction[10],
-                                        "openfield": transaction[11]}
-                            """
-
-                            transaction_list.append(transaction_dict)
-
-                        send(self.request, transaction_list)
+                        address_tx_list = sanitize_address(receive(self.request))
+                        address_tx_list_limit = int(receive(self.request))
+                        transactions = db_handler.transactions_for_address(address_tx_list, limit=address_tx_list_limit)
+                        # EGG_EVO: instead of handling list comprehension at that high level everywhere , better use a "TransactionList" type - like a block, but not the same semantic,
+                        # or a helper to factorize all these dup snippets.
+                        result = [transaction.to_dict(legacy=True) for transaction in transactions]
+                        send(self.request, result)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for addlistlimjson command")
 
                 elif data == "addlistlimmir":
                     if node.peers.is_allowed(peer_ip, data):
-                        address_tx_list = receive(self.request)
-                        address_tx_list_limit = receive(self.request)
-
-                        # print(address_tx_list_limit)
-                        db_handler._execute_param(db_handler.h, (
-                            "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) AND block_height < 1 ORDER BY block_height ASC LIMIT ?"),
-                                                  (address_tx_list, address_tx_list, address_tx_list_limit,))
-                        result = db_handler.h.fetchall()
+                        address_tx_list = sanitize_address(receive(self.request))
+                        address_tx_list_limit = int(receive(self.request))
+                        transactions = db_handler.transactions_for_address(address_tx_list, limit=address_tx_list_limit, mirror=True)
+                        result = [transaction.to_tuple() for transaction in transactions]
                         send(self.request, result)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for addlistlimmir command")
 
                 elif data == "addlistlimmirjson":
                     if node.peers.is_allowed(peer_ip, data):
-                        address_tx_list = receive(self.request)
-                        address_tx_list_limit = receive(self.request)
-
-                        # print(address_tx_list_limit)
-                        db_handler._execute_param(db_handler.h, (
-                            "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) AND block_height < 1 ORDER BY block_height ASC LIMIT ?"),
-                                                  (address_tx_list, address_tx_list, address_tx_list_limit,))
-                        result = db_handler.h.fetchall()
-
-                        transaction_list = []
-                        for transaction in result:
-
-                            transaction_dict = {"block_height": transaction[0],
-                                        "timestamp": transaction[1],
-                                        "address": transaction[2],
-                                        "recipient": transaction[3],
-                                        "amount": transaction[4],
-                                        "signature": transaction[5],
-                                        "public_key": transaction[6],
-                                        "block_hash": transaction[7],
-                                        "fee": transaction[8],
-                                        "reward": transaction[9],
-                                        "operation": transaction[10],
-                                        "openfield": transaction[11]}
-
-                            transaction_list.append(transaction_dict)
-
-                        send(self.request, transaction_list)
-                        #send(self.request, result) HCL_EVO:REDUNDANT
+                        address_tx_list = sanitize_address(receive(self.request))
+                        address_tx_list_limit = int(receive(self.request))
+                        transactions = db_handler.transactions_for_address(address_tx_list, limit=address_tx_list_limit, mirror=True)
+                        result = [transaction.to_dict(legacy=True) for transaction in transactions]
+                        send(self.request, result)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for addlistlimmir command")
 
                 elif data == "aliasget":  # all for a single address, no protection against overlapping
                     if node.peers.is_allowed(peer_ip, data):
                         aliases.aliases_update(node, db_handler)
-
-                        alias_address = receive(self.request)
-                        result = db_handler.aliasget(alias_address)
-
-                        send(self.request, result)
+                        alias_address = sanitize_address(receive(self.request))
+                        send(self.request, db_handler.aliasget(alias_address))
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for aliasget command")
 
@@ -1289,8 +1230,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "tokensget":
                     # TODO: to be handled by token modules, with no sql here in node.
                     if node.peers.is_allowed(peer_ip, data):
-
-                        tokens_address = receive(self.request)
+                        tokens_address = sanitize_address(receive(self.request))
                         tokens_user = db_handler.tokens_user(tokens_address)
 
                         tokens_list = []

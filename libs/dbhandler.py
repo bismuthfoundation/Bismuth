@@ -321,8 +321,16 @@ class DbHandler:
         else:
             return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
 
-    def transactions_for_address(self, address: str) -> List[Transaction]:
-        self._execute_param(self.h, "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) ORDER BY block_height DESC", (address, address))
+    def transactions_for_address(self, address: str, limit: int=0, mirror: bool=False) -> List[Transaction]:
+        if mirror:
+            self._execute_param(self.h,
+                                "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) AND block_height < 1 ORDER BY block_height ASC LIMIT ?",
+                                (address, address, limit))
+        else:
+            if limit < 1:
+                self._execute_param(self.h, "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) ORDER BY block_height DESC", (address, address))
+            else:
+                self._execute_param(self.h, "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) ORDER BY block_height DESC LIMIT ?", (address, address, limit))
         result = self.h.fetchall()
         return [Transaction.from_legacy(raw_tx) for raw_tx in result]
 
