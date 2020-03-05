@@ -37,7 +37,7 @@ import plugins
 import wallet_keys
 from connections import send, receive
 from digest import *
-from bismuthcore.helpers import fee_calculate, download_file
+from bismuthcore.helpers import fee_calculate, download_file, sanitize_address
 from libs import node, logger, keys, client
 from libs.fork import Fork
 
@@ -675,7 +675,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     # _execute_param(m, ('SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE timeout < ? ORDER BY amount DESC;'), (int(time.time() - 5),))
                     if mp.MEMPOOL.sendable(peer_ip):
                         # Only send the diff
-                        mempool_txs = mp.MEMPOOL.tx_to_send(peer_ip, segments)
+                        mempool_txs = mp.MEMPOOL.tx_to_send(peer_ip, segments)  # EGG_EVO: we suppose we get legacy tuples there.
                         # and note the time
                         mp.MEMPOOL.sent(peer_ip)
                     else:
@@ -1027,7 +1027,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "balanceget":
                     # if (peer_ip in allowed or "any" in allowed):
                     if node.peers.is_allowed(peer_ip, data):
-                        balance_address = str(receive(self.request))  # for which address? force casted because unsafe user input.
+                        balance_address = sanitize_address(receive(self.request))  # for which address? force casted because unsafe user input.
                         balanceget_result = db_handler.balance_get_full(balance_address, mp.MEMPOOL)
                         send(self.request, balanceget_result)  # return balance of the address to the client, including mempool
                     else:
@@ -1036,7 +1036,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "balancegetjson":
                     # if (peer_ip in allowed or "any" in allowed):
                     if node.peers.is_allowed(peer_ip, data):
-                        balance_address = receive(self.request)  # for which address
+                        balance_address = sanitize_address(receive(self.request))  # for which address
                         balance_dict = db_handler.balance_get_full(balance_address, mp.MEMPOOL, as_dict=True)
                         send(self.request, balance_dict)  # return balance of the address to the client, including mempool
                     else:
@@ -1046,7 +1046,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     # EGG: What is the reason for these hyper commands? look like they use the same data source anyway as the regular one.
                     # Can tag as deprecated?
                     if node.peers.is_allowed(peer_ip, data):
-                        balance_address = receive(self.request)  # for which address
+                        balance_address = sanitize_address(receive(self.request))  # for which address
                         balanceget_result =db_handler.balance_get_full(balance_address, mp.MEMPOOL)[0]
                         send(self.request,balanceget_result)  # return balance of the address to the client, including mempool
                         # send(self.request, balance_pre)  # return balance of the address to the client, no mempool
@@ -1057,7 +1057,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     # EGG: What is the reason for these hyper commands? look like they use the same data source anyway as the regular one.
                     # Can tag as deprecated?
                     if node.peers.is_allowed(peer_ip, data):
-                        balance_address = receive(self.request)  # for which address
+                        balance_address = sanitize_address(receive(self.request))  # for which address
                         balance_dict = db_handler.balance_get_full(balance_address, mp.MEMPOOL, as_dict=True)
                         # response = {"balance": balanceget_result[0]}
                         # EGG_EVO: was using yet another format, used the full dict format as above.
@@ -1118,13 +1118,17 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for keygen command")
 
                 elif data == "addlist":
-                    # if (peer_ip in allowed or "any" in allowed):
+                    # Sends back *ALL* transactions for the provided address. May be excessive.
                     if node.peers.is_allowed(peer_ip, data):
-                        address_tx_list = receive(self.request)
+                        address = sanitize_address(receive(self.request))  # user input sanitization
+                        """
                         db_handler._execute_param(db_handler.h, (
                             "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) ORDER BY block_height DESC"),
                                                   (address_tx_list, address_tx_list,))
                         result = db_handler.h.fetchall()
+                        """
+                        transactions = db_handler.transactions_for_address(address)
+                        result = [transaction.to_tuple() for transaction in transactions]
                         send(self.request, result)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for addlist command")
@@ -1132,7 +1136,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "listlimjson":
                     # if (peer_ip in allowed or "any" in allowed):
                     if node.peers.is_allowed(peer_ip, data):
-                        list_limit = receive(self.request)
+                        list_limit = int(receive(self.request))
+                        """
                         # print(address_tx_list_limit)
                         db_handler._execute_param(db_handler.h, "SELECT * FROM transactions ORDER BY block_height DESC LIMIT ?",
                                                   (list_limit,))
@@ -1141,36 +1146,21 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         transaction_list = []
                         for entry in result:
                             transaction = Transaction.from_legacy(entry)
-                            transaction_dict = transaction.to_dict(legacy=True)
-
-                            """
-                            response = {"block_height": transaction[0],
-                                        "timestamp": transaction[1],
-                                        "address": transaction[2],
-                                        "recipient": transaction[3],
-                                        "amount": transaction[4],
-                                        "signature": transaction[5],
-                                        "public_key": transaction[6],
-                                        "block_hash": transaction[7],
-                                        "fee": transaction[8],
-                                        "reward": transaction[9],
-                                        "operation": transaction[10],
-                                        "openfield": transaction[11]}
-                            """
+                            transaction_dict = transaction.to_dict(legacy=True)                          
                             transaction_list.append(transaction_dict)
-
                         send(self.request, transaction_list)
+                        """
+                        transactions = db_handler.last_n_transactions(list_limit)
+                        send(self.request, [transaction.to_dict(legacy=True) for transaction in transactions])
+
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for listlimjson command")
 
                 elif data == "listlim":
                     if node.peers.is_allowed(peer_ip, data):
-                        list_limit = receive(self.request)
-                        # print(address_tx_list_limit)
-                        db_handler._execute_param(db_handler.h, "SELECT * FROM transactions ORDER BY block_height DESC LIMIT ?",
-                                                  (list_limit,))
-                        result = db_handler.h.fetchall()
-                        send(self.request, result)
+                        list_limit = int(receive(self.request))
+                        transactions = db_handler.last_n_transactions(list_limit)
+                        send(self.request, [transaction.to_tuple() for transaction in transactions])
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for listlim command")
 

@@ -14,7 +14,7 @@ import functools
 from libs.fork import Fork
 #import mempool as mp
 from mempool import Mempool  # for type hints
-from typing import Union
+from typing import Union, List
 import sys
 
 
@@ -108,14 +108,14 @@ class DbHandler:
             pass
         return address_fetch
 
-    def aliasget(self, alias_address):
+    def aliasget(self, alias_address: str) -> List[List[str]]:
         self._execute_param(self.index_cursor, "SELECT alias FROM aliases WHERE address = ? ", (alias_address,))
         result = self.index_cursor.fetchall()
         if not result:
             result = [[alias_address]]
         return result
 
-    def aliasesget(self, aliases_request):
+    def aliasesget(self, aliases_request: str) -> List[tuple]:
         results = []
         for alias_address in aliases_request:
             self._execute_param(self.index_cursor, (
@@ -147,7 +147,7 @@ class DbHandler:
 
     # ==== Tokens ==== #
 
-    def tokens_user(self, tokens_address: str) -> list:
+    def tokens_user(self, tokens_address: str) -> List[str]:
         """
         Returns the list of tokens a specific user has or had.
         :param tokens_address:
@@ -207,7 +207,7 @@ class DbHandler:
         # return quantize_two(self.c.fetchone()[0])
         return self.c.fetchone()[0]  # timestamps do not need quantize
 
-    def difflast(self) -> list:
+    def difflast(self) -> List[int, float]:
         """
         Returns the list of latest [block_height, difficulty]
         :return:
@@ -321,14 +321,25 @@ class DbHandler:
         else:
             return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
 
+    def transactions_for_address(self, address: str) -> List[Transaction]:
+        self._execute_param(self.h, "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) ORDER BY block_height DESC", (address, address))
+        result = self.h.fetchall()
+        return [Transaction.from_legacy(raw_tx) for raw_tx in result]
+
+    def last_n_transactions(self, n: int) -> List[Transaction]:
+        # No mirror transactions in there
+        self._execute_param(self.h, "SELECT * FROM transactions ORDER BY block_height DESC LIMIT ?", (n,))
+        result = self.h.fetchall()
+        return [Transaction.from_legacy(raw_tx) for raw_tx in result]
+
     # ---- Lookup queries ---- #
 
-    def block_height_from_hash(self, hash: str) -> int:
+    def block_height_from_hash(self, hex_hash: str) -> int:
         """Lookup a block height from its hash."""
         # EGG_EVO: hash is currently supposed to be into hex format.
         # To be tweaked to allow either bin or hex - auto recognition - and convert or not depending on the underlying db.
         try:
-            self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?;", (hash,))
+            self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?;", (hex_hash,))
             result = self.h.fetchone()[0]
         except:
             result = None
@@ -343,7 +354,7 @@ class DbHandler:
         # EGG_EVO: if new db, convert bin to hex
         return self.c.fetchone()[0]
 
-    def blocksync(self, block_height: int) -> list:
+    def blocksync(self, block_height: int) -> List[list]:
         """
         Returns a list of blocks following block_height, until end of chain or total size >= 500000 octets
         Each block is a list of raw transactions, legacy format, float.
