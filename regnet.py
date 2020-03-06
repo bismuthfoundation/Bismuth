@@ -9,7 +9,7 @@ import sqlite3
 import sys
 import time
 import functools
-from Cryptodome.PublicKey import RSA
+# from Cryptodome.PublicKey import RSA
 from Cryptodome.Hash import SHA
 from Cryptodome.Signature import PKCS1_v1_5
 from hashlib import sha224
@@ -21,6 +21,9 @@ import mempool as mp
 import mining_heavy3 as mining
 
 from bismuthcore.transaction import Transaction
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+  from libs.node import Node
 
 # fixed diff for regnet
 REGNET_DIFF = 16
@@ -30,9 +33,6 @@ REGNET_PORT = 3030
 REGNET_DB = "static/regmode.db"
 
 REGNET_INDEX = "static/index_reg.db"
-
-REGNET_PEERS = "peers_reg.txt"
-REGNET_SUGGESTED_PEERS = "peers_reg.txt"
 
 SQL_INDEX = [ "CREATE TABLE aliases (block_height INTEGER, address, alias)",
               "CREATE TABLE tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)" ]
@@ -57,6 +57,7 @@ FILES_TO_REMOVE = [REGNET_DB, REGNET_INDEX]
 
 HASHCOUNT = 10
 
+
 # Max number of tx to embed per block.
 TX_PER_BLOCK = 2
 
@@ -67,10 +68,6 @@ ADDRESS = 'This is a fake address placeholder for regtest mode only'
 KEY = None
 PRIVATE_KEY_READABLE = 'matching priv key'
 PUBLIC_KEY_B64ENCODED = 'matching pub key b64'
-
-DIGEST_BLOCK = None
-
-# because of compatibility - huge node refactor wanted.
 
 
 def sql_trace_callback(log, id, statement):
@@ -135,7 +132,7 @@ def generate_one_block(blockhash: str, mempool_txs: List[Transaction], node, db_
                         node.logger.app_log.warning("Block to send: {}".format(block_send))
                     # calc hash
 
-                    new_hash = DIGEST_BLOCK(node, [block_send], None, 'regtest',  db_handler)
+                    new_hash = node.digest_block(node, [block_send], None, 'regtest',  db_handler)
                     # post block to self or better, send to db to make sure it is. when we add the next one?
                     # use a link to the block digest function
                     # embed at mot TX_PER_BLOCK txs from the mp
@@ -166,11 +163,11 @@ def command(sdef, data, blockhash, node, db_handler):
         node.logger.app_log.warning(exc_type, fname, exc_tb.tb_lineno)
 
 
-def init(app_log, trace_db_calls=False):
+def init(node: "Node", app_log, trace_db_calls: bool=False):
     # Empty peers
-    with open(REGNET_PEERS, 'w') as f:
+    with open(node.peerfile, 'w') as f:
         f.write("{}")
-    with open(REGNET_SUGGESTED_PEERS, 'w') as f:
+    with open(node.peerfile_suggested, 'w') as f:
         f.write("{}")
     # empty files
     for remove_me in FILES_TO_REMOVE:

@@ -58,7 +58,7 @@ class Node:
         self.peerfile = "peers.txt"
         self.ledger_ram_file = "file:ledger?mode=memory&cache=shared"
         self.index_db = "static/index.db"
-        self.peerfile_suggested = "peers_suggested.txt"
+        self.peerfile_suggested = "suggested_peers.txt"
 
         # core objects and structures
         self.config = config
@@ -122,6 +122,8 @@ class Node:
 
             self.ledger_ram_file = "file:ledger_testnet?mode=memory&cache=shared"
             self.peerfile = "peers_test.txt"
+            self.peerfile_suggested = "suggested_peers_test.txt"
+
             self.index_db = "static/index_test.db"
 
             redownload_test = input("Status: Welcome to the testnet. Redownload test ledger? y/n")
@@ -147,12 +149,13 @@ class Node:
             self.config.hyper_path = regnet.REGNET_DB
             self.config.ledger_path = regnet.REGNET_DB
             self.ledger_ram_file = "file:ledger_regnet?mode=memory&cache=shared"
+            self.peerfile = "peers_reg.txt"
+            self.peerfile_suggested = "peers_reg.txt"
+
             self.config.hyper_recompress = False
-            self.config.peerfile = regnet.REGNET_PEERS
             self.index_db = regnet.REGNET_INDEX
             self.logger.app_log.warning("Regnet init...")
-            regnet.init(self.logger.app_log)
-            regnet.DIGEST_BLOCK = self.digest_block
+            regnet.init(self, self.logger.app_log)
             mining_heavy3.is_regnet = True
         else:
             self.logger.app_log.warning("Mainnet Mode")

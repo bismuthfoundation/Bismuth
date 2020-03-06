@@ -24,9 +24,9 @@ __version__ = "0.0.19"
 class Peers:
     """The peers manager. A thread safe peers manager"""
 
-    __slots__ = ('app_log','config','logstats','node','peersync_lock','startup_time','reset_time','warning_list','stats',
-                 'connection_pool','peer_opinion_dict','consensus_percentage','consensus',
-                 'tried','peer_dict','peerfile','suggested_peerfile','banlist','whitelist','ban_threshold',
+    __slots__ = ('app_log', 'config', 'logstats', 'node', 'peersync_lock', 'startup_time', 'reset_time', 'warning_list',
+                 'stats', 'connection_pool', 'peer_opinion_dict', 'consensus_percentage', 'consensus',
+                 'tried', 'peer_dict', 'peerfile', 'suggested_peerfile', 'banlist', 'whitelist', 'ban_threshold',
                  'ip_to_mainnet', 'peers', 'accept_peers', 'peerlist_updated')
 
     def __init__(self, app_log, config=None, logstats=True, node=None):
@@ -50,20 +50,10 @@ class Peers:
         self.whitelist = config.whitelist
         self.ban_threshold = config.ban_threshold
         self.accept_peers = config.accept_peers
-
-        self.peerfile = "peers.txt"
-        self.suggested_peerfile = "suggested_peers.txt"
-        self.peerlist_updated = False
-
         self.node = node
-
-        if self.is_testnet:  # overwrite for testnet
-            self.peerfile = "peers_test.txt"
-            self.suggested_peerfile = "suggested_peers_test.txt"
-
-        if self.is_regnet:  # regnet won't use any peer, won't connect. Kept for compatibility
-            self.peerfile = regnet.REGNET_PEERS
-            self.suggested_peerfile = regnet.REGNET_SUGGESTED_PEERS
+        self.peerfile = node.peerfile
+        self.suggested_peerfile = node.peerfile_suggested
+        self.peerlist_updated = False
 
     @property
     def is_testnet(self):
@@ -520,7 +510,6 @@ class Peers:
 
             self.app_log.warning("Status: Testing peers")
             self.peer_dict.update(self.peers_get(self.peerfile))
-            # self.peer_dict.update(self.peers_get(self.suggested_peerfile))
 
             # TODO: this is not OK. client_loop is called every 30 sec and should NOT contain any lengthy calls.
             self.peers_test(self.suggested_peerfile, self.peer_dict, strict=False)
