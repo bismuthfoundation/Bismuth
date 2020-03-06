@@ -16,7 +16,7 @@ import logging
 import collections
 
 
-__version__ = '1.0.2'
+__version__ = '1.0.3'
 
 
 class PluginManager:
@@ -24,12 +24,15 @@ class PluginManager:
     A simple plugin manager
     """
 
-    def __init__(self, app_log=None, main_module='__init__', plugin_folder='./plugins', verbose=True, init=False):
+    def __init__(self, app_log=None, main_module: str='__init__', plugin_folder: str='./plugins', config=None,
+                 verbose: bool=True, init: bool=False):
         if app_log:
             self.app_log = app_log
         else:
             logging.basicConfig(level=logging.DEBUG)
             self.app_log = logging
+        self.config = config
+        self.base_folder = config.ledger_path.replace("static/ledger.db", "")  # path of mempool, colored.json and related files.
         self.plugin_folder = plugin_folder
         self.main_module = main_module
         self.verbose = verbose

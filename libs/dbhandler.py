@@ -12,13 +12,12 @@ from bismuthcore.block import Block
 from bismuthcore.helpers import fee_calculate
 import functools
 from libs.fork import Fork
-#import mempool as mp
 from mempool import Mempool  # for type hints
 from typing import Union, List
 import sys
 
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 
 def sql_trace_callback(log, sql_id, statement):
@@ -31,7 +30,7 @@ class DbHandler:
     def __init__(self, index_db, ledger_path, hyper_path, ram, ledger_ram_file, logger, trace_db_calls=False):
         # TODO: most of the params could be taken from the config object instead of being listed in the call
         # prototype would become __init__(self, config, logger=None, trace_db_calls=False):
-        # logguer, as it's a global one, could be a config property as well.
+        # logguer, as it's a global one, could be a config property as well.
         # __init__(self, config, trace_db_calls=False):
         self.ram = ram
         self.ledger_ram_file = ledger_ram_file
@@ -207,7 +206,7 @@ class DbHandler:
         # return quantize_two(self.c.fetchone()[0])
         return self.c.fetchone()[0]  # timestamps do not need quantize
 
-    def difflast(self) -> List[int, float]:
+    def difflast(self) -> List[Union[int, float]]:
         """
         Returns the list of latest [block_height, difficulty]
         :return:
