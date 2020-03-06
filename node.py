@@ -1562,8 +1562,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if "Socket EOF" not in str(e) and "Broken pipe" not in str(e):
                         # raise if debug, but not for innocuous closed pipes.
                         raise  # major debug client
-                else:
-                    return
+                return
 
         if not node.peers.version_allowed(peer_ip, node.config.version_allow):
             node.logger.app_log.warning(f"Inbound: Closing connection to old {peer_ip} node: {node.peers.ip_to_mainnet[peer_ip]}")

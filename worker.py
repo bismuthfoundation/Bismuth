@@ -338,9 +338,9 @@ def worker(host: str, port: int, node: "Node"):
             if node.config.debug:
                 if "Socket EOF" not in str(e) and "Broken pipe" not in str(e):  # don't pollute debug with closed pipes
                     raise  # major debug client
-            else:
-                node.logger.app_log.info(f"Ending thread, because {e}")
-                return
+
+            node.logger.app_log.info(f"Ending thread, because {e}")
+            return
 
     if not node.peers.version_allowed(host, node.config.version_allow):
         node.logger.app_log.warning(f"Outbound: Ending thread, because {host} has too old a version: {node.peers.ip_to_mainnet[host]}")
