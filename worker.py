@@ -17,7 +17,7 @@ if TYPE_CHECKING:
   from libs.node import Node
 
 
-def sendsync(sdef, peer_ip, status, node: "Node"):
+def sendsync(sdef, peer_ip:str, status:str, node: "Node"):
     """ Save peer_ip to peerlist and send `sendsync`
 
     :param sdef: socket object
@@ -41,14 +41,10 @@ def sendsync(sdef, peer_ip, status, node: "Node"):
     send(sdef, "sendsync")
 
 
-def worker(host, port, node: "Node"):
-    logger = node.logger
-
-    this_client = f"{host}:{port}"
-
+def worker(host: str, port: int, node: "Node"):
     if node.IS_STOPPING:
         return
-
+    this_client = f"{host}:{port}"
     dict_ip = {'ip': host}
     node.plugin_manager.execute_filter_hook('peer_ip', dict_ip)
     client_instance_worker = client.Client()
@@ -61,9 +57,7 @@ def worker(host, port, node: "Node"):
     timer_operation = time.time()  # start counting
 
     try:
-
         s = socks.socksocket()
-
         if node.config.tor:
             s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
         # s.setblocking(0)
@@ -72,25 +66,20 @@ def worker(host, port, node: "Node"):
         client_instance_worker.connected = True
 
         # communication starter
-
         send(s, "version")
         send(s, node.config.version)
-
         data = receive(s)
-
         if data == "ok":
             node.logger.app_log.info(f"Outbound: Node protocol version of {this_client} matches our client")
         else:
             raise ValueError(f"Outbound: Node protocol version of {this_client} mismatch")
-
         send(s, "getversion")
         peer_version = receive(s)
         if peer_version not in node.config.version_allow:
             raise ValueError(f"Outbound: Incompatible peer version {peer_version} from {this_client}")
 
         send(s, "hello")
-
-        # communication starter
+        # /communication starter
 
     except Exception as e:
         node.logger.app_log.info(f"Could not connect to {this_client}: {e}")

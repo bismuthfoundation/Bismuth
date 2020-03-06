@@ -17,8 +17,11 @@ import socks
 import connections
 import regnet
 from essentials import most_common_dict, percentage_in
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+  from libs.node import Node
 
-__version__ = "0.0.19"
+__version__ = "0.0.20"
 
 
 class Peers:
@@ -29,7 +32,7 @@ class Peers:
                  'tried', 'peer_dict', 'peerfile', 'suggested_peerfile', 'banlist', 'whitelist', 'ban_threshold',
                  'ip_to_mainnet', 'peers', 'accept_peers', 'peerlist_updated')
 
-    def __init__(self, app_log, config=None, logstats=True, node=None):
+    def __init__(self, app_log, config=None, logstats:bool =True, node: "Node"=None):
         self.app_log = app_log
         self.config = config
         self.logstats = logstats
@@ -73,25 +76,25 @@ class Peers:
             return True
         return "regnet" in self.config.version
 
-    def dict_shuffle(self, dictinary):
-        l = list(dictinary.items())
+    def dict_shuffle(self, dictionary: dict) -> dict:
+        l = list(dictionary.items())
         random.shuffle(l)
         return dict(l)
 
-    def status_dict(self):
+    def status_dict(self) -> dict:
         """Returns a status as a dict"""
         status = {"version": self.config.VERSION, "stats": self.stats}
         return status
 
-    def store_mainnet(self, ip, version):
+    def store_mainnet(self, ip: str, version: str) -> None:
         """Stores the mainnet version of a peer. Can't change unless reconnects"""
         self.ip_to_mainnet[ip] = version
 
-    def forget_mainnet(self, ip):
+    def forget_mainnet(self, ip: str) -> None:
         """Peers disconnected, forget his mainnet version"""
         self.ip_to_mainnet.pop(ip, None)
 
-    def version_allowed(self, ip, version_allow):
+    def version_allowed(self, ip: str, version_allow: str) -> bool:
         """
         If we don't know the version for this ip, allow.
         If we know, check
@@ -100,7 +103,7 @@ class Peers:
             return True
         return self.ip_to_mainnet[ip] in version_allow
 
-    def peers_test(self, file, peerdict: dict, strict=True):
+    def peers_test(self, file: str, peerdict: dict, strict: bool=True) -> None:
         """Validates then adds a peer to the peer list on disk"""
         # called by Sync, should not be an issue, but check if needs to be thread safe or not.
         # also called by self.client_loop, which is to be reworked
@@ -165,7 +168,7 @@ class Peers:
             # Exception for the file itself.
             self.app_log.info(f"Error reading {file}: '{e}'")
 
-    def append_client(self, client):
+    def append_client(self, client: str) -> None:
         """
         :param client: a string "ip:port"
         :return:
@@ -174,7 +177,7 @@ class Peers:
         self.connection_pool.append(client)
         self.del_try(client)
 
-    def remove_client(self, client):
+    def remove_client(self, client: str) -> None:
         # TODO: thread safe?
         if client in self.connection_pool:
             try:
@@ -183,15 +186,16 @@ class Peers:
             except:
                 raise
 
-    def unban(self, peer_ip):
+    def unban(self, peer_ip: str) -> None:
         """Removes the peer_ip from the warning list"""
         # TODO: Not thread safe atm. Should use a thread aware list or some lock
         if peer_ip in self.warning_list:
             self.warning_list.remove(peer_ip)
             self.app_log.warning(f"Removed a warning for {peer_ip}")
 
-    def warning(self, sdef, ip, reason, count):
-        """Adds a weighted warning to a peer."""
+    def warning(self, sdef, ip: str, reason: str, count: int) -> bool:
+        """Adds a weighted warning to a peer.
+        Returns whether the peer ends up banned or not."""
         # TODO: Not thread safe atm. Should use a thread aware list or some lock
         if ip not in self.whitelist:
             # TODO: use a dict instead of several occurrences in a list
@@ -206,7 +210,7 @@ class Peers:
             else:
                 return False
 
-    def peers_get(self, peer_file=''):
+    def peers_get(self, peer_file: str='') -> dict:
         """Returns a peer_file from disk as a dict {ip:port}"""
         peer_dict = {}
         try:
@@ -241,7 +245,7 @@ class Peers:
             return 0
 
     @property
-    def consensus_max(self):
+    def consensus_max(self) -> int:
         try:
             return max(self.peer_opinion_dict.values())
         except:
@@ -249,11 +253,11 @@ class Peers:
             return 0
 
     @property
-    def consensus_size(self):
+    def consensus_size(self) -> int:
         """Number of nodes in consensus"""
         return len(self.peer_opinion_dict)
 
-    def is_allowed(self, peer_ip, command=''):
+    def is_allowed(self, peer_ip: str, command: str='') -> bool:
         """Tells if the given peer is allowed for that command"""
         # TODO: more granularity here later
         # Always allow whitelisted ip to post as block
@@ -267,11 +271,11 @@ class Peers:
             return peer_ip == '127.0.0.1'
         return peer_ip in self.config.allowed or "any" in self.config.allowed
 
-    def is_whitelisted(self, peer_ip, command=''):
+    def is_whitelisted(self, peer_ip: str, command: str='') -> bool:
         # TODO: could be handled later on via "allowed" and rights.
         return peer_ip in self.whitelist or "127.0.0.1" == peer_ip
 
-    def is_banned(self, peer_ip) -> bool:
+    def is_banned(self, peer_ip: str) -> bool:
         return peer_ip in self.banlist
 
     def dict_validate(self, json_dict: str) -> str:
@@ -335,7 +339,7 @@ class Peers:
                 raise
         return total_added
 
-    def consensus_add(self, peer_ip, consensus_blockheight, sdef, last_block):
+    def consensus_add(self, peer_ip: str, consensus_blockheight: int, sdef, last_block: int) -> None:
         # obviously too old blocks, we have half a day worth of validated blocks after them
         # no ban, they can (should) be syncing but they can't possibly be in consensus list.
         too_old = last_block - 720
@@ -349,12 +353,10 @@ class Peers:
             self.peer_opinion_dict[peer_ip] = consensus_blockheight
 
             self.consensus = most_common_dict(self.peer_opinion_dict)
-
             self.consensus_percentage = percentage_in(self.peer_opinion_dict[peer_ip],self.peer_opinion_dict.values())
 
             if int(consensus_blockheight) > int(self.consensus) + 30 and self.consensus_percentage > 50 and len(self.peer_opinion_dict) > 10:
-                if self.warning(sdef, peer_ip, f"Consensus deviation too high, {peer_ip} banned", 10):
-                    return
+                self.warning(sdef, peer_ip, f"Consensus deviation too high, {peer_ip} banned", 10)
 
         except Exception as e:
             self.app_log.warning(e)
@@ -363,7 +365,7 @@ class Peers:
             print(exc_type, fname, exc_tb.tb_lineno)
             raise
 
-    def consensus_remove(self, peer_ip):
+    def consensus_remove(self, peer_ip: str) -> None:
         if peer_ip in self.peer_opinion_dict:
             try:
                 self.app_log.info(f"Will remove {peer_ip} from consensus pool {self.peer_opinion_dict}")
@@ -371,7 +373,7 @@ class Peers:
             except:
                 raise
 
-    def can_connect_to(self, host, port):
+    def can_connect_to(self, host: str, port: int) -> bool:
         """
         Tells if we can connect to this host
         :param host:
@@ -402,7 +404,7 @@ class Peers:
         # Else we can
         return True
 
-    def add_try(self, host, port):
+    def add_try(self, host: str, port: int) -> None:
         """
         Add the host to the tried dict with matching timeout depending on its state.
         :param host:
@@ -429,7 +431,7 @@ class Peers:
         # Temp
         self.app_log.info(f"Set timeout {delay} try {tries} for {host_port}")
 
-    def del_try(self, host, port=None):
+    def del_try(self, host: str, port=None) -> None:
         """
         Remove the peer from tried list. To be called when we successfully connected.
         :param host: an ip as a string, or an "ip:port" string
@@ -449,7 +451,7 @@ class Peers:
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
 
-    def reset_tried(self):
+    def reset_tried(self) -> None:
         """
         Remove the older timeouts from the tried list.
         Keep the recent ones or we end up trying the first ones again and again
@@ -459,7 +461,7 @@ class Peers:
         for client in remove:
             del self.tried[client]
 
-    def client_loop(self, node, this_target):
+    def client_loop(self, node: "Node", this_target) -> None:
         """Manager loop called every 30 sec. Handles maintenance"""
         try:
             for key, value in dict(self.dict_shuffle(self.peer_dict)).items():
@@ -523,7 +525,7 @@ class Peers:
             The calling method has other important subsequent calls that have to be done.
             """
 
-    def status_log(self):
+    def status_log(self) -> None:
         """Prints the peers part of the node status"""
         if self.banlist:
             self.app_log.warning(f"Status: Banlist: {self.banlist}")

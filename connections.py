@@ -5,17 +5,18 @@ LTIMEOUT = 45
 # Fixed header length
 SLEN = 10
 
-def send(sdef, data, slen=SLEN):
+
+def send(sdef, data, slen: int=SLEN) -> None:
     sdef.setblocking(1)
     # Make sure the packet is sent in one call
-
     sdef.sendall(str(len(json.dumps(data))).encode("utf-8").zfill(slen) + json.dumps(data).encode("utf-8"))
+
 
 if "Linux" in platform.system():
     READ_OR_ERROR = select.POLLIN | select.POLLPRI | select.POLLHUP | select.POLLERR | select.POLLNVAL
     #READ_ONLY = select.POLLIN | select.POLLPRI
 
-    def receive(sdef, slen=SLEN, timeout=LTIMEOUT):
+    def receive(sdef, slen: int=SLEN, timeout: int=LTIMEOUT):
         try:
             sdef.setblocking(1)
             poller = select.poll()
@@ -79,7 +80,7 @@ if "Linux" in platform.system():
 
 else:
 
-    def receive(sdef, slen=SLEN, timeout=LTIMEOUT):
+    def receive(sdef, slen: int=SLEN, timeout: int=LTIMEOUT):
         sdef.setblocking(1)
         ready = select.select([sdef], [], [sdef], timeout)
         if ready[0]:
@@ -88,9 +89,8 @@ else:
                 #print ("To receive: {}".format(data))
             except:
                 raise RuntimeError("Connection closed by the remote host")
-
         else:
-            # logical timeoutsha_hash
+            # logical timeout
             return "*"
             #raise RuntimeError("Socket timeout")
 
@@ -109,6 +109,4 @@ else:
 
         segments = b''.join(chunks).decode("utf-8")
         #print(f"Received segments: {segments} from {sdef.getpeername()[0]}")
-
-
         return json.loads(segments)

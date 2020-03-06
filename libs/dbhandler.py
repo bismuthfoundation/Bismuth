@@ -25,14 +25,14 @@ if TYPE_CHECKING:
 __version__ = "1.0.3"
 
 
-def sql_trace_callback(log, sql_id, statement):
+def sql_trace_callback(log, sql_id, statement: str):
     line = f"SQL[{sql_id}] {statement}"
     log.warning(line)
 
 
 class DbHandler:
     # todo: define  slots
-    def __init__(self, index_db: str, ledger_path: str, hyper_path: str, ram:bool, ledger_ram_file: str, logger,
+    def __init__(self, index_db: str, ledger_path: str, hyper_path: str, ram: bool, ledger_ram_file: str, logger,
                  trace_db_calls: bool=False):
         # TODO: most of the params could be taken from the config object instead of being listed in the call
         # prototype would become __init__(self, config, logger=None, trace_db_calls=False):
@@ -503,7 +503,6 @@ class DbHandler:
                 self._execute_param(self.h2, self.SQL_TO_MISC, (x[0], x[1]))
             self.commit(self.hdd2)
 
-
         try:
             node.logger.app_log.warning(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
 
@@ -542,7 +541,7 @@ class DbHandler:
                                   str(mining_reward), "0", "0", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
 
-    def hn_reward(self,node,block_array,miner_tx,mirror_hash):
+    def hn_reward(self, node,block_array, miner_tx, mirror_hash):
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
         fork = Fork()
 
@@ -568,7 +567,7 @@ class DbHandler:
     # ====  Core helpers that should not be called from the outside ====
     # TODO EGG_EVO: Stopped there for now.
 
-    def commit(self, connection):
+    def commit(self, connection) -> None:
         """Secure commit for slow nodes"""
         while True:
             try:
@@ -579,7 +578,7 @@ class DbHandler:
                 self.logger.app_log.warning(f"Database retry reason: {e}")
                 sleep(1)
 
-    def _execute(self, cursor, query):
+    def _execute(self, cursor, query: str) -> None:
         """Secure _execute for slow nodes"""
         while True:
             try:
@@ -598,7 +597,7 @@ class DbHandler:
                 self.logger.app_log.warning(f"Database retry reason: {e}")
                 sleep(1)
 
-    def _execute_param(self, cursor, query, param):
+    def _execute_param(self, cursor, query:str, param: list) -> None:
         """Secure _execute w/ param for slow nodes"""
 
         while True:
@@ -618,7 +617,7 @@ class DbHandler:
                 self.logger.app_log.warning(f"Database retry reason: {e}")
                 sleep(1)
 
-    def fetchall(self, cursor, query, param=None):
+    def fetchall(self, cursor, query:str, param=None) -> list:
         """Helper to simplify calling code, _execute and fetch in a single line instead of 2"""
         if param is None:
             self._execute(cursor, query)
@@ -626,7 +625,7 @@ class DbHandler:
             self._execute_param(cursor, query, param)
         return cursor.fetchall()
 
-    def fetchone(self, cursor, query, param=None):
+    def fetchone(self, cursor, query:str, param: list=None) -> Union[None, str, int, float, bool]:
         """Helper to simplify calling code, _execute and fetch in a single line instead of 2"""
         if param is None:
             self._execute(cursor, query)
@@ -637,7 +636,7 @@ class DbHandler:
             return res[0]
         return None
 
-    def close(self):
+    def close(self) -> None:
         self.index.close()
         self.hdd.close()
         self.hdd2.close()

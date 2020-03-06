@@ -1,5 +1,8 @@
+# EGG: I see this as a class member of libs/Node
+# It's the node background thread
+
 import threading
-import time
+from time import time, sleep
 from worker import worker
 
 from typing import TYPE_CHECKING
@@ -15,10 +18,10 @@ class ConnectionManager (threading.Thread):
         self.node = node
         self.mempool = mempool
 
-    def run(self):
+    def run(self) -> None:
         self.connection_manager()
 
-    def connection_manager(self):
+    def connection_manager(self) -> None:
         self.node.logger.app_log.warning("Status: Starting connection manager")
         until_purge = 0
 
@@ -46,11 +49,11 @@ class ConnectionManager (threading.Thread):
                 self.mempool.status()
                 # last block
                 if self.node.last_block_ago:
-                    self.node.last_block_ago = time.time() - int(self.node.last_block_timestamp)
+                    self.node.last_block_ago = time() - int(self.node.last_block_timestamp)
                     self.node.logger.app_log.warning(f"Status: Last block {self.node.last_block} was generated "
                                                 f"{'%.2f' % (self.node.last_block_ago / 60) } minutes ago")
                 # status Hook
-                uptime = int(time.time() - self.node.startup_time)
+                uptime = int(time() - self.node.startup_time)
                 status = {"protocolversion": self.node.config.version,
                           "walletversion": self.node.app_version,
                           "testnet": self.node.is_testnet,
@@ -74,6 +77,6 @@ class ConnectionManager (threading.Thread):
                 for i in range(30):
                     # faster stop
                     if not self.node.IS_STOPPING:
-                        time.sleep(1)
+                        sleep(1)
             except Exception as e:
                 self.node.logger.app_log.warning(f"Error in connection manger ({e})")

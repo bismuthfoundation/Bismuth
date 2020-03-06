@@ -24,6 +24,7 @@ from bismuthcore.transaction import Transaction
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
   from libs.node import Node
+  from libs.dbhandler import DbHandler
 
 # fixed diff for regnet
 REGNET_DIFF = 16
@@ -75,7 +76,7 @@ def sql_trace_callback(log, id, statement):
     log.warning(line)
 
 
-def generate_one_block(blockhash: str, mempool_txs: List[Transaction], node, db_handler):
+def generate_one_block(blockhash: str, mempool_txs: List[Transaction], node: "Node", db_handler: "DbHandler") -> str:
     try:
         if not blockhash:
             node.logger.app_log.warning("Bad blockhash")
@@ -145,7 +146,7 @@ def generate_one_block(blockhash: str, mempool_txs: List[Transaction], node, db_
         node.logger.app_log.warning(exc_type, fname, exc_tb.tb_lineno)
 
 
-def command(sdef, data, blockhash, node, db_handler):
+def command(sdef, data: str, blockhash: "str", node: "Node", db_handler: "DbHandler") -> None:
     try:
         node.logger.app_log.warning("Regnet got command {}".format(data))
         if data == 'regtest_generate':
@@ -163,7 +164,7 @@ def command(sdef, data, blockhash, node, db_handler):
         node.logger.app_log.warning(exc_type, fname, exc_tb.tb_lineno)
 
 
-def init(node: "Node", app_log, trace_db_calls: bool=False):
+def init(node: "Node", app_log, trace_db_calls: bool=False) -> None:
     # Empty peers
     with open(node.peerfile, 'w') as f:
         f.write("{}")

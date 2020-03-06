@@ -1559,7 +1559,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 self.request.close()
 
                 if node.config.debug:
-                    raise  # major debug client
+                    if "Socket EOF" not in str(e) and "Broken pipe" not in str(e):
+                        # raise if debug, but not for innocuous closed pipes.
+                        raise  # major debug client
                 else:
                     return
 

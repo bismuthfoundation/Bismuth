@@ -2,7 +2,7 @@ import json
 import os.path as path
 from sys import exit
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 
 # "param_name":["type"] or "param_name"=["type","property_name"]
@@ -82,8 +82,9 @@ class Config:
         self.read()
         # Default genesis to keep compatibility
         self.genesis = "4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed"
+        self.mandatory_message = None
 
-    def load_file(self, filename):
+    def load_file(self, filename: str) -> None:
         # print("Loading",filename)
         with open(filename) as fp:
             for line in fp:
@@ -94,7 +95,7 @@ class Config:
                             "Inconsistent config, param is now mempool_ram in config.txt"
                         )
                         exit()
-                    if not left in VARS:
+                    if left not in VARS:
                         # Warn for unknown param?
                         continue
                     params = VARS[left]
@@ -121,10 +122,7 @@ class Config:
                         left = params[1]
                     setattr(self, left, right)
 
-
-        # print(self.__dict__)
-
-    def read(self):
+    def read(self) -> None:
         # first of all, set from default
         for key, default in DEFAULTS.items():
             setattr(self, key, default)
