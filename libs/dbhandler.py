@@ -4,6 +4,7 @@ Sqlite3 Database handler module for Bismuth nodes
 
 from time import sleep
 import sqlite3
+import sys
 # import essentials
 from decimal import Decimal
 from bismuthcore.compat import quantize_two, quantize_eight
@@ -12,9 +13,13 @@ from bismuthcore.block import Block
 from bismuthcore.helpers import fee_calculate
 import functools
 from libs.fork import Fork
-from mempool import Mempool  # for type hints
+
 from typing import Union, List
-import sys
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+  from libs.node import Node
+  from mempool import Mempool  # for type hints
+  # from libs.dbhandler import DbHandler
 
 
 __version__ = "1.0.3"
@@ -27,7 +32,8 @@ def sql_trace_callback(log, sql_id, statement):
 
 class DbHandler:
     # todo: define  slots
-    def __init__(self, index_db, ledger_path, hyper_path, ram, ledger_ram_file, logger, trace_db_calls=False):
+    def __init__(self, index_db: str, ledger_path: str, hyper_path: str, ram:bool, ledger_ram_file: str, logger,
+                 trace_db_calls: bool=False):
         # TODO: most of the params could be taken from the config object instead of being listed in the call
         # prototype would become __init__(self, config, logger=None, trace_db_calls=False):
         # logguer, as it's a global one, could be a config property as well.
@@ -237,7 +243,7 @@ class DbHandler:
             result = "No announcement"
         return result
 
-    def balance_get_full(self, balance_address: str, mempool: Mempool, as_dict: bool=False) -> Union[tuple, dict]:
+    def balance_get_full(self, balance_address: str, mempool: "Mempool", as_dict: bool=False) -> Union[tuple, dict]:
         """Returns full detailed balance info
         Ported from node.py
             return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
@@ -473,7 +479,7 @@ class DbHandler:
             # secure commit for slow nodes
             self.commit(self.conn)
 
-    def db_to_drive(self, node):
+    def db_to_drive(self, node: "Node"):
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
         def transactions_to_h(data):
             for x in data:  # we want to save to ledger.db
@@ -508,7 +514,7 @@ class DbHandler:
             result1 = self.c.fetchall()
 
             transactions_to_h(result1)
-            if node.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
+            if node.config.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
                 transactions_to_h2(result1)
 
             self._execute_param(self.c, "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
@@ -516,7 +522,7 @@ class DbHandler:
             result2 = self.c.fetchall()
 
             misc_to_h(result2)
-            if node.ram:  # we want to save to hyper.db from RAM
+            if node.config.ram:  # we want to save to hyper.db from RAM
                 misc_to_h2(result2)
 
             node.hdd_block = node.last_block
@@ -529,10 +535,10 @@ class DbHandler:
 
     # ====  Rewards ====
 
-    def dev_reward(self, node, block_array, miner_tx, mining_reward, mirror_hash) -> None:
+    def dev_reward(self, node: "Node", block_array, miner_tx, mining_reward, mirror_hash) -> None:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
         self._execute_param(self.c, self.SQL_TO_TRANSACTIONS,
-                            (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Development Reward", str(node.genesis),
+                            (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Development Reward", str(node.config.genesis),
                                   str(mining_reward), "0", "0", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
 

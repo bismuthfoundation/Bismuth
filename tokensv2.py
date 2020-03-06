@@ -1,12 +1,15 @@
+
 # operation: token:issue
 # openfield: token_name:total_number
 
 # operation: token:transfer
 # openfield: token_name:amount
 
-import sqlite3
+# import sqlite3
 import log
 from hashlib import blake2b
+from libs.config import Config
+from libs import node, logger, dbhandler
 
 __version__ = '0.0.2'
 
@@ -16,6 +19,7 @@ def blake2bhash_generate(data):
     blake2bhash = blake2b(str(data).encode(), digest_size=20).hexdigest()
     return blake2bhash
     # new hash
+
 
 def tokens_update(node, db_handler_instance):
 
@@ -187,18 +191,18 @@ def tokens_update(node, db_handler_instance):
 
 
 if __name__ == "__main__":
-    from libs import node,logger
-    import dbhandler
 
-    node = node.Node()
-    node.debug_level = "WARNING"
-    node.terminal_output = True
+    config = Config()
+    node = node.Node(config=config)
+    node.config.debug_level = "WARNING"
+    node.config.terminal_output = True
 
     node.logger = logger.Logger()
-    node.logger.app_log = log.log("local_test.log", node.debug_level, node.terminal_output)
+    node.logger.app_log = log.log("local_test.log", node.config.debug_level, node.config.terminal_output)
     node.logger.app_log.warning("Configuration settings loaded")
 
-    db_handler = dbhandler.DbHandler("static/index_local_test.db","static/ledger.db","static/hyper.db", False, None, node.logger, False)
+    db_handler = dbhandler.DbHandler("static/index_local_test.db","static/ledger.db","static/hyper.db", False, None,
+                                     node.logger, False)
 
     tokens_update(node, db_handler)
     # tokens_update("tokens.db","reindex")

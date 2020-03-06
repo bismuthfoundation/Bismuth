@@ -2,15 +2,20 @@ import threading
 import time
 from worker import worker
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from libs.node import Node
+    # from libs.dbhandler import DbHandler
+    from mempool import Mempool
+
 
 class ConnectionManager (threading.Thread):
-    def __init__(self, node, mempool):
+    def __init__(self, node: "Node", mempool: "Mempool"):
         threading.Thread.__init__(self, name="ConnectionManagerThread")
         self.node = node
         self.mempool = mempool
 
     def run(self):
-
         self.connection_manager()
 
     def connection_manager(self):
@@ -32,7 +37,7 @@ class ConnectionManager (threading.Thread):
                 if not self.node.is_regnet:
                     # regnet never tries to connect
                     self.node.peers.client_loop(self.node, this_target=worker)
-                self.node.logger.app_log.warning(f"Status: Threads at {threading.active_count()} / {self.node.thread_limit}")
+                self.node.logger.app_log.warning(f"Status: Threads at {threading.active_count()} / {self.node.config.thread_limit}")
                 self.node.logger.app_log.info(f"Status: Syncing nodes: {self.node.syncing}")
                 self.node.logger.app_log.info(f"Status: Syncing nodes: {len(self.node.syncing)}/3")
 
@@ -46,7 +51,7 @@ class ConnectionManager (threading.Thread):
                                                 f"{'%.2f' % (self.node.last_block_ago / 60) } minutes ago")
                 # status Hook
                 uptime = int(time.time() - self.node.startup_time)
-                status = {"protocolversion": self.node.version,
+                status = {"protocolversion": self.node.config.version,
                           "walletversion": self.node.app_version,
                           "testnet": self.node.is_testnet,
                           # config data

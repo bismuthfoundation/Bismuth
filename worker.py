@@ -3,7 +3,6 @@ import sys
 import threading
 from libs import node, logger, keys, client
 import time
-from libs.dbhandler import DbHandler
 import socks
 from connections import send, receive
 from decimal import Decimal
@@ -11,9 +10,14 @@ from quantizer import quantize_two, quantize_eight, quantize_ten
 import mempool as mp
 from difficulty import *
 from libs import client
+from libs.dbhandler import DbHandler
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+  from libs.node import Node
 
 
-def sendsync(sdef, peer_ip, status, node):
+def sendsync(sdef, peer_ip, status, node: "Node"):
     """ Save peer_ip to peerlist and send `sendsync`
 
     :param sdef: socket object
@@ -29,15 +33,15 @@ def sendsync(sdef, peer_ip, status, node):
     """
     # TODO: ERROR, does **not** save anything. code or comment wrong.
     node.logger.app_log.info(f"Outbound: Synchronization with {peer_ip} finished after: {status}, sending new sync request")
-    time.sleep(Decimal(node.pause))
+    node.sleep()
     while node.db_lock.locked():
         if node.IS_STOPPING:
             return
-        time.sleep(Decimal(node.pause))
+        node.sleep()
     send(sdef, "sendsync")
 
 
-def worker(host, port, node):
+def worker(host, port, node: "Node"):
     logger = node.logger
 
     this_client = f"{host}:{port}"
@@ -60,7 +64,7 @@ def worker(host, port, node):
 
         s = socks.socksocket()
 
-        if node.tor:
+        if node.config.tor:
             s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
         # s.setblocking(0)
         s.connect((host, port))
@@ -70,7 +74,7 @@ def worker(host, port, node):
         # communication starter
 
         send(s, "version")
-        send(s, node.version)
+        send(s, node.config.version)
 
         data = receive(s)
 
@@ -81,7 +85,7 @@ def worker(host, port, node):
 
         send(s, "getversion")
         peer_version = receive(s)
-        if peer_version not in node.version_allow:
+        if peer_version not in node.config.version_allow:
             raise ValueError(f"Outbound: Incompatible peer version {peer_version} from {this_client}")
 
         send(s, "hello")
@@ -105,10 +109,10 @@ def worker(host, port, node):
         node.logger.app_log.info(f"Connected to {this_client}")
         node.logger.app_log.info(f"Current active pool: {node.peers.connection_pool}")
 
-    if not node.peers.is_banned(host) and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
-        db_handler = DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, logger)
+    if not node.peers.is_banned(host) and node.peers.version_allowed(host, node.config.version_allow) and not node.IS_STOPPING:
+        db_handler = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram, node.ledger_ram_file, logger)
 
-    while not node.peers.is_banned(host) and node.peers.version_allowed(host, node.version_allow) and not node.IS_STOPPING:
+    while not node.peers.is_banned(host) and node.peers.version_allowed(host, node.config.version_allow) and not node.IS_STOPPING:
         try:
             #ensure_good_peer_version(host)
 
@@ -127,7 +131,7 @@ def worker(host, port, node):
                     while len(node.syncing) >= 3:
                         if node.IS_STOPPING:
                             return
-                        time.sleep(int(node.pause))
+                        node.sleep()
 
                     node.syncing.append(peer_ip)
                     # sync start
@@ -161,7 +165,7 @@ def worker(host, port, node):
 
                         if not client_block:
                             node.logger.app_log.warning(f"Outbound: Block {data[:8]} of {peer_ip} not found")
-                            if node.full_ledger:
+                            if node.config.full_ledger:
                                 send(s, "blocknf")
                             else:
                                 send(s, "blocknfhb")
@@ -174,10 +178,10 @@ def worker(host, port, node):
                             node.logger.app_log.warning(
                                 f"Outbound: Node is at block {client_block}")  # now check if we have any newer
 
-                            if node.hdd_hash == data or not node.egress:
-                                if not node.egress:
+                            if node.hdd_hash == data or not node.config.egress:
+                                if not node.config.egress:
                                     node.logger.app_log.warning(f"Outbound: Egress disabled for {peer_ip}")
-                                    time.sleep(int(node.pause))  # reduce CPU usage
+                                    node.sleep()  # reduce CPU usage
                                 else:
                                     node.logger.app_log.info(f"Outbound: Node {peer_ip} has the latest block")
                                     # TODO: this is unlikely to happen due to conditions above, consider removing
@@ -342,11 +346,11 @@ def worker(host, port, node):
             s.close()
 
             # properly end the connection
-            if node.debug:
+            if node.config.debug:
                 raise  # major debug client
             else:
                 node.logger.app_log.info(f"Ending thread, because {e}")
                 return
 
-    if not node.peers.version_allowed(host, node.version_allow):
+    if not node.peers.version_allowed(host, node.config.version_allow):
         node.logger.app_log.warning(f"Outbound: Ending thread, because {host} has too old a version: {node.peers.ip_to_mainnet[host]}")

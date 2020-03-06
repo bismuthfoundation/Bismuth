@@ -22,6 +22,7 @@ import sqlite3
 import tarfile
 import threading
 from sys import version_info
+from time import time as ttime, sleep
 
 import aliases  # PREFORK_ALIASES
 # import aliasesv2 as aliases # POSTFORK_ALIASES
@@ -31,13 +32,15 @@ import apihandler
 import connectionmanager
 from libs.dbhandler import DbHandler
 import log
+from libs.logger import Logger
 import peershandler
 import plugins
 import wallet_keys
 from connections import send, receive
 from digest import *
 from bismuthcore.helpers import download_file, sanitize_address
-from libs import node, logger, keys, client
+from libs import keys, client
+from libs.node import Node
 from libs.config import Config
 from libs.fork import Fork
 
@@ -74,7 +77,7 @@ def bootstrap():
                 os.remove(f)
                 print(f, "deleted")
 
-        archive_path = node.ledger_path + ".tar.gz"
+        archive_path = node.config.ledger_path + ".tar.gz"
         download_file("https://bismuth.cz/ledger.tar.gz", archive_path)
 
         with tarfile.open(archive_path) as tar:
@@ -93,7 +96,7 @@ def check_integrity(database):
         os.mkdir("static")
 
     with sqlite3.connect(database) as ledger_check:
-        if node.trace_db_calls:
+        if node.config.trace_db_calls:
             ledger_check.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"CHECK_INTEGRITY"))
 
         ledger_check.text_factory = str
@@ -131,7 +134,7 @@ def recompress_ledger(node, rebuild=False, depth=15000):
     # TODO: Candidate for single user mode
     node.logger.app_log.warning(f"Status: Recompressing, please be patient")
 
-    files_remove = [node.ledger_path + '.temp',node.ledger_path + '.temp-shm',node.ledger_path + '.temp-wal']
+    files_remove = [node.config.ledger_path + '.temp',node.config.ledger_path + '.temp-shm',node.config.ledger_path + '.temp-wal']
     for file in files_remove:
         if os.path.exists(file):
             os.remove(file)
@@ -140,12 +143,12 @@ def recompress_ledger(node, rebuild=False, depth=15000):
     if rebuild:
         node.logger.app_log.warning(f"Status: Hyperblocks will be rebuilt")
 
-        shutil.copy(node.ledger_path, node.ledger_path + '.temp')
-        hyper = sqlite3.connect(node.ledger_path + '.temp')
+        shutil.copy(node.config.ledger_path, node.config.ledger_path + '.temp')
+        hyper = sqlite3.connect(node.config.ledger_path + '.temp')
     else:
-        shutil.copy(node.hyper_path, node.ledger_path + '.temp')
-        hyper = sqlite3.connect(node.ledger_path + '.temp')
-    if node.trace_db_calls:
+        shutil.copy(node.config.hyper_path, node.config.ledger_path + '.temp')
+        hyper = sqlite3.connect(node.config.ledger_path + '.temp')
+    if node.config.trace_db_calls:
        hyper.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"HYPER"))
     hyper.text_factory = str
     hyp = hyper.cursor()
@@ -185,7 +188,7 @@ def recompress_ledger(node, rebuild=False, depth=15000):
         end_balance = quantize_eight(credit - debit)
 
         if end_balance > 0:
-            timestamp = str(time.time())
+            timestamp = str(ttime())
             hyp.execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
                 depth_specific - 1, timestamp, "Hyperblock", x[0], str(end_balance), "0", "0", "0", "0",
                 "0", "0", "0"))
@@ -203,15 +206,15 @@ def recompress_ledger(node, rebuild=False, depth=15000):
     hyp.execute("VACUUM")
     hyper.close()
 
-    if os.path.exists(node.hyper_path):
-        os.remove(node.hyper_path)  # remove the old hyperblocks to rebuild
-        os.rename(node.ledger_path + '.temp', node.hyper_path)
+    if os.path.exists(node.config.hyper_path):
+        os.remove(node.config.hyper_path)  # remove the old hyperblocks to rebuild
+        os.rename(node.config.ledger_path + '.temp', node.config.hyper_path)
 
 
-def ledger_check_heights(node, db_handler):
+def ledger_check_heights(node: Node, db_handler: DbHandler):
     # TODO: Candidate for single user mode
     """conversion of normal blocks into hyperblocks from ledger.db or hyper.db to hyper.db"""
-    if os.path.exists(node.hyper_path):
+    if os.path.exists(node.config.hyper_path):
 
         # cross-integrity check
         hdd_block_max = db_handler.block_height_max()
@@ -221,12 +224,11 @@ def ledger_check_heights(node, db_handler):
 
         # cross-integrity check
 
-        if hdd_block_max == hdd2_block_last == hdd2_block_last_misc == hdd_block_max_diff and node.hyper_recompress:  # cross-integrity check
+        if hdd_block_max == hdd2_block_last == hdd2_block_last_misc == hdd_block_max_diff and node.config.hyper_recompress:  # cross-integrity check
             node.logger.app_log.warning("Status: Recompressing hyperblocks (keeping full ledger)")
             node.recompress = True
-
-            #print (hdd_block_max,hdd2_block_last,node.hyper_recompress)
-        elif hdd_block_max == hdd2_block_last and not node.hyper_recompress:
+            #print (hdd_block_max,hdd2_block_last,node.config.hyper_recompress)
+        elif hdd_block_max == hdd2_block_last and not node.config.hyper_recompress:
             node.logger.app_log.warning("Status: Hyperblock recompression skipped")
             node.recompress = False
         else:
@@ -351,7 +353,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
     """
     node.logger.app_log.info(f"Rollback operation on {block_hash_delete} initiated by {peer_ip}")
 
-    my_time = time.time()
+    my_time = ttime()
 
     if not node.db_lock.locked():
         node.db_lock.acquire()
@@ -463,11 +465,11 @@ def sequencing_check(db_handler):
 
     node.logger.app_log.warning(f"Status: Testing chain sequencing, starting with block {sequencing_last}")
 
-    chains_to_check = [node.ledger_path, node.hyper_path]
+    chains_to_check = [node.config.ledger_path, node.config.hyper_path]
 
     for chain in chains_to_check:
         conn = sqlite3.connect(chain)
-        if node.trace_db_calls:
+        if node.config.trace_db_calls:
             conn.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN"))
         c = conn.cursor()
 
@@ -486,7 +488,7 @@ def sequencing_check(db_handler):
 
                 for chain2 in chains_to_check:
                     conn2 = sqlite3.connect(chain2)
-                    if node.trace_db_calls:
+                    if node.config.trace_db_calls:
                         conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2"))
                     c2 = conn2.cursor()
                     node.logger.app_log.warning(f"Status: Chain {chain} transaction sequencing error at: {row[0]}. {row[0]} instead of {y}")
@@ -522,7 +524,7 @@ def sequencing_check(db_handler):
                 # print(row[0], y)
                 for chain2 in chains_to_check:
                     conn2 = sqlite3.connect(chain2)
-                    if node.trace_db_calls:
+                    if node.config.trace_db_calls:
                         conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2B"))
                     c2 = conn2.cursor()
                     node.logger.app_log.warning(
@@ -570,7 +572,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             node.logger.app_log.warning("Inbound: Rejected incoming cnx, node is stopping")
             return
 
-        db_handler = DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
+        db_handler = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram,
+                               node.ledger_ram_file, node.logger, trace_db_calls=node.config.trace_db_calls)
 
         client_instance = client.Client()
 
@@ -581,9 +584,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             return
 
         threading.current_thread().name = f"in_{peer_ip}"
-        # if threading.active_count() < node.thread_limit or peer_ip == "127.0.0.1":
+        # if threading.active_count() < node.config.thread_limit or peer_ip == "127.0.0.1":
         # Always keep a slot for whitelisted (wallet could be there)
-        if threading.active_count() < node.thread_limit / 3 * 2 or node.peers.is_whitelisted(peer_ip):  # inbound
+        if threading.active_count() < node.config.thread_limit / 3 * 2 or node.peers.is_whitelisted(peer_ip):  # inbound
             client_instance.connected = True
         else:
             try:
@@ -605,7 +608,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
         # TODO: I'd like to call
         """
-        node.peers.peersync({peer_ip: node.port})
+        node.peers.peersync({peer_ip: node.config.port})
         so we can save the peers that connected to us. 
         But not ok in current architecture: would delay the command, and we're not even sure it would be saved.
         TODO: Workaround: make sure our external ip and port is present in the peers we announce, or new nodes are likely never to be announced. 
@@ -613,15 +616,15 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         """
 
         timeout_operation = 120  # timeout
-        timer_operation = time.time()  # start counting
+        timer_operation = ttime()  # start counting
 
-        while not node.peers.is_banned(peer_ip) and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
+        while not node.peers.is_banned(peer_ip) and node.peers.version_allowed(peer_ip, node.config.version_allow) and client_instance.connected:
             try:
                 # Failsafe
                 if self.request == -1:
                     raise ValueError(f"Inbound: Closed socket from {peer_ip}")
 
-                if not time.time() <= timer_operation + timeout_operation:  # return on timeout
+                if not ttime() <= timer_operation + timeout_operation:  # return on timeout
                     if node.peers.warning(self.request, peer_ip, "Operation timeout", 2):
                         node.logger.app_log.info(f"{peer_ip} banned")
                         break
@@ -649,9 +652,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 if data == 'version':
                     data = receive(self.request)
-                    if data not in node.version_allow:
+                    if data not in node.config.version_allow:
                         node.logger.app_log.warning(
-                            f"Protocol version mismatch: {data}, should be {node.version_allow}")
+                            f"Protocol version mismatch: {data}, should be {node.config.version_allow}")
                         send(self.request, "notok")
                         return
                     else:
@@ -660,7 +663,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         node.peers.store_mainnet(peer_ip, data)
 
                 elif data == 'getversion':
-                    send(self.request, node.version)
+                    send(self.request, node.config.version)
 
                 elif data == 'mempool':
 
@@ -671,7 +674,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                     # receive theirs
 
-                    # _execute_param(m, ('SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE timeout < ? ORDER BY amount DESC;'), (int(time.time() - 5),))
+                    # _execute_param(m, ('SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE timeout < ? ORDER BY amount DESC;'), (int(ttime() - 5),))
                     if mp.MEMPOOL.sendable(peer_ip):
                         # Only send the diff
                         mempool_txs = mp.MEMPOOL.tx_to_send(peer_ip, segments)  # EGG_EVO: we suppose we get legacy tuples there.
@@ -697,17 +700,17 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     send(self.request, peers_send)
 
                     while node.db_lock.locked():
-                        time.sleep(quantize_two(node.pause))
+                        node.sleep()
                     node.logger.app_log.info("Inbound: Sending sync request")
 
                     send(self.request, "sync")
 
                 elif data == "sendsync":
                     while node.db_lock.locked():
-                        time.sleep(quantize_two(node.pause))
+                        node.sleep()
 
                     while len(node.syncing) >= 3:
-                        time.sleep(int(node.pause))
+                        node.sleep()
 
                     send(self.request, "sync")
 
@@ -722,7 +725,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     else:
                         node.last_block_timestamp = db_handler.last_block_timestamp()
 
-                        if node.last_block_timestamp < time.time() - 600:
+                        if node.last_block_timestamp < ttime() - 600:
                             # block_req = most_common(consensus_blockheight_list)
                             block_req = node.peers.consensus_most_common
                             node.logger.app_log.warning("Most common block rule triggered")
@@ -798,7 +801,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             client_block = db_handler.block_height_from_hash(data)
                             if client_block is None:
                                 node.logger.app_log.warning(f"Inbound: Block {data[:8]} of {peer_ip} not found")
-                                if node.full_ledger:
+                                if node.config.full_ledger:
                                     send(self.request, "blocknf")  # announce block hash was not found
                                 else:
                                     send(self.request, "blocknfhb")  # announce we are on hyperblocks
@@ -811,13 +814,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             else:
                                 node.logger.app_log.info(f"Inbound: Client is at block {client_block}")  # now check if we have any newer
 
-                                if node.hdd_hash == data or not node.egress:
-                                    if not node.egress:
-                                        node.logger.app_log.warning(f"Inbound: Egress disabled for {peer_ip}")
-                                    else:
+                                if node.hdd_hash == data or not node.config.egress:
+                                    if node.config.egress:
                                         node.logger.app_log.info(f"Inbound: Client {peer_ip} has the latest block")
+                                    else:
+                                        node.logger.app_log.warning(f"Inbound: Egress disabled for {peer_ip}")
 
-                                    time.sleep(int(node.pause))  # reduce CPU usage
+                                    node.sleep()  # reduce CPU usage
                                     send(self.request, "nonewblk")
 
                                 else:
@@ -855,7 +858,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     node.logger.app_log.info("Inbound: Deletion complete, sending sync request")
 
                     while node.db_lock.locked():
-                        time.sleep(node.pause)
+                        node.sleep()
                     send(self.request, "sync")
 
                 elif data == "blocknfhb": #node announces it's running hyperblocks
@@ -869,7 +872,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     node.logger.app_log.info("Inbound: Deletion complete, sending sync request")
 
                     while node.db_lock.locked():
-                        time.sleep(node.pause)
+                        node.sleep()
                     send(self.request, "sync")
 
                 elif data == "block":
@@ -880,7 +883,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         # receive block
                         segments = receive(self.request)
                         # node.logger.app_log.info("Inbound: Combined mined segments: " + segments)
-                        mined = {"timestamp": time.time(), "last": node.last_block, "ip": peer_ip, "miner": "",
+                        mined = {"timestamp": ttime(), "last": node.last_block, "ip": peer_ip, "miner": "",
                                  "result": False, "reason": ''}
                         try:
                             mined['miner'] = segments[0][-1][1]  # sender, to be consistent with block event.
@@ -1372,7 +1375,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         # with open(peerlist, "r") as peer_list:
                         #    peers_file = peer_list.read()
 
-                        result = db_handler.annget(node.genesis)
+                        result = db_handler.annget(node.config.genesis)
 
                         send(self.request, result)
                     else:
@@ -1380,7 +1383,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "annverget":
                     if node.peers.is_allowed(peer_ip):
-                        result = db_handler.annverget(node.genesis)
+                        result = db_handler.annverget(node.config.genesis)
                         send(self.request, result)
 
                     else:
@@ -1398,10 +1401,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         nodes_count = node.peers.consensus_size
                         nodes_list = node.peers.peer_opinion_dict
                         threads_count = threading.active_count()
-                        uptime = int(time.time() - node.startup_time)
+                        uptime = int(ttime() - node.startup_time)
                         diff = node.difficulty
-                        server_timestamp = '%.2f' % time.time()
-                        if node.reveal_address:
+                        server_timestamp = '%.2f' % ttime()
+                        if node.config.reveal_address:
                             revealed_address = node.keys.address
                         else:
                             revealed_address = "private"
@@ -1414,13 +1417,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "statusjson":
                     # not only sends as an explicit dict, but also embeds extra info
                     if node.peers.is_allowed(peer_ip, data):
-                        uptime = int(time.time() - node.startup_time)
+                        uptime = int(ttime() - node.startup_time)
                         tempdiff = node.difficulty
-                        if node.reveal_address:
+                        if node.config.reveal_address:
                             revealed_address = node.keys.address
                         else:
                             revealed_address = "private"
-                        status = {"protocolversion": node.version,
+                        status = {"protocolversion": node.config.version,
                                   "address": revealed_address,
                                   "walletversion": VERSION,
                                   "testnet": node.is_testnet,
@@ -1433,7 +1436,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                   "consensus_percent": node.peers.consensus_percentage,
                                   "python_version": str(version_info[:3]),
                                   "last_block_ago": node.last_block_ago,
-                                  "server_timestamp": '%.2f' % time.time()}
+                                  "server_timestamp": '%.2f' % ttime()}
                         if node.is_regnet:
                             status['regnet'] = True
                         send(self.request, status)
@@ -1444,7 +1447,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         try:
                             node.apihandler.dispatch(data, self.request, db_handler, node.peers)
                         except Exception as e:
-                            if node.debug:
+                            if node.config.debug:
                                 raise
                             else:
                                 node.logger.app_log.warning(e)
@@ -1458,7 +1461,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "portget":
                     if node.peers.is_allowed(peer_ip, data):
-                        send(self.request, {"port": node.port})
+                        send(self.request, {"port": node.config.port})
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for portget command")
 
@@ -1539,9 +1542,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if not extra:
                         raise ValueError("Unexpected error, received: " + str(data)[:32] + ' ...')
 
-                if not time.time() <= timer_operation + timeout_operation:
-                    timer_operation = time.time()  # reset timer
-                # time.sleep(float(node.pause))  # prevent cpu overload
+                if not ttime() <= timer_operation + timeout_operation:
+                    timer_operation = ttime()  # reset timer
+                # node.sleep()
+                # sleep(float(node.config.pause))  # prevent cpu overload
                 node.logger.app_log.info(f"Server loop finished for {peer_ip}")
 
             except Exception as e:
@@ -1554,118 +1558,18 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 # remove from consensus (connection from them)
                 self.request.close()
 
-                if node.debug:
+                if node.config.debug:
                     raise  # major debug client
                 else:
                     return
 
-        if not node.peers.version_allowed(peer_ip, node.version_allow):
+        if not node.peers.version_allowed(peer_ip, node.config.version_allow):
             node.logger.app_log.warning(f"Inbound: Closing connection to old {peer_ip} node: {node.peers.ip_to_mainnet[peer_ip]}")
         return
 
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
-
-
-def just_int_from(s):
-    # TODO: move to essentials.py
-    return int(''.join(i for i in s if i.isdigit()))
-
-
-def setup_net_type():
-    """
-    Adjust globals depending on mainnet, testnet or regnet
-    """
-    # TODO: only deals with 'node' structure, candidate for single user mode.
-    # Defaults value, dup'd here for clarity sake.
-    node.is_mainnet = True
-    node.is_testnet = False
-    node.is_regnet = False
-
-    if "testnet" in node.version or node.is_testnet:
-        node.is_testnet = True
-        node.is_mainnet = False
-        node.version_allow = "testnet"
-
-    if "regnet" in node.version or node.is_regnet:
-        node.is_regnet = True
-        node.is_testnet = False
-        node.is_mainnet = False
-
-    node.logger.app_log.warning(f"Testnet: {node.is_testnet}")
-    node.logger.app_log.warning(f"Regnet : {node.is_regnet}")
-
-    # default mainnet config
-    node.peerfile = "peers.txt"
-    node.ledger_ram_file = "file:ledger?mode=memory&cache=shared"
-    node.index_db = "static/index.db"
-
-    if node.is_mainnet:
-        # Allow only 21 and up
-        if node.version != 'mainnet0021':
-            node.version = 'mainnet0021'  # Force in code.
-        if "mainnet0021" not in node.version_allow:
-            node.version_allow = ['mainnet0021', 'mainnet0022']
-        # Do not allow bad configs.
-        if not 'mainnet' in node.version:
-            node.logger.app_log.error("Bad mainnet version, check config.txt")
-            sys.exit()
-        num_ver = just_int_from(node.version)
-        if num_ver <21:
-            node.logger.app_log.error("Too low mainnet version, check config.txt")
-            sys.exit()
-        for allowed in node.version_allow:
-            num_ver = just_int_from(allowed)
-            if num_ver < 20:
-                node.logger.app_log.error("Too low allowed version, check config.txt")
-                sys.exit()
-
-    if "testnet" in node.version or node.is_testnet:
-        node.port = 2829
-        node.hyper_path = "static/hyper_test.db"
-        node.ledger_path = "static/ledger_test.db"
-
-        node.ledger_ram_file = "file:ledger_testnet?mode=memory&cache=shared"
-        #node.hyper_recompress = False
-        node.peerfile = "peers_test.txt"
-        node.index_db = "static/index_test.db"
-        if not 'testnet' in node.version:
-            node.logger.app_log.error("Bad testnet version, check config.txt")
-            sys.exit()
-
-        redownload_test = input("Status: Welcome to the testnet. Redownload test ledger? y/n")
-        if redownload_test == "y":
-            types = ['static/ledger_test.db-wal', 'static/ledger_test.db-shm', 'static/index_test.db', 'static/hyper_test.db-wal', 'static/hyper_test.db-shm']
-            for type in types:
-                for file in glob.glob(type):
-                    os.remove(file)
-                    print(file, "deleted")
-            download_file("https://bismuth.cz/test.tar.gz", "static/test.tar.gz")
-            with tarfile.open("static/test.tar.gz") as tar:
-                tar.extractall("static/")  # NOT COMPATIBLE WITH CUSTOM PATH CONFS
-        else:
-            print("Not redownloading test db")
-
-    if "regnet" in node.version or node.is_regnet:
-        node.port = regnet.REGNET_PORT
-        node.hyper_path = regnet.REGNET_DB
-        node.ledger_path = regnet.REGNET_DB
-        node.ledger_ram_file = "file:ledger_regnet?mode=memory&cache=shared"
-        node.hyper_recompress = False
-        node.peerfile = regnet.REGNET_PEERS
-        node.index_db = regnet.REGNET_INDEX
-        if not 'regnet' in node.version:
-            node.logger.app_log.error("Bad regnet version, check config.txt")
-            sys.exit()
-        node.logger.app_log.warning("Regnet init...")
-        regnet.init(node.logger.app_log)
-        regnet.DIGEST_BLOCK = digest_block
-        mining_heavy3.is_regnet = True
-        """
-        node.logger.app_log.warning("Regnet still is WIP atm.")
-        sys.exit()
-        """
 
 
 def node_block_init(database):
@@ -1690,26 +1594,26 @@ def node_block_init(database):
 def ram_init(database):
     # TODO: candidate for single user mode
     try:
-        if node.ram:
+        if node.config.ram:
             node.logger.app_log.warning("Status: Moving database to RAM")
 
             if node.py_version >= 370:
                 temp_target = sqlite3.connect(node.ledger_ram_file, uri=True, isolation_level=None, timeout=1)
-                if node.trace_db_calls:
+                if node.config.trace_db_calls:
                     temp_target.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"TEMP-TARGET"))
 
-                temp_source = sqlite3.connect(node.hyper_path, uri=True, isolation_level=None, timeout=1)
-                if node.trace_db_calls:
+                temp_source = sqlite3.connect(node.config.hyper_path, uri=True, isolation_level=None, timeout=1)
+                if node.config.trace_db_calls:
                     temp_source.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"TEMP-SOURCE"))
                 temp_source.backup(temp_target)
                 temp_source.close()
 
             else:
-                source_db = sqlite3.connect(node.hyper_path, timeout=1)
-                if node.trace_db_calls:
+                source_db = sqlite3.connect(node.config.hyper_path, timeout=1)
+                if node.config.trace_db_calls:
                     source_db.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SOURCE-DB"))
                 database.to_ram = sqlite3.connect(node.ledger_ram_file, uri=True, timeout=1, isolation_level=None)
-                if node.trace_db_calls:
+                if node.config.trace_db_calls:
                     database.to_ram.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"DATABASE-TO-RAM"))
                 database.to_ram.text_factory = str
                 database.tr = database.to_ram.cursor()
@@ -1741,8 +1645,8 @@ def initial_db_check():
         bootstrap()
     # UPDATE mainnet DB if required
     if node.is_mainnet:
-        upgrade = sqlite3.connect(node.ledger_path)
-        if node.trace_db_calls:
+        upgrade = sqlite3.connect(node.config.ledger_path)
+        if node.config.trace_db_calls:
             upgrade.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"INITIAL_DB_CHECK"))
         u = upgrade.cursor()
         try:
@@ -1791,7 +1695,7 @@ def verify(db_handler):
             block_height = result[0]
             genesis = result[1]
             node.logger.app_log.warning(f"Genesis: {genesis}")
-            if str(genesis) != node.genesis and int(
+            if str(genesis) != node.config.genesis and int(
                     block_height) == 0:
                 node.logger.app_log.warning("Invalid genesis address")
                 sys.exit(1)
@@ -1905,25 +1809,26 @@ def verify(db_handler):
 
 
 def add_indices(db_handler: DbHandler):
+    # TODO: candidate for single user mode
     CREATE_TXID4_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS TXID4_Index ON transactions(substr(signature,1,4))"
     CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS 'Misc Block Height Index' on misc(block_height)"
 
     node.logger.app_log.warning("Creating indices")
 
     # ledger.db
-    if not node.old_sqlite:
+    if not node.config.old_sqlite:
         db_handler._execute(db_handler.h, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
     else:
         node.logger.app_log.warning("Setting old_sqlite is True, lookups will be slower.")
     db_handler._execute(db_handler.h, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
 
     # hyper.db
-    if not node.old_sqlite:
+    if not node.config.old_sqlite:
         db_handler._execute(db_handler.h2, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
     db_handler._execute(db_handler.h2, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
 
     # RAM or hyper.db
-    if not node.old_sqlite:
+    if not node.config.old_sqlite:
         db_handler._execute(db_handler.c, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
     db_handler._execute(db_handler.c, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
 
@@ -1931,55 +1836,13 @@ def add_indices(db_handler: DbHandler):
 
 
 if __name__ == "__main__":
-    # classes
-    node = node.Node()
-    node.logger = logger.Logger()
-    node.keys = keys.Keys()
-
-    node.is_testnet = False
-    # regnet takes over testnet
-    node.is_regnet = False
-    # if it's not testnet, nor regnet, it's mainnet
-    node.is_mainnet = True
-
-    config = Config()
-    # config.read() - now auto
-    # classes
-
-    node.app_version = VERSION
-    # TODO: we could just loop over config items, and assign them to node.
-    # or just do node.config = config
-    # and use node.config.port... aso
-
-    # TODO: Simplify. Just do node.config = config, then use node.config.required_option
-    node.version = config.version
-    node.debug_level = config.debug_level
-    node.port = config.port
-    node.verify = config.verify
-    node.thread_limit = config.thread_limit
-    node.rebuild_db = config.rebuild_db
-    node.debug = config.debug
-    node.debug_level = config.debug_level
-    node.pause = config.pause
-    node.ledger_path = config.ledger_path
-    node.hyper_path = config.hyper_path
-    node.hyper_recompress = config.hyper_recompress
-    node.tor = config.tor
-    node.ram = config.ram
-    node.version_allow = config.version_allow
-    node.reveal_address = config.reveal_address
-    node.terminal_output = config.terminal_output
-    node.egress = config.egress
-    node.genesis = config.genesis
-    node.accept_peers = config.accept_peers
-    node.full_ledger = config.full_ledger
-    node.trace_db_calls = config.trace_db_calls
-    node.heavy3_path = config.heavy3_path
-    node.old_sqlite = config.old_sqlite
-
-    node.logger.app_log = log.log("node.log", node.debug_level, node.terminal_output)
-    node.logger.app_log.warning("Configuration settings loaded")
+    config = Config()  # config.read() is now implicit at instanciation
+    logger = Logger()  # is that class really useful?
+    logger.app_log = log.log("node.log", config.debug_level, config.terminal_output)
+    logger.app_log.warning("Configuration settings loaded")
+    node = Node(digest_block, config,  app_version=VERSION, logger=logger, keys=keys.Keys())
     node.logger.app_log.warning(f"Python version: {node.py_version}")
+    # start node init sequence
 
     # upgrade wallet location after nuitka-required "files" folder introduction
     if os.path.exists("../wallet.der") and not os.path.exists("wallet.der") and "Windows" in platform.system():
@@ -1987,15 +1850,15 @@ if __name__ == "__main__":
         os.rename("../wallet.der", "wallet.der")
     # upgrade wallet location after nuitka-required "files" folder introduction
 
-    if not node.full_ledger and os.path.exists(node.ledger_path) and node.is_mainnet:
-        os.remove(node.ledger_path)
+    if not node.config.full_ledger and os.path.exists(node.config.ledger_path) and node.is_mainnet:
+        os.remove(node.config.ledger_path)
         node.logger.app_log.warning("Removed full ledger for hyperblock mode")
-    if not node.full_ledger:
+    if not node.config.full_ledger:
         node.logger.app_log.warning("Cloning hyperblocks to ledger file")
-        shutil.copy(node.hyper_path, node.ledger_path)  # hacked to remove all the endless checks
+        shutil.copy(node.config.hyper_path, node.config.ledger_path)  # hacked to remove all the endless checks
     # needed for docker logs
     node.logger.app_log.warning(f"Checking Heavy3 file, can take up to 5 minutes...")
-    mining_heavy3.mining_open(node.heavy3_path)
+    mining_heavy3.mining_open(node.config.heavy3_path)
     node.logger.app_log.warning(f"Heavy3 file Ok!")
     try:
         # create a plugin manager, load all plugin modules and init
@@ -2005,11 +1868,10 @@ if __name__ == "__main__":
         extra_commands = node.plugin_manager.execute_filter_hook('extra_commands_prefixes', extra_commands)
         print("Extra prefixes: ", ",".join(extra_commands.keys()))
 
-        setup_net_type()
         load_keys()
 
         node.logger.app_log.warning(f"Status: Starting node version {VERSION}")
-        node.startup_time = time.time()
+        node.startup_time = ttime()
         try:
 
             node.peers = peershandler.Peers(node.logger.app_log, config=config, node=node)
@@ -2018,27 +1880,30 @@ if __name__ == "__main__":
             # sys.exit()
 
             node.apihandler = apihandler.ApiHandler(node.logger.app_log, config)
-            mp.MEMPOOL = mp.Mempool(node.logger.app_log, config, node.db_lock, node.is_testnet, trace_db_calls=node.trace_db_calls)
+            mp.MEMPOOL = mp.Mempool(node.logger.app_log, config, node.db_lock, node.is_testnet, trace_db_calls=node.config.trace_db_calls)
 
-            check_integrity(node.hyper_path)
+            check_integrity(node.config.hyper_path)
             #PLACEHOLDER FOR FRESH HYPERBLOCK BUILDER
 
-            # if node.rebuild_db: #does nothing
+            # if node.config.rebuild_db: #does nothing
             #    db_maintenance(init_database)
 
             # db_manager = db_looper.DbManager(node.logger.app_log)
             # db_manager.start()
 
-            db_handler_initial = DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
+            db_handler_initial = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path,
+                                           node.config.ram, node.ledger_ram_file, node.logger,
+                                           trace_db_calls=node.config.trace_db_calls)
 
             ledger_check_heights(node, db_handler_initial)
 
-
             if node.recompress:
-                #todo: do not close database and move files, swap tables instead
+                # todo: do not close database and move files, swap tables instead
                 db_handler_initial.close()
                 recompress_ledger(node)
-                db_handler_initial = DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
+                db_handler_initial = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path,
+                                               node.config.ram, node.ledger_ram_file, node.logger,
+                                               trace_db_calls=node.config.trace_db_calls)
 
             ram_init(db_handler_initial)
             node_block_init(db_handler_initial)
@@ -2047,7 +1912,7 @@ if __name__ == "__main__":
             if not node.is_regnet:
                 sequencing_check(db_handler_initial)
 
-            if node.verify:
+            if node.config.verify:
                 verify(db_handler_initial)
 
             add_indices(db_handler_initial)
@@ -2055,9 +1920,11 @@ if __name__ == "__main__":
             # TODO: until here, we are in single user mode.
             # All the above goes into a "bootup" function, with methods from single_user module only.
 
-            if not node.tor:
+            if node.config.tor:
+                node.logger.app_log.warning("Status: Not starting a local server to conceal identity on Tor network")
+            else:
                 # Port 0 means to select an arbitrary unused port
-                host, port = "0.0.0.0", int(node.port)
+                host, port = "0.0.0.0", int(node.config.port)
 
                 ThreadedTCPServer.allow_reuse_address = True
                 ThreadedTCPServer.daemon_threads = True
@@ -2065,7 +1932,7 @@ if __name__ == "__main__":
                 ThreadedTCPServer.request_queue_size = 100
 
                 server = ThreadedTCPServer((host, port), ThreadedTCPRequestHandler)
-                ip, node.port = server.server_address
+                ip, node.config.port = server.server_address
 
                 # Start a thread with the server -- that thread will then start one
                 # more thread for each request
@@ -2075,9 +1942,6 @@ if __name__ == "__main__":
                 server_thread.start()
 
                 node.logger.app_log.warning("Status: Server loop running.")
-
-            else:
-                node.logger.app_log.warning("Status: Not starting a local server to conceal identity on Tor network")
 
             # start connection manager
             connection_manager = connectionmanager.ConnectionManager(node, mp.MEMPOOL)
@@ -2096,11 +1960,9 @@ if __name__ == "__main__":
 
     while True:
         if node.IS_STOPPING:
-            if node.db_lock.locked():
-                time.sleep(0.5)
-            else:
+            if not node.db_lock.locked():
                 mining_heavy3.mining_close()
                 node.logger.app_log.warning("Status: Securely disconnected main processes, subprocess termination in progress.")
                 break
-        time.sleep(0.1)
+        sleep(0.5)
     node.logger.app_log.warning("Status: Clean Stop")

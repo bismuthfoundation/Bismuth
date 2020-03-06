@@ -1,4 +1,11 @@
-class Fork():
+# from __future__ import annotations  # python3.7 only
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+  from libs.node import Node
+  from libs.dbhandler import DbHandler
+
+
+class Fork:
     def __init__(self):
         self.POW_FORK = 1450000
         self.POW_FORK_TESTNET = 894170
@@ -14,13 +21,13 @@ class Fork():
         #self.versions_remove = [] #HACK
         #self.REWARD_MAX = 5 #HACK
 
-    def limit_version(self, node):
-        for allowed_version in node.version_allow:
+    def limit_version(self, node: "Node"):
+        for allowed_version in node.config.version_allow:
             if allowed_version in self.versions_remove:
                 node.logger.app_log.warning(f"Beginning to reject old protocol versions - block {node.last_block}")
-                node.version_allow.remove(allowed_version)
+                node.config.version_allow.remove(allowed_version)
 
-    def check_postfork_reward(self, db_handler):
+    def check_postfork_reward(self, db_handler: "DbHandler"):
         # ram
         try:
             db_handler._execute_param(db_handler.c, "SELECT reward FROM transactions WHERE block_height = ? AND reward != 0", (self.POW_FORK + 1,))
@@ -35,7 +42,7 @@ class Fork():
             self.PASSED = True
         return self.PASSED
 
-    def check_postfork_reward_testnet(self, db_handler):
+    def check_postfork_reward_testnet(self, db_handler: "DbHandler"):
         #ram
         try:
             db_handler._execute_param(db_handler.c, "SELECT reward FROM transactions WHERE block_height = ? AND reward != 0", (self.POW_FORK_TESTNET + 1,))

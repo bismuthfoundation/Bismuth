@@ -12,11 +12,15 @@ from bismuthcore.helpers import fee_calculate
 from libs.fork import Fork
 import tokensv2 as tokens
 from decimal import Decimal
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from libs.node import Node  # for type hinting
+    from libs.dbhandler import DbHandler
 
 fork = Fork()
 
 
-def digest_block(node, data, sdef, peer_ip, db_handler):
+def digest_block(node: "Node", data, sdef, peer_ip, db_handler: "DbHandler"):
     """node param for imports"""
 
     class Transaction:
@@ -110,7 +114,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
             if entry_signature:  # prevent empty signature database retry hack
                 signature_list.append(entry_signature)
                 # reject block with transactions which are already in the ledger ram
-                if node.old_sqlite:
+                if node.config.old_sqlite:
                     db_handler._execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE signature = ?1;",
                                               (entry_signature,))
                 else:
@@ -123,7 +127,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                     # print(node.last_block)
                     raise ValueError(f"That transaction {entry_signature[:10]} is already in our ledger, "
                                      f"block_height {tx_presence_check[0]}")
-                if node.old_sqlite:
+                if node.config.old_sqlite:
                     db_handler._execute_param(db_handler.c, "SELECT block_height FROM transactions WHERE signature = ?1;",
                                               (entry_signature,))
                 else:

@@ -76,10 +76,12 @@ class Config:
                  "ban_threshold", "tor", "debug_level", "allowed", "ram", "node_ip", "light_ip", "reveal_address",
                  "accept_peers", "banlist", "whitelist", "nodes_ban_reset", "mempool_allowed", "terminal_output",
                  "gui_scaling", "mempool_ram", "egress", "trace_db_calls", "heavy3_path", "mempool_path",
-                 "old_sqlite", "mandatory_message")
+                 "old_sqlite", "mandatory_message", "genesis")
 
     def __init__(self):
         self.read()
+        # Default genesis to keep compatibility
+        self.genesis = "4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed"
 
     def load_file(self, filename):
         # print("Loading",filename)
@@ -118,16 +120,15 @@ class Config:
                         # deal with properties that do not match the config name.
                         left = params[1]
                     setattr(self, left, right)
-        # Default genesis to keep compatibility
-        self.genesis = "4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed"
-        for key, default in DEFAULTS.items():
-            if key not in self.__dict__:
-                setattr(self, key, default)
+
 
         # print(self.__dict__)
 
     def read(self):
-        # first of all, load from default config so we have all needed params
+        # first of all, set from default
+        for key, default in DEFAULTS.items():
+            setattr(self, key, default)
+        # read from release config file
         self.load_file("config.txt")
         # then override with optional custom config
         if path.exists("config_custom.txt"):
