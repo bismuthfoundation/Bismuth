@@ -1,10 +1,10 @@
-import sqlite3, time, options, random, sys
+import sqlite3, time, sys
+from libs.config import Config
 
 import tornado.ioloop
 import tornado.web
 
-config = options.Get()
-config.read()
+config = Config()
 hyper_path = config.hyper_path
 #hyper_path = "backup.db"
 version = config.version

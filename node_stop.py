@@ -1,7 +1,7 @@
-import socks, connections, time, sys, json
-import options
-config = options.Get()
-config.read()
+import socks, connections
+from libs.config import Config
+
+config = Config()
 version = config.version
 
 

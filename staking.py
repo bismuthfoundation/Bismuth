@@ -1,3 +1,5 @@
+# EGG: Is this still useful?
+
 #todo: make registrations produce mirror hashes
 #todo: make sure registrations newer than latest block are ignored
 #todo: rollbacks inside node; make sure delagete/ip is only allowed characters
@@ -7,11 +9,12 @@
 
 import sqlite3
 import log
-from quantizer import quantize_two, quantize_eight, quantize_ten
+from quantizer import quantize_eight
 import mempool as mp
 from hashlib import blake2b
-import re
 from essentials import percentage
+from libs.config import Config
+from decimal import Decimal
 
 
 def execute_param(cursor, query, param):
@@ -24,6 +27,7 @@ def execute_param(cursor, query, param):
             app_log.warning("Database query: {} {} {}".format(cursor, query, param))
             app_log.warning("Database retry reason: {}".format(e))
     return cursor
+
 
 def balanceget_at_block(balance_address,block, h3):
     # verify balance
@@ -66,9 +70,11 @@ def balanceget_at_block(balance_address,block, h3):
     # app_log.info("Mempool: Projected transction address balance: " + str(balance))
     return str(balance) #, str (credit_ledger), str (debit), str (fees), str (rewards)
 
+
 def check_db(index,index_cursor):
     index_cursor._execute("CREATE TABLE IF NOT EXISTS staking (block_height INTEGER, timestamp NUMERIC, address, balance)")
     index.commit()
+
 
 def staking_update(conn,c,index,index_cursor, mode, reg_phase_end, app_log):
     """update register of staking based on the current phase (10000 block intervals)"""
@@ -124,6 +130,7 @@ def mirror_hash_generate(c):
     return mirror_hash
     # new hash
 
+
 def staking_payout(conn,c,index,index_cursor,block_height,timestamp,app_log):
     "payout, to be run every 10k blocks"
 
@@ -167,6 +174,7 @@ def staking_payout(conn,c,index,index_cursor,block_height,timestamp,app_log):
         else:
             app_log.warning("staking is registered ahead of current block")
 
+
 def staking_revalidate(conn,c,index,index_cursor,block,app_log):
     "remove nodes that removed balance, to be run every 10k blocks"
 
@@ -190,13 +198,10 @@ def staking_revalidate(conn,c,index,index_cursor,block,app_log):
             index.commit ()
             app_log.warning("staking balance updated from {} to {} for {}".format(balance_savings,balance,address))
 
+
 if __name__ == "__main__":
 
-
-    import options
-    config = options.Get ()
-    config.read ()
-
+    config = Config()
 
     app_log = log.log ("solvency.log", "WARNING", True)
     mp.MEMPOOL = mp.Mempool (app_log,config,None,False)

@@ -1,5 +1,8 @@
 import threading
 import asyncio
+import log
+from libs.config import Config
+
 
 class HyperlaneManager (threading.Thread):
     def __init__(self,app_log):
@@ -18,12 +21,10 @@ class HyperlaneManager (threading.Thread):
 
     loop = asyncio.get_event_loop()
 
-if __name__ == "__main__":
-    import options
-    import log
 
-    config = options.Get()
-    config.read()
+if __name__ == "__main__":
+
+    config = Config()
     app_log = log.log("hyperlane.log", "WARNING", True)
 
     #wm = HyperlaneManager(app_log)

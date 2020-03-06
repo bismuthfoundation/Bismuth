@@ -1,5 +1,8 @@
 import threading
 import time
+import log
+from libs.config import Config
+
 
 class HyperlaneManager (threading.Thread):
 
@@ -17,13 +20,8 @@ class HyperlaneManager (threading.Thread):
             time.sleep(5)
 
 
-
 if __name__ == "__main__":
-    import options
-    import log
-
-    config = options.Get ()
-    config.read ()
+    config = Config ()
     app_log = log.log ("hyperlane.log", "WARNING", True)
 
     hyperlane_manager = HyperlaneManager(app_log)

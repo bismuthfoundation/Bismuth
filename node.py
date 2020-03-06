@@ -31,19 +31,18 @@ import apihandler
 import connectionmanager
 from libs.dbhandler import DbHandler
 import log
-import options
 import peershandler
 import plugins
 import wallet_keys
 from connections import send, receive
 from digest import *
-from bismuthcore.helpers import fee_calculate, download_file, sanitize_address
+from bismuthcore.helpers import download_file, sanitize_address
 from libs import node, logger, keys, client
+from libs.config import Config
 from libs.fork import Fork
 
 import essentials
-from bismuthcore.transaction import Transaction
-from bismuthcore.compat import quantize_eight, quantize_ten, quantize_two
+from bismuthcore.compat import quantize_eight, quantize_two
 import mempool as mp  # EGG: some nasty things to fix here
 
 # todo: migrate this to polysign
@@ -1943,8 +1942,8 @@ if __name__ == "__main__":
     # if it's not testnet, nor regnet, it's mainnet
     node.is_mainnet = True
 
-    config = options.Get()
-    config.read()
+    config = Config()
+    # config.read() - now auto
     # classes
 
     node.app_version = VERSION

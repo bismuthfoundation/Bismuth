@@ -1,7 +1,7 @@
-import essentials, options, connections, socks
+import essentials, connections, socks
+from libs.config import Config
 
-config = options.Get()
-config.read()
+config = Config()
 node_ip = config.node_ip
 port = config.port
 

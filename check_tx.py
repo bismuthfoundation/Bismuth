@@ -10,7 +10,6 @@ This script is supposed to be run in the node directory, it needs access to both
 """
 
 import sqlite3, sys, json
-import options
 
 # Default ledger path
 ledger_path = "static/ledger.db"
@@ -67,17 +66,17 @@ if __name__ == "__main__":
 		txid = sys.argv[1]
 
 	res = {"TxId":txid, "Status":"Unknown"}
-	
+
 	isit, details = is_in_mempool(txid)
 	if isit:
 		res["Status"] = "Mempool"
 		res.update(details)
-	
+
 	isit, details, lastblock = is_in_ledger(txid)
 	if isit:
 		res["Status"] = "Confirmed"
 		res.update(details)
 		res["Confirmations"] = lastblock - res["Block"]
-	
+
 	print(json.dumps(res))
-  
+
