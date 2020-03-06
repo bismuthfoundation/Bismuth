@@ -597,7 +597,7 @@ class DbHandler:
                 self.logger.app_log.warning(f"Database retry reason: {e}")
                 sleep(1)
 
-    def _execute_param(self, cursor, query:str, param: list) -> None:
+    def _execute_param(self, cursor, query:str, param: Union[list, tuple]) -> None:
         """Secure _execute w/ param for slow nodes"""
 
         while True:
@@ -617,8 +617,9 @@ class DbHandler:
                 self.logger.app_log.warning(f"Database retry reason: {e}")
                 sleep(1)
 
-    def fetchall(self, cursor, query:str, param=None) -> list:
+    def fetchall(self, cursor, query:str, param: Union[list, tuple, None]=None) -> list:
         """Helper to simplify calling code, _execute and fetch in a single line instead of 2"""
+        # EGG_EVO: convert to a private method as well.
         if param is None:
             self._execute(cursor, query)
         else:
@@ -627,6 +628,7 @@ class DbHandler:
 
     def fetchone(self, cursor, query:str, param: list=None) -> Union[None, str, int, float, bool]:
         """Helper to simplify calling code, _execute and fetch in a single line instead of 2"""
+        # EGG_EVO: convert to a private method as well.
         if param is None:
             self._execute(cursor, query)
         else:

@@ -1,3 +1,7 @@
+"""
+WIP - Core class handling the Bismuth node.
+"""
+
 import threading
 import queue
 import glob
@@ -8,12 +12,14 @@ import platform
 from time import sleep
 
 import regnet
-# from digest import digest_block
 import mining_heavy3
-from libs.config import Config  # for type hinting
 from bismuthcore.helpers import just_int_from, download_file
 
-__version__ = "0.0.1"
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from libs.config import Config  # for type hinting
+
+__version__ = "0.0.2"
 
 
 class Node:
@@ -26,9 +32,9 @@ class Node:
                  "last_block_hash", "last_block", "peers", "syncing", "checkpoint", "digest_block")
 
     def __init__(self, digest_block, config: Config=None, app_version: str="", logger=None, keys=None):
-        # TODO EGG: digest_block will need to be integrated in this class. current hack necessary to avoid circular referneces.
+        # TODO EGG: digest_block will need to be integrated in this class. current hack necessary to avoid circular references.
         # Self built info
-        self.py_version= int(str(sys.version_info.major) + str(sys.version_info.minor) + str(sys.version_info.micro))
+        self.py_version = int(str(sys.version_info.major) + str(sys.version_info.minor) + str(sys.version_info.micro))
         self.linux = "Linux" in platform.system()
 
         # temp
@@ -70,7 +76,7 @@ class Node:
         self.db_lock = threading.Lock()
         self.q = queue.Queue()
 
-        """ Processed items - all checked and converted on the whole codebase"""
+        """ Processed items - all checked and converted on the whole codebase
         # config items, to be taken from config property
         #- self.version_allow = None
         #- self.version = None
@@ -95,6 +101,7 @@ class Node:
         #- self.trace_db_calls = config.trace_db_calls
         #- self.heavy3_path = config.heavy3_path
         #- self.old_sqlite = config.old_sqlite
+        """
 
         # startup sequence
 
@@ -104,6 +111,7 @@ class Node:
         self.is_mainnet = True
         self._setup_net_type()
         # TODO: EGG: migrate all "single mode" methods from top level node.py in there
+        # Add a "level" inner state and trigger by outside call.
 
     def _setup_net_type(self):
         """

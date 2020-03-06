@@ -11,11 +11,10 @@ import shutil
 import sys
 import threading
 from time import time
-
 import socks
 
 import connections
-import regnet
+# import regnet
 from essentials import most_common_dict, percentage_in
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:

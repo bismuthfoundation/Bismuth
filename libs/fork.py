@@ -1,3 +1,7 @@
+"""
+This class is a config and helper for managing fork data in a single place.
+"""
+
 # from __future__ import annotations  # python3.7 only
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -7,6 +11,7 @@ if TYPE_CHECKING:
 
 class Fork:
     def __init__(self):
+        # TODO: explain and document use of these params.
         self.POW_FORK = 1450000
         self.POW_FORK_TESTNET = 894170
         self.FORK_AHEAD = 5
@@ -28,6 +33,7 @@ class Fork:
                 node.config.version_allow.remove(allowed_version)
 
     def check_postfork_reward(self, db_handler: "DbHandler"):
+        # EGG_EVO: low level calls to migrate to db_handler
         # ram
         try:
             db_handler._execute_param(db_handler.c, "SELECT reward FROM transactions WHERE block_height = ? AND reward != 0", (self.POW_FORK + 1,))
@@ -43,6 +49,7 @@ class Fork:
         return self.PASSED
 
     def check_postfork_reward_testnet(self, db_handler: "DbHandler"):
+        # EGG_EVO: low level calls to migrate to db_handler
         #ram
         try:
             db_handler._execute_param(db_handler.c, "SELECT reward FROM transactions WHERE block_height = ? AND reward != 0", (self.POW_FORK_TESTNET + 1,))

@@ -1,20 +1,23 @@
-from node import blocknf, digest_block
-import sys
+from node import blocknf, digest_block  # oh my!
+# import sys
 import threading
-from libs import node, logger, keys, client
-import time
+from libs import logger
+# from libs import node, keys, client
+# import time
 import socks
 from connections import send, receive
-from decimal import Decimal
-from quantizer import quantize_two, quantize_eight, quantize_ten
+# from decimal import Decimal
+# from quantizer import quantize_two, quantize_eight, quantize_ten
 import mempool as mp
 from difficulty import *
 from libs import client
 from libs.dbhandler import DbHandler
 
+# See why we do that: https://stackoverflow.com/questions/39740632/python-type-hinting-without-cyclic-imports
+# I'm not using from __future__ because some nodes still run on python 3.6
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-  from libs.node import Node
+    from libs.node import Node
 
 
 def sendsync(sdef, peer_ip:str, status:str, node: "Node"):

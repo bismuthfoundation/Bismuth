@@ -142,11 +142,8 @@ def digest_block(node: "Node", data, sdef, peer_ip, db_handler: "DbHandler"):
             else:
                 raise ValueError(f"Empty signature from {peer_ip}")
 
-
-
         if block_instance.tx_count != len(set(signature_list)):
             raise ValueError("There are duplicate transactions in this block, rejected")
-
 
 
     def sort_transactions(block):
