@@ -15,9 +15,7 @@ import regnet
 import mining_heavy3
 from bismuthcore.helpers import just_int_from, download_file
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from libs.config import Config  # for type hinting
+from libs.config import Config
 
 __version__ = "0.0.2"
 
