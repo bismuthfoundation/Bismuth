@@ -79,10 +79,10 @@ class Config:
                  "old_sqlite", "mandatory_message", "genesis")
 
     def __init__(self):
-        self.read()
         # Default genesis to keep compatibility
         self.genesis = "4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed"
-        self.mandatory_message = None
+        self.mandatory_message = {}
+        self.read()
 
     def load_file(self, filename: str) -> None:
         # print("Loading",filename)
