@@ -470,7 +470,7 @@ def sequencing_check(db_handler):
 
     node.logger.app_log.warning(f"Status: Testing chain sequencing, starting with block {sequencing_last}")
 
-    chains_to_check = [node.config.ledger_path, node.config.hyper_path]
+    chains_to_check = (node.config.ledger_path, node.config.hyper_path)
 
     for chain in chains_to_check:
         conn = sqlite3.connect(chain)
@@ -480,42 +480,48 @@ def sequencing_check(db_handler):
 
         # perform test on transaction table
         y = None
-        # Egg: not sure block_height != (0 OR 1)  gives the proper result, 0 or 1  = 1. not in (0, 1) could be better.
         for row in c.execute(
-                "SELECT block_height FROM transactions WHERE reward != 0 AND block_height > 1 AND block_height >= ? ORDER BY block_height ASC",
+                "SELECT block_height FROM transactions WHERE reward != 0 AND block_height >= ? ORDER BY block_height ASC",
                 (sequencing_last,)):
             y_init = row[0]
-
             if y is None:
                 y = y_init
 
             if row[0] != y:
-
+                node.logger.app_log.warning(
+                    f"Status: Chain {chain} transaction sequencing error at: {row[0]}. {row[0]} instead of {y}")
                 for chain2 in chains_to_check:
-                    conn2 = sqlite3.connect(chain2)
-                    if node.config.trace_db_calls:
-                        conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2"))
-                    c2 = conn2.cursor()
-                    node.logger.app_log.warning(f"Status: Chain {chain} transaction sequencing error at: {row[0]}. {row[0]} instead of {y}")
-                    c2.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (row[0], -row[0],))
-                    conn2.commit()
-                    c2.execute("DELETE FROM misc WHERE block_height >= ?", (row[0],))
-                    conn2.commit()
+                    try:
+                        node.logger.app_log.warning(f"Trimming {chain2}")
+                        conn2 = sqlite3.connect(chain2)
+                        if node.config.trace_db_calls:
+                            conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2"))
+                        c2 = conn2.cursor()
+                        c2.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (row[0], -row[0],))
+                        conn2.commit()
+                        c2.execute("DELETE FROM misc WHERE block_height >= ?", (row[0],))
+                        conn2.commit()
+                        conn2.close()
+                    except Exception as e:
+                        node.logger.app_log.error(f"Error while trimming chain: {e}")
 
-                    # rollback indices
-                    db_handler.tokens_rollback(y)
-                    db_handler.aliases_rollback(y)
-
-                    # rollback indices
-
-                    node.logger.app_log.warning(f"Status: Due to a sequencing issue at block {y}, {chain} has been rolled back and will be resynchronized")
+                # rollback indices
+                # EGG: should be out of the chains_to_check loop. It was done twice, for hyper and ledger.
+                db_handler.tokens_rollback(y)
+                db_handler.aliases_rollback(y)
+                # /rollback indices
+                node.logger.app_log.warning(f"Status: Due to a sequencing issue at block {y}, {chain} has been rolled back and will be resynchronized")
+                # EGG: Maybe we should close there, since we touched the db, so it all starts clean.
+                sys.exit()
+                # EGG Note: Without that, the inner node object still had the starting value as current block, and can digest incoming miner block.
+                # (seen with ram=False) - To be handled when migrated to DbHandler.
                 break
 
             y = y + 1
 
         # perform test on misc table
         y = None
-
+        # Egg: Why is this 300000 fixed and not last sequence?
         for row in c.execute("SELECT block_height FROM misc WHERE block_height > ? ORDER BY block_height ASC",
                              (300000,)):
             y_init = row[0]
@@ -526,36 +532,38 @@ def sequencing_check(db_handler):
                 # print(row[0], y)
 
             if row[0] != y:
+                node.logger.app_log.warning(
+                    f"Status: Chain {chain} difficulty sequencing error at: {row[0]}. {row[0]} instead of {y}")
                 # print(row[0], y)
                 for chain2 in chains_to_check:
-                    conn2 = sqlite3.connect(chain2)
-                    if node.config.trace_db_calls:
-                        conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2B"))
-                    c2 = conn2.cursor()
-                    node.logger.app_log.warning(
-                        f"Status: Chain {chain} difficulty sequencing error at: {row[0]}. {row[0]} instead of {y}")
-                    c2.execute("DELETE FROM transactions WHERE block_height >= ?", (row[0],))
-                    conn2.commit()
-                    c2.execute("DELETE FROM misc WHERE block_height >= ?", (row[0],))
-                    conn2.commit()
+                    try:
+                        node.logger.app_log.warning(f"Trimming {chain2}")
+                        conn2 = sqlite3.connect(chain2)
+                        if node.config.trace_db_calls:
+                            conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2B"))
+                        c2 = conn2.cursor()
+                        c2.execute("DELETE FROM transactions WHERE block_height >= ?", (row[0],))
+                        conn2.commit()
+                        c2.execute("DELETE FROM misc WHERE block_height >= ?", (row[0],))
+                        conn2.commit()
+                        db_handler._execute_param(conn2, (
+                            'DELETE FROM transactions WHERE address = "Development Reward" AND block_height <= ?'),
+                                                  (-row[0],))
+                        conn2.commit()
+                        db_handler._execute_param(conn2, (
+                            'DELETE FROM transactions WHERE address = "Hypernode Payouts" AND block_height <= ?'),
+                                                  (-row[0],))
+                        conn2.commit()
+                        conn2.close()
+                    except Exception as e:
+                        node.logger.app_log.error(f"Error while trimming chain: {e}")
 
-                    db_handler._execute_param(conn2, (
-                        'DELETE FROM transactions WHERE address = "Development Reward" AND block_height <= ?'),
-                                              (-row[0],))
-                    conn2.commit()
-
-                    db_handler._execute_param(conn2, (
-                        'DELETE FROM transactions WHERE address = "Hypernode Payouts" AND block_height <= ?'),
-                                              (-row[0],))
-                    conn2.commit()
-                    conn2.close()
-
-                    # rollback indices
-                    db_handler.tokens_rollback(y)
-                    db_handler.aliases_rollback(y)
-                    # rollback indices
-
-                    node.logger.app_log.warning(f"Status: Due to a sequencing issue at block {y}, {chain} has been rolled back and will be resynchronized")
+                # rollback indices
+                db_handler.tokens_rollback(y)
+                db_handler.aliases_rollback(y)
+                # /rollback indices
+                node.logger.app_log.warning(f"Status: Due to a sequencing issue at block {y}, {chain} has been rolled back and will be resynchronized")
+                sys.exit()  # See comment above
                 break
 
             y = y + 1
@@ -1565,7 +1573,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 self.request.close()
 
                 if node.config.debug:
-                    if "Socket EOF" not in str(e) and "Broken pipe" not in str(e) and "Socket POLLHUP" not in str(e):
+                    if "Socket EOF" not in str(e) and "Broken pipe" not in str(e) and "Socket POLLHUP" not in str(e) and "Bad file descriptor" not in str(e):
                         # raise if debug, but not for innocuous closed pipes.
                         raise  # major debug client
                 return

@@ -258,7 +258,6 @@ def digest_block(node: "Node", data, sdef, peer_ip, db_handler: "DbHandler"):
                     balance = quantize_eight(balance_pre - block_debit_address)
 
                     if quantize_eight(balance_pre) < quantize_eight(db_amount):
-                        print("balance pre", balance_pre)
                         raise ValueError(f"{db_address} sending more than owned: {db_amount}/{balance_pre}")
 
                     if quantize_eight(balance) - quantize_eight(block_fees_address) < 0:
