@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "5.0.2-evo"  # Experimental db-evolution branch
+VERSION = "5.0.3-evo"  # Experimental db-evolution branch
 
 import functools
 import glob
@@ -21,7 +21,7 @@ import socketserver
 import sqlite3
 import tarfile
 import threading
-from sys import version_info
+from sys import version_info, exc_info
 from time import time as ttime, sleep
 
 import aliases  # PREFORK_ALIASES
@@ -343,7 +343,8 @@ def old_balanceget(balance_address, db_handler):
     return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
 """
 
-def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
+
+def blocknf(node: "Node", block_hash_delete: str, peer_ip: str, db_handler: "DbHandler", hyperblocks: bool=False):
     """
     Rolls back a single block, updates node object variables.
     Rollback target must be above checkpoint.
@@ -390,7 +391,7 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
             else:
                 backup_data = db_handler.backup_higher(db_block_height)
 
-                node.logger.app_log.warning(f"Node {peer_ip} didn't find block {db_block_height}({db_block_hash})")
+                node.logger.app_log.warning(f"Node {peer_ip} didn't find block {db_block_height} ({db_block_hash})")
 
                 # roll back hdd too
                 db_handler.rollback_under(db_block_height)
@@ -409,6 +410,10 @@ def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
                 tokens.tokens_update(node, db_handler)
 
         except Exception as e:
+            if node.config.debug:
+                exc_type, exc_obj, exc_tb = exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                node.logger.app_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
             node.logger.app_log.warning(e)
 
         finally:

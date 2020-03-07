@@ -30,6 +30,8 @@ for row in c.execute(
         sys.exit()
     y += 1
 
+print("Done, ok up to", y - 1)
+
 """
 https://stackoverflow.com/questions/802802/checking-sequence-with-sql-query
 
