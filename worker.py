@@ -339,7 +339,7 @@ def worker(host: str, port: int, node: "Node"):
 
             # properly end the connection
             if node.config.debug:
-                if "Socket EOF" not in str(e) and "Broken pipe" not in str(e):  # don't pollute debug with closed pipes
+                if "Socket EOF" not in str(e) and "Broken pipe" not in str(e) and "Socket POLLHUP" not in str(e):  # don't pollute debug with closed pipes
                     raise  # major debug client
 
             node.logger.app_log.info(f"Ending thread, because {e}")
