@@ -759,12 +759,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "blockheight":
                     try:
-                        received_block_height = receive(self.request)  # receive client's last block height
+                        received_block_height = int(receive(self.request))  # receive client's last block height
                         node.logger.app_log.info(
                             f"Inbound: Received block height {received_block_height} from {peer_ip} ")
 
                         # consensus pool 1 (connection from them)
-                        consensus_blockheight = int(received_block_height)  # str int to remove leading zeros
+                        consensus_blockheight = received_block_height  # str int to remove leading zeros
                         # consensus_add(peer_ip, consensus_blockheight, self.request)
                         node.peers.consensus_add(peer_ip, consensus_blockheight, self.request, node.hdd_block)
                         # consensus pool 1 (connection from them)
@@ -773,8 +773,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         send(self.request, node.hdd_block)
                         # send own block height
 
-                        if int(received_block_height) > node.hdd_block:
-                            node.logger.app_log.warning("Inbound: Client has higher block")
+                        if received_block_height > node.hdd_block:
+                            node.logger.app_log.warning("Inbound: Client {} has higher block {} vs ours {}"
+                                                        .format(peer_ip, received_block_height, node.hdd_block))
 
                             node.logger.app_log.info(f"Inbound: block_hash to send: {node.hdd_hash}")
                             send(self.request, node.hdd_hash)
@@ -782,8 +783,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             # receive their latest sha_hash
                             # confirm you know that sha_hash or continue receiving
 
-                        elif int(received_block_height) <= node.hdd_block:
-                            if int(received_block_height) == node.hdd_block:
+                        elif received_block_height <= node.hdd_block:
+                            if received_block_height == node.hdd_block:
                                 node.logger.app_log.info(
                                     f"Inbound: We have the same height as {peer_ip} ({received_block_height}), hash will be verified")
                             else:
@@ -862,7 +863,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     send(self.request, "sync")
 
                 elif data == "blocknfhb": #node announces it's running hyperblocks
-                    block_hash_delete = receive(self.request)
+                    block_hash_delete = str(receive(self.request))
                     # print peer_ip
                     if consensus_blockheight == node.peers.consensus_max:
                         blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=True)
