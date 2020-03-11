@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
   from libs.node import Node
   from mempool import Mempool  # for type hints
-  # from libs.dbhandler import DbHandler
+  from libs.logger import Logger
 
 
 __version__ = "1.0.3"
@@ -32,7 +32,7 @@ def sql_trace_callback(log, sql_id, statement: str):
 
 class DbHandler:
     # todo: define  slots
-    def __init__(self, index_db: str, ledger_path: str, hyper_path: str, ram: bool, ledger_ram_file: str, logger,
+    def __init__(self, index_db: str, ledger_path: str, hyper_path: str, ram: bool, ledger_ram_file: str, logger: "Logger",
                  trace_db_calls: bool=False):
         # TODO: most of the params could be taken from the config object instead of being listed in the call
         # prototype would become __init__(self, config, logger=None, trace_db_calls=False):
