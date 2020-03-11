@@ -123,7 +123,7 @@ class SoloDbHandler:
     def distinct_hyper_recipients(self, depth_specific: int) -> Iterator[str]:
         """Returns all recipients from hyper, at the given depth"""
         self._hyper_cursor.execute(
-            "SELECT distinct(recipient) FROM transactions WHERE (block_height < ? AND block_height > ?) ORDER BY block_height",
+            "SELECT distinct(recipient) FROM transactions WHERE (block_height < ? AND block_height > ?)",
             (depth_specific, -depth_specific,))  # new addresses will be ignored until depth passed
         res = self._hyper_cursor.fetchall()
         return (item[0] for item in res)
