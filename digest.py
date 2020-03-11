@@ -12,6 +12,8 @@ from bismuthcore.helpers import fee_calculate
 from libs.fork import Fork
 import tokensv2 as tokens
 from decimal import Decimal
+from bismuthcore import transaction
+
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from libs.node import Node  # for type hinting
@@ -20,43 +22,45 @@ if TYPE_CHECKING:
 fork = Fork()
 
 
+class Transaction_legacy:
+    def __init__(self):
+        self.start_time_tx = 0
+        self.q_received_timestamp = 0
+        self.received_timestamp = "0.00"
+        self.received_address = None
+        self.received_recipient = None
+        self.received_amount = 0
+        self.received_signature_enc = None
+        self.received_public_key_b64encoded = None
+        self.received_operation = None
+        self.received_openfield = None
+
+
+class MinerTransaction_legacy:
+    def __init__(self):
+        self.q_block_timestamp = 0
+        self.nonce = None
+        self.miner_address = None
+
+
+class Block:
+    """array of transactions within a block"""
+
+    def __init__(self):
+        self.tx_count = 0
+        self.block_height_new = None
+        self.block_hash = 'N/A'
+        self.failed_cause = ''
+        self.block_count = 0
+        self.transaction_list_converted = []
+
+        self.mining_reward = None
+        self.mirror_hash = None
+        self.start_time_block = quantize_two(time.time())
+        self.tokens_operation_present = False
+
 def digest_block(node: "Node", data, sdef, peer_ip, db_handler: "DbHandler"):
     """node param for imports"""
-
-    class Transaction:
-        def __init__(self):
-            self.start_time_tx = 0
-            self.q_received_timestamp = 0
-            self.received_timestamp = "0.00"
-            self.received_address = None
-            self.received_recipient = None
-            self.received_amount = 0
-            self.received_signature_enc = None
-            self.received_public_key_b64encoded = None
-            self.received_operation = None
-            self.received_openfield = None
-
-    class MinerTransaction:
-        def __init__(self):
-            self.q_block_timestamp = 0
-            self.nonce = None
-            self.miner_address = None
-
-    class Block:
-        """array of transactions within a block"""
-        def __init__(self):
-            self.tx_count = 0
-            self.block_height_new = node.last_block + 1
-            self.block_hash = 'N/A'
-            self.failed_cause = ''
-            self.block_count = 0
-            self.transaction_list_converted = []
-
-            self.mining_reward = None
-            self.mirror_hash = None
-            self.start_time_block = quantize_two(time.time())
-            self.tokens_operation_present = False
-
     def fork_reward_check():
         # fork handling
         if node.is_testnet:
@@ -149,6 +153,7 @@ def digest_block(node: "Node", data, sdef, peer_ip, db_handler: "DbHandler"):
     def sort_transactions(block):
         # print("sort_transactions")
         # print("block_instance.tx_count", block_instance.tx_count)
+
         for tx_index, transaction in enumerate(block):
             # print("tx_index", tx_index)
             tx.start_time_tx = quantize_two(time.time())
@@ -205,9 +210,13 @@ def digest_block(node: "Node", data, sdef, peer_ip, db_handler: "DbHandler"):
                 oldest_possible_tx = miner_tx.q_block_timestamp - 60 * 60 * 24
 
             for tx_index, transaction in enumerate(block):
+                
+
                 if float(transaction[0]) < oldest_possible_tx:
                     raise ValueError("txid {} from {} is older ({}) than oldest possible date ({})"
                                      .format(transaction[4][:56], transaction[1], transaction[0], oldest_possible_tx))
+
+
                 db_timestamp = '%.2f' % quantize_two(transaction[0])
                 db_address = str(transaction[1])[:56]
                 db_recipient = str(transaction[2])[:56]
@@ -458,9 +467,10 @@ def digest_block(node: "Node", data, sdef, peer_ip, db_handler: "DbHandler"):
         raise ValueError("Cannot accept blocks from a banned peer")
         # since we raise, it will also drop the connection, it's fine since he's banned.
 
-    tx = Transaction()
-    miner_tx = MinerTransaction()
+    tx = Transaction_legacy()
+    miner_tx = MinerTransaction_legacy()
     block_instance = Block()
+    block_instance.block_height_new = node.last_block + 1
 
     if not node.db_lock.locked():
 
