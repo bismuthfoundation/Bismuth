@@ -411,7 +411,7 @@ class DbHandler:
         transaction_list = [Transaction.from_legacy(entry) for entry in block_desired_result]
         return Block(transaction_list)
 
-    # ====  TODO: check usage of these methods ====
+    # ====  TODO: check usage of these methods ==== Update: one occurence was moved to solo handler, process the other one.
 
     def block_height_max(self) -> int:
         self.h.execute("SELECT max(block_height) FROM transactions")

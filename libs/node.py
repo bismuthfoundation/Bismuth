@@ -9,18 +9,18 @@ import os
 import tarfile
 import sys
 import platform
-from time import sleep
+from time import sleep, time as ttime
 from shutil import copy
 
 import regnet
 import mining_heavy3
 from bismuthcore.helpers import just_int_from, download_file
-from essentials import keys_check  # To be handled by polysign
+from essentials import keys_check, keys_load  # To be handled by polysign
 
 from libs.config import Config
 from libs.solodbhandler import SoloDbHandler
 
-__version__ = "0.0.4"
+__version__ = "0.0.5"
 
 
 class Node:
@@ -208,8 +208,9 @@ class Node:
     def load_keys(self):
         """Initial loading of crypto keys"""
         keys_check(self.logger.app_log, "wallet.der")
-        self.keys.key, self.keys.public_key_readable, self.keys.private_key_readable, _, _, self.keys.public_key_b64encoded, self.keys.address, self.keys.keyfile = essentials.keys_load(
-            "privkey.der", "pubkey.der")
+        self.keys.key, self.keys.public_key_readable, self.keys.private_key_readable, _, _, \
+        self.keys.public_key_b64encoded, self.keys.address, self.keys.keyfile = \
+            keys_load("privkey.der", "pubkey.der")
         if self.is_regnet:
             regnet.PRIVATE_KEY_READABLE = self.keys.private_key_readable
             regnet.PUBLIC_KEY_B64ENCODED = self.keys.public_key_b64encoded
@@ -217,12 +218,125 @@ class Node:
             regnet.KEY = self.keys.key
         self.logger.app_log.warning(f"Status: Local address: {self.keys.address}")
 
+    def bootstrap(self):
+        # EGG_EVO: Temp hack preventing deleting local DB at this dev stage.
+        # stops the node dead on. To be commented out for prod
+        self.close("Bootstrap was triggered, but is disabled by safety. Node will close.", force_exit=True)
+
+        self.logger.app_log.warning("Something went wrong during bootstrapping, aborted")
+        try:
+            # EGG_EVO: take care of these hardcoded paths
+            types = ['static/*.db-wal', 'static/*.db-shm']
+            for t in types:
+                for f in glob.glob(t):
+                    os.remove(f)
+                    print(f, "deleted")
+
+            archive_path = self.config.ledger_path + ".tar.gz"
+            download_file("https://bismuth.cz/ledger.tar.gz", archive_path)
+
+            with tarfile.open(archive_path) as tar:
+                tar.extractall("static/")  # NOT COMPATIBLE WITH CUSTOM PATH CONFS
+        except:
+            self.logger.app_log.warning("Something went wrong during bootstrapping, aborted")
+            raise
+
+    def _check_db_schema(self, solo_handler: SoloDbHandler):
+        # Was named "check_integrity". It was rather a crude db schema check, will need adjustments to handle the various possible dbs.
+        if not os.path.exists("static"):
+            os.mkdir("static")
+        redownload = False
+        try:
+            ledger_schema = solo_handler.transactions_schema()
+        except:
+            redownload = True
+        if len(ledger_schema) != 12:
+            # EGG_EVO: Kept this test for the time being, but will need more complete and distinctive test depending on the db type
+            self.logger.app_log.error(
+                f"Status: Integrity check on database {database} failed, bootstrapping from the website")
+            redownload = True
+        if redownload and self.is_mainnet:
+            self.bootstrap()
+
+    def _ledger_check_heights(self, solo_handler: SoloDbHandler) -> None:
+        """Defines whether ledger needs to be compressed to hyper"""
+        if os.path.exists(self.config.hyper_path):
+            # cross-integrity check
+            hdd_block_max = solo_handler.block_height_max()
+            hdd_block_max_diff = solo_handler.block_height_max_diff()
+            hdd2_block_last = solo_handler.block_height_max_hyper()
+            hdd2_block_last_misc = solo_handler.block_height_max_diff_hyper()
+            # cross-integrity check
+            if hdd_block_max == hdd2_block_last == hdd2_block_last_misc == hdd_block_max_diff and self.config.hyper_recompress:  # cross-integrity check
+                self.logger.app_log.warning("Status: Recompressing hyperblocks (keeping full ledger)")
+                self.recompress = True
+                # print (hdd_block_max,hdd2_block_last,node.config.hyper_recompress)
+            elif hdd_block_max == hdd2_block_last and not self.config.hyper_recompress:
+                self.logger.app_log.warning("Status: Hyperblock recompression skipped")
+                self.recompress = False
+            else:
+                lowest_block = min(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
+                highest_block = max(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
+                self.logger.app_log.warning(
+                    f"Status: Cross-integrity check failed, {highest_block} will be rolled back below {lowest_block}")
+                solo_handler.rollback(lowest_block)  # rollback to the lowest value
+                self.recompress = False
+        else:
+            self.logger.app_log.warning("Status: Compressing ledger to Hyperblocks")
+            self.recompress = True
+
+    def _recompress_ledger_prepare(self, rebuild: bool=False) -> None:
+        """Aggregates transactions and compress old ledger entries into hyper blocks"""
+        self.logger.app_log.warning(f"Status: Recompressing, please be patient...")
+
+        files_remove = [self.config.ledger_path + '.temp', self.config.ledger_path + '.temp-shm',
+                        self.config.ledger_path + '.temp-wal']
+        for file in files_remove:
+            if os.path.exists(file):
+                os.remove(file)
+                self.logger.app_log.warning(f"Removed old {file}")
+
+        # We start from either ledger or current hyper as data base, then work on hyper only.
+        if rebuild:
+            self.logger.app_log.warning(f"Status: Hyperblocks will be rebuilt")
+            copy(self.config.ledger_path, self.config.ledger_path + '.temp')
+        else:
+            copy(self.config.hyper_path, self.config.ledger_path + '.temp')
+
+    def _recompress_ledger(self, solo_handler: SoloDbHandler, depth: int = 15000) -> None:
+        solo_handler.prepare_hypo()  # avoid double processing by renaming Hyperblock addresses to Hypoblock
+        db_block_height = solo_handler.block_height_max_hyper()
+        depth_specific = db_block_height - depth
+        # Now gather all active addresses
+        unique_addressess = solo_handler.distinct_hyper_recipients(depth_specific)
+        for address in unique_addressess:
+            end_balance = solo_handler.update_hyper_balance_at_height(address, depth_specific)
+        solo_handler.hyper_commit()
+        solo_handler.cleanup_hypo(depth_specific)
+        solo_handler.close()
+
+        if os.path.exists(self.config.hyper_path):
+            os.remove(self.config.hyper_path)  # remove the old hyperblocks to rebuild
+            os.rename(self.config.ledger_path + '.temp', self.config.hyper_path)
+        self.logger.app_log.warning(f"Status: Recompressed!")
+
     def single_user_checks(self) -> None:
         """Called at instanciation time, when db is not shared yet.
         Exclusive checks, rollbacks aso are to be gathered here"""
         self.logger.app_log.warning("Starting Single user checks...")
         self._initial_files_checks()
-        solo_handler = SoloDbHandler(self)  # This instance will only live for the scope of single_user_checks()
+        solo_handler = SoloDbHandler(self)  # This instance will only live for the scope of single_user_checks(),
+        # why it's not a property of the Node instance and it passed to individual checks.
+        self._check_db_schema(solo_handler)
+        self._ledger_check_heights(solo_handler)
+        if self.recompress:
+            # todo: do not close database and move files, swap tables instead
+            solo_handler.close()
+            self._recompress_ledger_prepare()  # This will touch the files themselve.
+            solo_handler = SoloDbHandler(self)
+            self._recompress_ledger(solo_handler)  # Warning: this will close the solo instance!
+            solo_handler = SoloDbHandler(self)
+
         # TODO: WIP
 
         self.logger.app_log.warning("Single user checks done.")

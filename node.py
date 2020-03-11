@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "5.0.3-evo"  # Experimental db-evolution branch
+VERSION = "5.0.4-evo"  # Experimental db-evolution branch
 
 import functools
 import glob
@@ -68,55 +68,6 @@ def sql_trace_callback(log, id, statement):
     log.warning(line)
 
 
-def bootstrap():
-    # TODO: Candidate for single user mode
-    try:
-        types = ['static/*.db-wal', 'static/*.db-shm']
-        for t in types:
-            for f in glob.glob(t):
-                os.remove(f)
-                print(f, "deleted")
-
-        archive_path = node.config.ledger_path + ".tar.gz"
-        download_file("https://bismuth.cz/ledger.tar.gz", archive_path)
-
-        with tarfile.open(archive_path) as tar:
-            tar.extractall("static/")  # NOT COMPATIBLE WITH CUSTOM PATH CONFS
-
-    except:
-        node.logger.app_log.warning("Something went wrong during bootstrapping, aborted")
-        raise
-
-
-def check_integrity(database):
-    # TODO: Candidate for single user mode
-    # check ledger integrity
-
-    if not os.path.exists("static"):
-        os.mkdir("static")
-
-    with sqlite3.connect(database) as ledger_check:
-        if node.config.trace_db_calls:
-            ledger_check.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"CHECK_INTEGRITY"))
-
-        ledger_check.text_factory = str
-        l = ledger_check.cursor()
-
-        try:
-            l.execute("PRAGMA table_info('transactions')")
-            redownload = False
-        except:
-            redownload = True
-
-        if len(l.fetchall()) != 12:
-            node.logger.app_log.warning(
-                f"Status: Integrity check on database {database} failed, bootstrapping from the website")
-            redownload = True
-
-    if redownload and node.is_mainnet:
-        bootstrap()
-
-
 def rollback(node, db_handler, block_height):
     node.logger.app_log.warning(f"Status: Rolling back below: {block_height}")
 
@@ -128,122 +79,6 @@ def rollback(node, db_handler, block_height):
     # rollback indices
 
     node.logger.app_log.warning(f"Status: Chain rolled back below {block_height} and will be resynchronized")
-
-
-def recompress_ledger(node, rebuild=False, depth=15000):
-    # TODO: Candidate for single user mode
-    node.logger.app_log.warning(f"Status: Recompressing, please be patient")
-
-    files_remove = [node.config.ledger_path + '.temp',node.config.ledger_path + '.temp-shm',node.config.ledger_path + '.temp-wal']
-    for file in files_remove:
-        if os.path.exists(file):
-            os.remove(file)
-            node.logger.app_log.warning(f"Removed old {file}")
-
-    if rebuild:
-        node.logger.app_log.warning(f"Status: Hyperblocks will be rebuilt")
-
-        shutil.copy(node.config.ledger_path, node.config.ledger_path + '.temp')
-        hyper = sqlite3.connect(node.config.ledger_path + '.temp')
-    else:
-        shutil.copy(node.config.hyper_path, node.config.ledger_path + '.temp')
-        hyper = sqlite3.connect(node.config.ledger_path + '.temp')
-    if node.config.trace_db_calls:
-       hyper.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"HYPER"))
-    hyper.text_factory = str
-    hyp = hyper.cursor()
-
-    hyp.execute("UPDATE transactions SET address = 'Hypoblock' WHERE address = 'Hyperblock'")
-
-    hyp.execute("SELECT max(block_height) FROM transactions")
-    db_block_height = int(hyp.fetchone()[0])
-    depth_specific = db_block_height - depth
-
-    hyp.execute(
-        "SELECT distinct(recipient) FROM transactions WHERE (block_height < ? AND block_height > ?) ORDER BY block_height;",
-        (depth_specific, -depth_specific,))  # new addresses will be ignored until depth passed
-    unique_addressess = hyp.fetchall()
-
-    for x in set(unique_addressess):
-        credit = Decimal("0")
-        for entry in hyp.execute(
-                "SELECT amount,reward FROM transactions WHERE recipient = ? AND (block_height < ? AND block_height > ?);",
-                (x[0],) + (depth_specific, -depth_specific,)):
-            try:
-                credit = quantize_eight(credit) + quantize_eight(entry[0]) + quantize_eight(entry[1])
-                credit = 0 if credit is None else credit
-            except Exception:
-                credit = 0
-
-        debit = Decimal("0")
-        for entry in hyp.execute(
-                "SELECT amount,fee FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?);",
-                (x[0],) + (depth_specific, -depth_specific,)):
-            try:
-                debit = quantize_eight(debit) + quantize_eight(entry[0]) + quantize_eight(entry[1])
-                debit = 0 if debit is None else debit
-            except Exception:
-                debit = 0
-
-        end_balance = quantize_eight(credit - debit)
-
-        if end_balance > 0:
-            timestamp = str(ttime())
-            hyp.execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
-                depth_specific - 1, timestamp, "Hyperblock", x[0], str(end_balance), "0", "0", "0", "0",
-                "0", "0", "0"))
-    hyper.commit()
-
-    hyp.execute(
-        "DELETE FROM transactions WHERE address != 'Hyperblock' AND (block_height < ? AND block_height > ?);",
-        (depth_specific, -depth_specific,))
-    hyper.commit()
-
-    hyp.execute("DELETE FROM misc WHERE (block_height < ? AND block_height > ?);",
-                (depth_specific, -depth_specific,))  # remove diff calc
-    hyper.commit()
-
-    hyp.execute("VACUUM")
-    hyper.close()
-
-    if os.path.exists(node.config.hyper_path):
-        os.remove(node.config.hyper_path)  # remove the old hyperblocks to rebuild
-        os.rename(node.config.ledger_path + '.temp', node.config.hyper_path)
-
-
-def ledger_check_heights(node: Node, db_handler: DbHandler):
-    # TODO: Candidate for single user mode
-    """conversion of normal blocks into hyperblocks from ledger.db or hyper.db to hyper.db"""
-    if os.path.exists(node.config.hyper_path):
-
-        # cross-integrity check
-        hdd_block_max = db_handler.block_height_max()
-        hdd_block_max_diff = db_handler.block_height_max_diff()
-        hdd2_block_last = db_handler.block_height_max_hyper()
-        hdd2_block_last_misc = db_handler.block_height_max_diff_hyper()
-
-        # cross-integrity check
-
-        if hdd_block_max == hdd2_block_last == hdd2_block_last_misc == hdd_block_max_diff and node.config.hyper_recompress:  # cross-integrity check
-            node.logger.app_log.warning("Status: Recompressing hyperblocks (keeping full ledger)")
-            node.recompress = True
-            #print (hdd_block_max,hdd2_block_last,node.config.hyper_recompress)
-        elif hdd_block_max == hdd2_block_last and not node.config.hyper_recompress:
-            node.logger.app_log.warning("Status: Hyperblock recompression skipped")
-            node.recompress = False
-        else:
-            lowest_block = min(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
-            highest_block = max(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
-
-            node.logger.app_log.warning(
-                f"Status: Cross-integrity check failed, {highest_block} will be rolled back below {lowest_block}")
-
-            rollback(node,db_handler_initial,lowest_block) #rollback to the lowest value
-            node.recompress = False
-
-    else:
-        node.logger.app_log.warning("Status: Compressing ledger to Hyperblocks")
-        node.recompress = True
 
 
 def bin_convert(string):
@@ -1870,28 +1705,11 @@ if __name__ == "__main__":
             node.apihandler = apihandler.ApiHandler(node.logger.app_log, config)
             mp.MEMPOOL = mp.Mempool(node.logger.app_log, config, node.db_lock, node.is_testnet, trace_db_calls=node.config.trace_db_calls)
 
-            check_integrity(node.config.hyper_path)
-            #PLACEHOLDER FOR FRESH HYPERBLOCK BUILDER
 
-            # if node.config.rebuild_db: #does nothing
-            #    db_maintenance(init_database)
-
-            # db_manager = db_looper.DbManager(node.logger.app_log)
-            # db_manager.start()
-
+            # I'm here
             db_handler_initial = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path,
                                            node.config.ram, node.ledger_ram_file, node.logger,
                                            trace_db_calls=node.config.trace_db_calls)
-
-            ledger_check_heights(node, db_handler_initial)
-
-            if node.recompress:
-                # todo: do not close database and move files, swap tables instead
-                db_handler_initial.close()
-                recompress_ledger(node)
-                db_handler_initial = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path,
-                                               node.config.ram, node.ledger_ram_file, node.logger,
-                                               trace_db_calls=node.config.trace_db_calls)
 
             ram_init(db_handler_initial)
             node_block_init(db_handler_initial)
