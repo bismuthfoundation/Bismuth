@@ -16,8 +16,9 @@ import mining_heavy3
 from bismuthcore.helpers import just_int_from, download_file
 
 from libs.config import Config
+from libs.solodbhandler import SoloDbHandler
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 
 class Node:
@@ -110,6 +111,7 @@ class Node:
         self._setup_net_type()
         # TODO: EGG: migrate all "single mode" methods from top level node.py in there
         # Add a "level" inner state and trigger by outside call.
+        self.single_user_checks()
 
     def _setup_net_type(self):
         """
@@ -194,3 +196,11 @@ class Node:
     def sleep(self) -> None:
         """Pause the current thread for the configured time to avoid cpu loads while in waiting loops"""
         sleep(self.config.pause)
+
+    def single_user_checks(self) -> None:
+        """Called at instanciation time, when db is not shared yet. exclusive checks, rollbacks aso are to be gathered here"""
+        self.logger.app_log.warning("Starting Single user checks...")
+        solo_handler = SoloDbHandler(self)  # This instance will only live for the scope of single_user_checks()
+        # TODO: WIP
+
+        self.logger.app_log.warning("Single user checks done.")
