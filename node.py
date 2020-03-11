@@ -1677,23 +1677,6 @@ def initial_db_check():
             bootstrap()
 
 
-def load_keys():
-    """Initial loading of crypto keys"""
-    # TODO: candidate for single user mode
-    essentials.keys_check(node.logger.app_log, "wallet.der")
-
-    node.keys.key, node.keys.public_key_readable, node.keys.private_key_readable, _, _, node.keys.public_key_b64encoded, node.keys.address, node.keys.keyfile = essentials.keys_load(
-        "privkey.der", "pubkey.der")
-
-    if node.is_regnet:
-        regnet.PRIVATE_KEY_READABLE = node.keys.private_key_readable
-        regnet.PUBLIC_KEY_B64ENCODED = node.keys.public_key_b64encoded
-        regnet.ADDRESS = node.keys.address
-        regnet.KEY = node.keys.key
-
-    node.logger.app_log.warning(f"Status: Local address: {node.keys.address}")
-
-
 def verify(db_handler):
     # TODO: candidate for single user mode
     try:
@@ -1855,26 +1838,18 @@ if __name__ == "__main__":
     logger = Logger()  # is that class really useful?
     logger.app_log = log.log("node.log", config.debug_level, config.terminal_output)
     logger.app_log.warning("Configuration settings loaded")
-    node = Node(digest_block, config,  app_version=VERSION, logger=logger, keys=keys.Keys())
-    node.logger.app_log.warning(f"Python version: {node.py_version}")
-    # start node init sequence
-
+    # Pre-node tweaks
     # upgrade wallet location after nuitka-required "files" folder introduction
     if os.path.exists("../wallet.der") and not os.path.exists("wallet.der") and "Windows" in platform.system():
         print("Upgrading wallet location")
         os.rename("../wallet.der", "wallet.der")
     # upgrade wallet location after nuitka-required "files" folder introduction
 
-    if not node.config.full_ledger and os.path.exists(node.config.ledger_path) and node.is_mainnet:
-        os.remove(node.config.ledger_path)
-        node.logger.app_log.warning("Removed full ledger for hyperblock mode")
-    if not node.config.full_ledger:
-        node.logger.app_log.warning("Cloning hyperblocks to ledger file")
-        shutil.copy(node.config.hyper_path, node.config.ledger_path)  # hacked to remove all the endless checks
-    # needed for docker logs
-    node.logger.app_log.warning(f"Checking Heavy3 file, can take up to 5 minutes...")
-    mining_heavy3.mining_open(node.config.heavy3_path)
-    node.logger.app_log.warning(f"Heavy3 file Ok!")
+    node = Node(digest_block, config,  app_version=VERSION, logger=logger, keys=keys.Keys())
+    node.logger.app_log.warning(f"Python version: {node.py_version}")
+    # start node init sequence
+
+
     try:
         # create a plugin manager, load all plugin modules and init
         node.plugin_manager = plugins.PluginManager(app_log=node.logger.app_log, config=config, init=True)
@@ -1882,8 +1857,6 @@ if __name__ == "__main__":
         extra_commands = {}  # global var, used by the server part.
         extra_commands = node.plugin_manager.execute_filter_hook('extra_commands_prefixes', extra_commands)
         print("Extra prefixes: ", ",".join(extra_commands.keys()))
-
-        load_keys()
 
         node.logger.app_log.warning(f"Status: Starting node version {VERSION}")
         node.startup_time = ttime()

@@ -10,15 +10,17 @@ import tarfile
 import sys
 import platform
 from time import sleep
+from shutil import copy
 
 import regnet
 import mining_heavy3
 from bismuthcore.helpers import just_int_from, download_file
+from essentials import keys_check  # To be handled by polysign
 
 from libs.config import Config
 from libs.solodbhandler import SoloDbHandler
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 
 class Node:
@@ -30,7 +32,7 @@ class Node:
                  "apihandler", "db_lock", "q", "is_testnet", "is_regnet", "is_mainnet", "hdd_block", "hdd_hash",
                  "last_block_hash", "last_block", "peers", "syncing", "checkpoint", "digest_block")
 
-    def __init__(self, digest_block, config: Config=None, app_version: str="", logger=None, keys=None):
+    def __init__(self, digest_block, config: Config=None, app_version: str="", logger=None, keys=None, run_checks=True):
         # TODO EGG: digest_block will need to be integrated in this class. current hack necessary to avoid circular references.
         # Self built info
         self.py_version = int(str(sys.version_info.major) + str(sys.version_info.minor) + str(sys.version_info.micro))
@@ -109,9 +111,15 @@ class Node:
         self.is_regnet = False
         self.is_mainnet = True
         self._setup_net_type()
+
+        self.load_keys()
+
         # TODO: EGG: migrate all "single mode" methods from top level node.py in there
         # Add a "level" inner state and trigger by outside call.
-        self.single_user_checks()
+        if run_checks:
+            self.single_user_checks()
+        else:
+            self.logger.app_log.warning("Warning: Node was instanciated without startup checks. Make sure you know what you are doing!!")
 
     def _setup_net_type(self):
         """
@@ -197,10 +205,36 @@ class Node:
         """Pause the current thread for the configured time to avoid cpu loads while in waiting loops"""
         sleep(self.config.pause)
 
+    def load_keys(self):
+        """Initial loading of crypto keys"""
+        keys_check(self.logger.app_log, "wallet.der")
+        self.keys.key, self.keys.public_key_readable, self.keys.private_key_readable, _, _, self.keys.public_key_b64encoded, self.keys.address, self.keys.keyfile = essentials.keys_load(
+            "privkey.der", "pubkey.der")
+        if self.is_regnet:
+            regnet.PRIVATE_KEY_READABLE = self.keys.private_key_readable
+            regnet.PUBLIC_KEY_B64ENCODED = self.keys.public_key_b64encoded
+            regnet.ADDRESS = self.keys.address
+            regnet.KEY = self.keys.key
+        self.logger.app_log.warning(f"Status: Local address: {self.keys.address}")
+
     def single_user_checks(self) -> None:
-        """Called at instanciation time, when db is not shared yet. exclusive checks, rollbacks aso are to be gathered here"""
+        """Called at instanciation time, when db is not shared yet.
+        Exclusive checks, rollbacks aso are to be gathered here"""
         self.logger.app_log.warning("Starting Single user checks...")
+        self._initial_files_checks()
         solo_handler = SoloDbHandler(self)  # This instance will only live for the scope of single_user_checks()
         # TODO: WIP
 
         self.logger.app_log.warning("Single user checks done.")
+
+    def _initial_files_checks(self):
+        if not self.config.full_ledger and os.path.exists(self.config.ledger_path) and self.is_mainnet:
+            os.remove(self.config.ledger_path)
+            self.logger.app_log.warning("Removed full ledger for hyperblock mode")
+        if not self.config.full_ledger:
+            self.logger.app_log.warning("Cloning hyperblocks to ledger file")
+            copy(self.config.hyper_path, self.config.ledger_path)  # hacked to remove all the endless checks
+        # needed for docker logs
+        self.logger.app_log.warning(f"Checking Heavy3 file, can take up to 5 minutes... {self.config.heavy3_path}")
+        mining_heavy3.mining_open(self.config.heavy3_path)
+        self.logger.app_log.warning(f"Heavy3 file Ok!")
