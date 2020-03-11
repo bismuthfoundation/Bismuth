@@ -12,7 +12,7 @@ from bismuthcore.helpers import fee_calculate
 from libs.fork import Fork
 import tokensv2 as tokens
 from decimal import Decimal
-from bismuthcore import transaction
+from bismuthcore.transaction import Transaction
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -53,6 +53,7 @@ class Block:
         self.failed_cause = ''
         self.block_count = 0
         self.transaction_list_converted = []
+        self.transactions = []
 
         self.mining_reward = None
         self.mirror_hash = None
@@ -296,14 +297,13 @@ def digest_block(node: "Node", data, sdef, peer_ip, db_handler: "DbHandler"):
             print(exc_type, fname, exc_tb.tb_lineno)
             raise
 
-    def process_blocks(block_data):
-        # TODO: block_data shadows block_data from outer scope. Very error prone.
+    def process_blocks(blocks):
         # here, functions in functions use both local vars or parent variables, it's a call for nasty bugs.
         # take care of pycharms hints, do not define func in funcs.
         try:
-            block_instance.block_count = len(block_data)
+            block_instance.block_count = len(blocks)
 
-            for block in block_data:
+            for block in blocks:  # "blocks" is either one block in a list or a list of blocks
                 if node.IS_STOPPING:
                     node.logger.app_log.warning("Process_blocks aborted, node is stopping")
                     return
@@ -312,6 +312,21 @@ def digest_block(node: "Node", data, sdef, peer_ip, db_handler: "DbHandler"):
                 # EGG: Reminder: quick test first, **always**. Heavy tests only thereafter.
 
                 block_instance.tx_count = len(block)
+
+                for transaction in block:
+                # HCL:wip converting to new format
+                    block_instance.transactions.append(Transaction.from_legacy_params(
+                        timestamp=transaction[0],
+                        sender=transaction[1],
+                        recipient=transaction[2],
+                        amount=transaction[3],
+                        signature=transaction[4],
+                        public_key=transaction[5],
+                        operation=transaction[6],
+                        openfield=transaction[7]
+                        ))
+
+                # HCL:wip converting to new format
 
                 block_instance.block_height_new = node.last_block + 1
                 block_instance.start_time_block = quantize_two(time.time())
