@@ -211,7 +211,7 @@ def digest_block(node: "Node", data, sdef, peer_ip, db_handler: "DbHandler"):
                 oldest_possible_tx = miner_tx.q_block_timestamp - 60 * 60 * 24
 
             for tx_index, transaction in enumerate(block):
-                
+
 
                 if float(transaction[0]) < oldest_possible_tx:
                     raise ValueError("txid {} from {} is older ({}) than oldest possible date ({})"
@@ -315,9 +315,11 @@ def digest_block(node: "Node", data, sdef, peer_ip, db_handler: "DbHandler"):
 
                 for transaction in block:
                 # HCL:wip converting to new format
+                # EGG: Will need deeper changes. data here is not standard transactions. Only 8 params, no height.
+                # plus block_instance is a conceptual dup of core Block classe. Left for later on, when the rest will be converted.
                     block_instance.transactions.append(Transaction.from_legacy_params(
                         timestamp=transaction[0],
-                        sender=transaction[1],
+                        address=transaction[1],
                         recipient=transaction[2],
                         amount=transaction[3],
                         signature=transaction[4],
