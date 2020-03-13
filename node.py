@@ -11,15 +11,13 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "5.0.4-evo"  # Experimental db-evolution branch
-
-import functools
-import glob
+# import functools
+# import glob
 import platform
-import shutil
+# import shutil
 import socketserver
-import sqlite3
-import tarfile
+# import sqlite3
+# import tarfile
 import threading
 from sys import version_info, exc_info
 from time import time as ttime, sleep
@@ -38,7 +36,7 @@ import plugins
 import wallet_keys
 from connections import send, receive
 from digest import *
-from bismuthcore.helpers import download_file, sanitize_address
+from bismuthcore.helpers import sanitize_address
 from libs import keys, client
 from libs.node import Node
 from libs.config import Config
@@ -55,6 +53,8 @@ from Cryptodome.Signature import PKCS1_v1_5
 import base64
 # /todo
 
+VERSION = "5.0.5-evo"  # Experimental db-evolution branch
+
 fork = Fork()
 
 appname = "Bismuth"
@@ -68,20 +68,17 @@ def sql_trace_callback(log, id, statement):
     log.warning(line)
 
 
-def rollback(node, db_handler, block_height):
+def rollback(node: "Node", db_handler: "DbHandler", block_height: str) -> None:
     node.logger.app_log.warning(f"Status: Rolling back below: {block_height}")
-
     db_handler.rollback_under(block_height)
-
     # rollback indices
     db_handler.tokens_rollback(block_height)
     db_handler.aliases_rollback(block_height)
     # rollback indices
-
     node.logger.app_log.warning(f"Status: Chain rolled back below {block_height} and will be resynchronized")
 
 
-def bin_convert(string):
+def bin_convert(string: str):
     # TODO: Move to bismuthcore/helpers.py
     return ''.join(format(ord(x), '8b').replace(' ', '0') for x in string)
 
@@ -292,123 +289,6 @@ def blocknf(node: "Node", block_hash_delete: str, peer_ip: str, db_handler: "DbH
         node.plugin_manager.execute_action_hook('rollback', rollback)
         node.logger.app_log.info(reason)
 
-
-def sequencing_check(db_handler):
-    # TODO: Candidate for single user mode
-    try:
-        with open("sequencing_last", 'r') as filename:
-            sequencing_last = int(filename.read())
-
-    except:
-        node.logger.app_log.warning("Sequencing anchor not found, going through the whole chain")
-        sequencing_last = 0
-
-    node.logger.app_log.warning(f"Status: Testing chain sequencing, starting with block {sequencing_last}")
-
-    chains_to_check = (node.config.ledger_path, node.config.hyper_path)
-
-    for chain in chains_to_check:
-        conn = sqlite3.connect(chain)
-        if node.config.trace_db_calls:
-            conn.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN"))
-        c = conn.cursor()
-
-        # perform test on transaction table
-        y = None
-        for row in c.execute(
-                "SELECT block_height FROM transactions WHERE reward != 0 AND block_height >= ? ORDER BY block_height ASC",
-                (sequencing_last,)):
-            y_init = row[0]
-            if y is None:
-                y = y_init
-
-            if row[0] != y:
-                node.logger.app_log.warning(
-                    f"Status: Chain {chain} transaction sequencing error at: {row[0]}. {row[0]} instead of {y}")
-                for chain2 in chains_to_check:
-                    try:
-                        node.logger.app_log.warning(f"Trimming {chain2}")
-                        conn2 = sqlite3.connect(chain2)
-                        if node.config.trace_db_calls:
-                            conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2"))
-                        c2 = conn2.cursor()
-                        c2.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (row[0], -row[0],))
-                        conn2.commit()
-                        c2.execute("DELETE FROM misc WHERE block_height >= ?", (row[0],))
-                        conn2.commit()
-                        conn2.close()
-                    except Exception as e:
-                        node.logger.app_log.error(f"Error while trimming chain: {e}")
-
-                # rollback indices
-                # EGG: should be out of the chains_to_check loop. It was done twice, for hyper and ledger.
-                db_handler.tokens_rollback(y)
-                db_handler.aliases_rollback(y)
-                # /rollback indices
-                node.logger.app_log.warning(f"Status: Due to a sequencing issue at block {y}, {chain} has been rolled back and will be resynchronized")
-                # EGG: Maybe we should close there, since we touched the db, so it all starts clean.
-                sys.exit()
-                # EGG Note: Without that, the inner node object still had the starting value as current block, and can digest incoming miner block.
-                # (seen with ram=False) - To be handled when migrated to DbHandler.
-                break
-
-            y = y + 1
-
-        # perform test on misc table
-        y = None
-        # Egg: Why is this 300000 fixed and not last sequence?
-        for row in c.execute("SELECT block_height FROM misc WHERE block_height > ? ORDER BY block_height ASC",
-                             (300000,)):
-            y_init = row[0]
-
-            if y is None:
-                y = y_init
-                # print("assigned")
-                # print(row[0], y)
-
-            if row[0] != y:
-                node.logger.app_log.warning(
-                    f"Status: Chain {chain} difficulty sequencing error at: {row[0]}. {row[0]} instead of {y}")
-                # print(row[0], y)
-                for chain2 in chains_to_check:
-                    try:
-                        node.logger.app_log.warning(f"Trimming {chain2}")
-                        conn2 = sqlite3.connect(chain2)
-                        if node.config.trace_db_calls:
-                            conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2B"))
-                        c2 = conn2.cursor()
-                        c2.execute("DELETE FROM transactions WHERE block_height >= ?", (row[0],))
-                        conn2.commit()
-                        c2.execute("DELETE FROM misc WHERE block_height >= ?", (row[0],))
-                        conn2.commit()
-                        db_handler._execute_param(conn2, (
-                            'DELETE FROM transactions WHERE address = "Development Reward" AND block_height <= ?'),
-                                                  (-row[0],))
-                        conn2.commit()
-                        db_handler._execute_param(conn2, (
-                            'DELETE FROM transactions WHERE address = "Hypernode Payouts" AND block_height <= ?'),
-                                                  (-row[0],))
-                        conn2.commit()
-                        conn2.close()
-                    except Exception as e:
-                        node.logger.app_log.error(f"Error while trimming chain: {e}")
-
-                # rollback indices
-                db_handler.tokens_rollback(y)
-                db_handler.aliases_rollback(y)
-                # /rollback indices
-                node.logger.app_log.warning(f"Status: Due to a sequencing issue at block {y}, {chain} has been rolled back and will be resynchronized")
-                sys.exit()  # See comment above
-                break
-
-            y = y + 1
-
-        node.logger.app_log.warning(f"Status: Chain sequencing test complete for {chain}")
-        conn.close()
-
-        if y:
-            with open("sequencing_last", 'w') as filename:
-                filename.write(str(y - 1000))  # room for rollbacks
 
 
 # init
@@ -766,7 +646,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                     node.logger.app_log.error("Inbound: Processing block from miner {}".format(e))
                                     return
                                 # This new block may change the int(diff). Trigger the hook whether it changed or not.
-                                #node.difficulty = difficulty(node, db_handler_instance)
+                                # node.difficulty = difficulty(node, db_handler_instance)
                             else:
                                 reason = f"Inbound: Mined block was orphaned because node was not synced, " \
                                          f"we are at block {node.last_block}, " \
@@ -1422,252 +1302,6 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
 
 
-def node_block_init(database):
-    # TODO: candidate for single user mode
-    node.hdd_block = database.block_height_max()
-    node.difficulty = difficulty(node, db_handler_initial)  # check diff for miner
-
-    node.last_block = node.hdd_block  # ram equals drive at this point
-
-    node.last_block_hash = database.last_block_hash()
-    node.hdd_hash = node.last_block_hash # ram equals drive at this point
-
-    node.last_block_timestamp = database.last_block_timestamp()
-
-    checkpoint_set(node)
-
-    node.logger.app_log.warning("Status: Indexing aliases")
-
-    aliases.aliases_update(node, database)
-
-
-def ram_init(database):
-    # TODO: candidate for single user mode
-    try:
-        if node.config.ram:
-            node.logger.app_log.warning("Status: Moving database to RAM")
-
-            if node.py_version >= 370:
-                temp_target = sqlite3.connect(node.ledger_ram_file, uri=True, isolation_level=None, timeout=1)
-                if node.config.trace_db_calls:
-                    temp_target.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"TEMP-TARGET"))
-
-                temp_source = sqlite3.connect(node.config.hyper_path, uri=True, isolation_level=None, timeout=1)
-                if node.config.trace_db_calls:
-                    temp_source.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"TEMP-SOURCE"))
-                temp_source.backup(temp_target)
-                temp_source.close()
-
-            else:
-                source_db = sqlite3.connect(node.config.hyper_path, timeout=1)
-                if node.config.trace_db_calls:
-                    source_db.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SOURCE-DB"))
-                database.to_ram = sqlite3.connect(node.ledger_ram_file, uri=True, timeout=1, isolation_level=None)
-                if node.config.trace_db_calls:
-                    database.to_ram.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"DATABASE-TO-RAM"))
-                database.to_ram.text_factory = str
-                database.tr = database.to_ram.cursor()
-
-                query = "".join(line for line in source_db.iterdump())
-                database.to_ram.executescript(query)
-                source_db.close()
-
-            node.logger.app_log.warning("Status: Hyperblock ledger moved to RAM")
-
-            #source = sqlite3.connect('existing_db.db')
-            #dest = sqlite3.connect(':memory:')
-            #source.backup(dest)
-
-    except Exception as e:
-        node.logger.app_log.warning(e)
-        raise
-
-
-def initial_db_check():
-    """
-    Initial bootstrap check and chain validity control
-    """
-    # TODO: candidate for single user mode
-    # force bootstrap via adding an empty "fresh_sync" file in the dir.
-    if os.path.exists("fresh_sync") and node.is_mainnet:
-        node.logger.app_log.warning("Status: Fresh sync required, bootstrapping from the website")
-        os.remove("fresh_sync")
-        bootstrap()
-    # UPDATE mainnet DB if required
-    if node.is_mainnet:
-        upgrade = sqlite3.connect(node.config.ledger_path)
-        if node.config.trace_db_calls:
-            upgrade.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"INITIAL_DB_CHECK"))
-        u = upgrade.cursor()
-        try:
-            u.execute("PRAGMA table_info(transactions);")
-            result = u.fetchall()[10][2]
-            if result != "TEXT":
-                raise ValueError("Database column type outdated for Command field")
-            upgrade.close()
-        except Exception as e:
-            print(e)
-            upgrade.close()
-            print("Database needs upgrading, bootstrapping...")
-            bootstrap()
-
-
-def verify(db_handler):
-    # TODO: candidate for single user mode
-    try:
-        node.logger.app_log.warning("Blockchain verification started...")
-        # verify blockchain
-        db_handler._execute(db_handler.h, "SELECT Count(*) FROM transactions")
-        db_rows = db_handler.h.fetchone()[0]
-        node.logger.app_log.warning("Total steps: {}".format(db_rows))
-
-        # verify genesis
-        try:
-            db_handler._execute(db_handler.h, "SELECT block_height, recipient FROM transactions WHERE block_height = 1")
-            result = db_handler.h.fetchall()[0]
-            block_height = result[0]
-            genesis = result[1]
-            node.logger.app_log.warning(f"Genesis: {genesis}")
-            if str(genesis) != node.config.genesis and int(
-                    block_height) == 0:
-                node.logger.app_log.warning("Invalid genesis address")
-                sys.exit(1)
-        except:
-            node.logger.app_log.warning("Hyperblock mode in use")
-        # verify genesis
-
-        db_hashes = {
-            '27258-1493755375.23': 'acd6044591c5baf121e581225724fc13400941c7',
-            '27298-1493755830.58': '481ec856b50a5ae4f5b96de60a8eda75eccd2163',
-            '30440-1493768123.08': 'ed11b24530dbcc866ce9be773bfad14967a0e3eb',
-            '32127-1493775151.92': 'e594d04ad9e554bce63593b81f9444056dd1705d',
-            '32128-1493775170.17': '07a8c49d00e703f1e9518c7d6fa11d918d5a9036',
-            '37732-1493799037.60': '43c064309eff3b3f065414d7752f23e1de1e70cd',
-            '37898-1493799317.40': '2e85b5c4513f5e8f3c83a480aea02d9787496b7a',
-            '37898-1493799774.46': '4ea899b3bdd943a9f164265d51b9427f1316ce39',
-            '38083-1493800650.67': '65e93aab149c7e77e383e0f9eb1e7f9a021732a0',
-            '52233-1493876901.73': '29653fdefc6ca98aadeab37884383fedf9e031b3',
-            '52239-1493876963.71': '4c0e262de64a5e792601937a333ca2bf6d6681f2',
-            '52282-1493877169.29': '808f90534e7ba68ee60bb2ea4530f5ff7b9d8dea',
-            '52308-1493877257.85': '8919548fdbc5093a6e9320818a0ca058449e29c2',
-            '52393-1493877463.97': '0eba7623a44441d2535eafea4655e8ef524f3719',
-            '62507-1493946372.50': '81c9ca175d09f47497a57efeb51d16ee78ddc232',
-            '70094-1494032933.14': '2ca4403387e84b95ed558e7c9350c43efff8225c',
-            '107579-1495499385.55': '4c01d491b35583e6a880a016bd08ac992b25e946',
-            '109032-1495581934.71': 'e81caa48f4e04272b764bc58a0a68e07e44e50be',
-            '109032-1495581968.35': '26419351bc5cea781ac4b41c6a5ea757585ddbe4',
-            '109032-1495581997.74': 'ad634a23b69b6d5cf8514d6e3a5d8c7311240b58',
-            '109032-1495582052.39': '9a5815e1aaa50c129fad05d9502b2b83518ab0c6',
-            '109032-1495582073.80': 'c3ecbc412ed82539f866d5ce95a46df8f1bbc992',
-            '109032-1495582093.85': 'eff64357d0320c77c7774bdffbf0032bfbbcf40a',
-            '109032-1495582137.48': 'e3f34c3b0608a2276c3d179fe2091ae3b5b33458',
-            '109032-1495582167.81': 'dd9cf2436672c2b2b5a6cc230fe0bf548d3856c9',
-            '109032-1495582188.16': '978f7e42a98d00dd0b520fa330aec136976f2b10',
-            '109032-1495582212.49': '7991d2efed6c21509d104c4bb9a41db873a186bf',
-            '109032-1495582261.99': '496491a8243f92ef216b308a4b8e160f9ac8902f',
-            '109032-1495582281.92': 'c3eb75f099546cd1afec051194a4f0ce72808811',
-            '109032-1495582326.49': 'f6a2d15c18692c1507a2f0f31fb98ed126f6285d',
-            '109032-1495582345.66': 'c61b3073ae3345146589ef31a565874f3506aa3b',
-            '109032-1495582362.29': '91f0c2eb7c7d8badf279130f9d8810c31bca0738',
-            '109032-1495582391.27': '86ba22a36ad1604fcbeccb7b53a4f1878e42e7c8',
-            '109032-1495582414.48': '6c7fb968c6df05e6c41a2b57417265fcd21cf049',
-            '109032-1495582431.57': '85b846479fcf65e0b0407ae5a62a43e548a05b0f',
-            '109032-1495582452.90': 'be5985949a9f9c05e1087c373179f4699c9a285b',
-            '109032-1495582474.30': '5f8f33ccd3861dbaf3a9de679b2c57bb4dc6aa9e',
-            '109032-1495582491.33': 'bbca4c2cfb3b073dc26e2882a0c635b4f545c796',
-            '109032-1495582519.66': 'e8acaf4c324ad6380e95f05b5488507c1f677f0d',
-            '109032-1495582552.33': '1d19efbe74f1dcc0f3eecc97e57602a854cee80c',
-            '109032-1495582566.89': '6f855517a5a15764275b6b473df3d8b0424e14ca',
-            '109032-1495582578.06': '55d4af749af916a4af4190106133c4bd618fccd8',
-            '109032-1495582590.27': '312009efa7d8fbf3bd788704b9f4f9f4cca2bf6b',
-            '109032-1495582605.78': '92dd15a93e5fdc6d419e40e73c738618830778bf',
-            '109032-1495582629.72': 'c90a2baeeffb8283a781787af1b9a2d4e7390768',
-            '109032-1495582650.66': '76919616b3b26a13fbfccdb1f6a70478ecc99f5b',
-            '109032-1495582673.69': '8228a29ec46f4c017c983073e4bf52306d30a20e',
-            '109032-1495582692.76': 'd7f83c9cda72380748c9e697e864e64f371b0c87',
-            '109032-1495582705.82': 'd87f74eaa82d2566129d45f0040c6a796e6c00d6',
-            '109032-1495582718.75': '41e4b6595ecc0087b7a370c08b9e911ddf70621e',
-            '109032-1495582731.23': '11b95e7f210e616a39f1f3fc67055fed34d06d58',
-            '109032-1495582743.92': '118bcaf2a4064b64d1f48aaae2382ad9505027a4',
-            '109032-1495582756.92': '67a81e040ebf257024b56bf99de5763079d9c38b',
-            '109032-1495582768.07': '0afbcd111bedf61f67ee5eafc2e2792991254f33',
-            '109032-1495582780.58': 'd7351ae8a29e27327fc0952ce27405be487d4dcf',
-            '109032-1495582793.76': '56eca3202795443669b35af18c316a0bdc0166ab',
-            '109032-1495582810.24': '4841f3f01cd986863110fc9e61622c3598d7f6c4',
-            '109032-1495582823.22': '7a4244e0549fc2da9fa15328506f5afeb7fc36f4',
-            '109032-1495582833.89': '7af9fc46b2d70c5070737c0a1ecaccac11f420dd',
-            '109032-1495582860.55': 'eb8742ae1ec649e01b5ca5064da52b8be75a0be1',
-            '109034-1495582892.79': 'ef00516b9f723fe7eeed98465a2521f1d1910189',
-            '109034-1495582904.05': '56172b6625a163cd1e90e7676b33774b30dbe9a6',
-            '109034-1495582915.38': '90290d53ff8f16ffa9cf8ca5add1f155612dbefe',
-            '109035-1495582926.98': '8c5fc98e23948df56e9c05acc73e0f8f18df176e',
-            '109035-1495582943.53': '8c6ececc083b4fcadac2022f815407c685a7fcaf',
-            '109035-1495582976.65': '4cf4d45d0c98be3f1a8553f5ff2d183770ec1d27',
-            '109035-1495583322.14': '8d1c49a5c3e029a3c420a5361f3ed0ef629a3e91'
-        }
-        invalid = 0
-
-        for row in db_handler.h.execute('SELECT * FROM transactions WHERE block_height > 0 and reward = 0 ORDER BY block_height'):  # native sql fx to keep compatibility
-
-            db_block_height = str(row[0])
-            db_timestamp = '%.2f' % (quantize_two(row[1]))
-            db_address = str(row[2])[:56]
-            db_recipient = str(row[3])[:56]
-            db_amount = '%.8f' % (quantize_eight(row[4]))
-            db_signature_enc = str(row[5])[:684]
-            db_public_key_b64encoded = str(row[6])[:1068]
-            db_operation = str(row[10])[:30]
-            db_openfield = str(row[11])  # no limit for backward compatibility
-            db_transaction = str((db_timestamp, db_address, db_recipient, db_amount, db_operation, db_openfield)).encode("utf-8")
-
-            try:
-                # Signer factory is aware of the different tx schemes, and will b64 decode public_key once or twice as needed.
-                SignerFactory.verify_bis_signature(db_signature_enc, db_public_key_b64encoded, db_transaction, db_address)
-            except Exception as e:
-                sha_hash = SHA.new(db_transaction)
-                try:
-                    if sha_hash.hexdigest() != db_hashes[db_block_height + "-" + db_timestamp]:
-                        node.logger.app_log.warning("Signature validation problem: {} {}".format(db_block_height, db_transaction))
-                        invalid = invalid + 1
-                except Exception as e:
-                    node.logger.app_log.warning("Signature validation problem: {} {}".format(db_block_height, db_transaction))
-                    invalid = invalid + 1
-
-        if invalid == 0:
-            node.logger.app_log.warning("All transacitons in the local ledger are valid")
-
-    except Exception as e:
-        node.logger.app_log.warning("Error: {}".format(e))
-        raise
-
-
-def add_indices(db_handler: DbHandler):
-    # TODO: candidate for single user mode
-    CREATE_TXID4_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS TXID4_Index ON transactions(substr(signature,1,4))"
-    CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS 'Misc Block Height Index' on misc(block_height)"
-
-    node.logger.app_log.warning("Creating indices")
-
-    # ledger.db
-    if not node.config.old_sqlite:
-        db_handler._execute(db_handler.h, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
-    else:
-        node.logger.app_log.warning("Setting old_sqlite is True, lookups will be slower.")
-    db_handler._execute(db_handler.h, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
-
-    # hyper.db
-    if not node.config.old_sqlite:
-        db_handler._execute(db_handler.h2, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
-    db_handler._execute(db_handler.h2, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
-
-    # RAM or hyper.db
-    if not node.config.old_sqlite:
-        db_handler._execute(db_handler.c, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
-    db_handler._execute(db_handler.c, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
-
-    node.logger.app_log.warning("Finished creating indices")
-
-
 if __name__ == "__main__":
     config = Config()  # config.read() is now implicit at instanciation
     logger = Logger()  # is that class really useful?
@@ -1680,10 +1314,9 @@ if __name__ == "__main__":
         os.rename("../wallet.der", "wallet.der")
     # upgrade wallet location after nuitka-required "files" folder introduction
 
+    # Will start node init sequence
     node = Node(digest_block, config,  app_version=VERSION, logger=logger, keys=keys.Keys())
     node.logger.app_log.warning(f"Python version: {node.py_version}")
-    # start node init sequence
-
 
     try:
         # create a plugin manager, load all plugin modules and init
@@ -1691,40 +1324,21 @@ if __name__ == "__main__":
         # get the potential extra command prefixes from plugin
         extra_commands = {}  # global var, used by the server part.
         extra_commands = node.plugin_manager.execute_filter_hook('extra_commands_prefixes', extra_commands)
-        print("Extra prefixes: ", ",".join(extra_commands.keys()))
+        node.logger.app_log.warning("Extra prefixes: " + ",".join(extra_commands.keys()))
 
         node.logger.app_log.warning(f"Status: Starting node version {VERSION}")
         node.startup_time = ttime()
         try:
-
             node.peers = peershandler.Peers(node.logger.app_log, config=config, node=node)
-
-            # print(peers.peer_list_old_format())
-            # sys.exit()
-
             node.apihandler = apihandler.ApiHandler(node.logger.app_log, config)
             mp.MEMPOOL = mp.Mempool(node.logger.app_log, config, node.db_lock, node.is_testnet, trace_db_calls=node.config.trace_db_calls)
+            # Until here, we were in single user mode.
 
-
-            # I'm here
+            # EGG_EVO: Is this just used once for initial sync?
             db_handler_initial = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path,
                                            node.config.ram, node.ledger_ram_file, node.logger,
                                            trace_db_calls=node.config.trace_db_calls)
-
-            ram_init(db_handler_initial)
-            node_block_init(db_handler_initial)
-            initial_db_check()
-
-            if not node.is_regnet:
-                sequencing_check(db_handler_initial)
-
-            if node.config.verify:
-                verify(db_handler_initial)
-
-            add_indices(db_handler_initial)
-
-            # TODO: until here, we are in single user mode.
-            # All the above goes into a "bootup" function, with methods from single_user module only.
+            node.node_block_init(db_handler_initial)  # Egg: to be called after single user mode only
 
             if node.config.tor:
                 node.logger.app_log.warning("Status: Not starting a local server to conceal identity on Tor network")
@@ -1742,11 +1356,9 @@ if __name__ == "__main__":
 
                 # Start a thread with the server -- that thread will then start one
                 # more thread for each request
-
                 server_thread = threading.Thread(target=server.serve_forever)
                 server_thread.daemon = True
                 server_thread.start()
-
                 node.logger.app_log.warning("Status: Server loop running.")
 
             # start connection manager

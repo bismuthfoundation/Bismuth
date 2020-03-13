@@ -21,7 +21,11 @@ from typing import Union
 from polysign.signer import SignerType
 from polysign.signerfactory import SignerFactory
 
-__version__ = "0.0.7"
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+  from libs.node import Node
+
+__version__ = "0.0.8"
 
 """
 0.0.7 : decrease checkpoint limit to 30 blocks at 1450000 (meaning max 59 blocks rollback)
@@ -101,7 +105,7 @@ def round_down(number, order):
     return int(math.floor(number / order)) * order
 
 
-def checkpoint_set(node):
+def checkpoint_set(node: "Node"):
     # TODO: EGG_EVO This belongs to Node class
     limit = 30
     if node.last_block < 1450000:

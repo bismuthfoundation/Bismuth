@@ -16,9 +16,17 @@ import regnet
 import mining_heavy3
 from bismuthcore.helpers import just_int_from, download_file
 from essentials import keys_check, keys_load  # To be handled by polysign
+from essentials import checkpoint_set  # To be moved here
+from difficulty import difficulty  # where does this belongs? check usages
+import aliases  # Aliases are to be moved to db_handler
 
 from libs.config import Config
 from libs.solodbhandler import SoloDbHandler
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+  from libs.dbhandler import DbHandler
+
 
 __version__ = "0.0.5"
 
@@ -222,6 +230,7 @@ class Node:
         # EGG_EVO: Temp hack preventing deleting local DB at this dev stage.
         # stops the node dead on. To be commented out for prod
         self.close("Bootstrap was triggered, but is disabled by safety. Node will close.", force_exit=True)
+        return
 
         self.logger.app_log.warning("Something went wrong during bootstrapping, aborted")
         try:
@@ -243,17 +252,27 @@ class Node:
 
     def _check_db_schema(self, solo_handler: SoloDbHandler):
         # Was named "check_integrity". It was rather a crude db schema check, will need adjustments to handle the various possible dbs.
+        # some parts below also where in "initial_db_check()" but also are schema checks. merged into here
         if not os.path.exists("static"):
             os.mkdir("static")
         redownload = False
+        # force bootstrap via adding an empty "fresh_sync" file in the dir.
+        if os.path.exists("fresh_sync") and self.is_mainnet:
+            self.logger.app_log.warning("Status: Fresh sync required, bootstrapping from the website")
+            os.remove("fresh_sync")
+            redownload = True
         try:
             ledger_schema = solo_handler.transactions_schema()
+            if len(ledger_schema) != 12:
+                # EGG_EVO: Kept this test for the time being, but will need more complete and distinctive test depending on the db type
+                self.logger.app_log.error(
+                    f"Status: Integrity check on ledger failed, bootstrapping from the website")
+                redownload = True
+            command_field_type = ledger_schema[10][2]
+            if command_field_type != "TEXT":
+                redownload = True
+                self.logger.app_log.warning("Database column type outdated for Command field")
         except:
-            redownload = True
-        if len(ledger_schema) != 12:
-            # EGG_EVO: Kept this test for the time being, but will need more complete and distinctive test depending on the db type
-            self.logger.app_log.error(
-                f"Status: Integrity check on database {database} failed, bootstrapping from the website")
             redownload = True
         if redownload and self.is_mainnet:
             self.bootstrap()
@@ -320,10 +339,40 @@ class Node:
             os.rename(self.config.ledger_path + '.temp', self.config.hyper_path)
         self.logger.app_log.warning(f"Status: Recompressed!")
 
+    def _ram_init(self, solo_handler: SoloDbHandler) -> None:
+        # Copy hyper db into ram
+        if not self.config.ram:
+            # Early exit to limit indents
+            return
+        try:
+            self.logger.app_log.warning("Status: Moving database to RAM")
+            solo_handler.db_to_ram(self.config.hyper_path, self.ledger_ram_file)
+            self.logger.app_log.warning("Status: Hyperblock ledger moved to RAM")
+        except Exception as e:
+            self.logger.app_log.warning("Move to ram: {}".format(e))
+            raise
+
+    def node_block_init(self, db_handler: "DbHandler") -> None:
+        """Init node heights properties from db"""
+        # EGG_EVO: we could maybe delay this part until we have the final db_handler, in order to avoid dupped methods.
+        # Check if these properties are of use or not in the following single user mode calls.
+        self.logger.app_log.warning("Status: Starting Node blocks init...")
+        self.hdd_block = db_handler.block_height_max()
+        self.difficulty = difficulty(self, db_handler)  # check diff for miner
+        self.last_block = self.hdd_block  # ram equals drive at this point
+
+        self.last_block_hash = db_handler.last_block_hash()  # dup
+        self.hdd_hash = self.last_block_hash  # ram equals drive at this point
+        self.last_block_timestamp = db_handler.last_block_timestamp()  # dup
+
+        checkpoint_set(self)
+        self.logger.app_log.warning("Status: Indexing aliases")
+        aliases.aliases_update(self, db_handler)
+
     def single_user_checks(self) -> None:
         """Called at instanciation time, when db is not shared yet.
         Exclusive checks, rollbacks aso are to be gathered here"""
-        self.logger.app_log.warning("Starting Single user checks...")
+        self.logger.app_log.warning("Status: Starting Single user checks...")
         self._initial_files_checks()
         solo_handler = SoloDbHandler(self)  # This instance will only live for the scope of single_user_checks(),
         # why it's not a property of the Node instance and it passed to individual checks.
@@ -337,9 +386,18 @@ class Node:
             self._recompress_ledger(solo_handler)  # Warning: this will close the solo instance!
             solo_handler = SoloDbHandler(self)
 
-        # TODO: WIP
+        solo_handler.add_indices()
+        if not self.is_regnet:
+            solo_handler.sequencing_check()
+            if self.config.verify:
+                solo_handler.verify()
 
-        self.logger.app_log.warning("Single user checks done.")
+        self._ram_init(solo_handler)  # Save this one for the end (time consuming if something goes wrong)
+        #
+        # TODO: WIP
+        #
+        #
+        self.logger.app_log.warning("Status: Single user checks done.")
 
     def _initial_files_checks(self):
         if not self.config.full_ledger and os.path.exists(self.config.ledger_path) and self.is_mainnet:
@@ -351,4 +409,4 @@ class Node:
         # needed for docker logs
         self.logger.app_log.warning(f"Checking Heavy3 file, can take up to 5 minutes... {self.config.heavy3_path}")
         mining_heavy3.mining_open(self.config.heavy3_path)
-        self.logger.app_log.warning(f"Heavy3 file Ok!")
+        self.logger.app_log.warning(f"Status: Heavy3 file Ok!")
