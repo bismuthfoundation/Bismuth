@@ -13,24 +13,23 @@
 
 # import functools
 # import glob
-import platform
 # import shutil
-import socketserver
 # import sqlite3
 # import tarfile
+import platform
+import socketserver
 import threading
 from sys import version_info, exc_info
 from time import time as ttime, sleep
 
+# moved to DbHandler
 # import aliases  # PREFORK_ALIASES
 # import aliasesv2 as aliases # POSTFORK_ALIASES
 
 # Bis specific modules
 import apihandler
 import connectionmanager
-from libs.dbhandler import DbHandler
 import log
-from libs.logger import Logger
 import peershandler
 import plugins
 import wallet_keys
@@ -38,9 +37,11 @@ from connections import send, receive
 from digest import *
 from bismuthcore.helpers import sanitize_address
 from libs import keys, client
+from libs.logger import Logger
 from libs.node import Node
 from libs.config import Config
 from libs.fork import Fork
+from libs.dbhandler import DbHandler
 
 import essentials
 from bismuthcore.compat import quantize_eight, quantize_two
@@ -60,14 +61,13 @@ fork = Fork()
 appname = "Bismuth"
 appauthor = "Bismuth Foundation"
 
-# nodes_ban_reset=config.nodes_ban_reset
-
 
 def sql_trace_callback(log, id, statement):
     line = f"SQL[{id}] {statement}"
     log.warning(line)
 
-
+""" no more needed - see DbHandler.rollback(height)"""
+"""
 def rollback(node: "Node", db_handler: "DbHandler", block_height: str) -> None:
     node.logger.app_log.warning(f"Status: Rolling back below: {block_height}")
     db_handler.rollback_under(block_height)
@@ -76,19 +76,16 @@ def rollback(node: "Node", db_handler: "DbHandler", block_height: str) -> None:
     db_handler.aliases_rollback(block_height)
     # rollback indices
     node.logger.app_log.warning(f"Status: Chain rolled back below {block_height} and will be resynchronized")
+"""
 
-
-def bin_convert(string: str):
-    # TODO: Move to bismuthcore/helpers.py
-    return ''.join(format(ord(x), '8b').replace(' ', '0') for x in string)
-
-
+"""
 def balanceget(balance_address, db_handler):
     # EGG_EVO: Multi step refactoring
     # Returns full detailled balance info
     # return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
     node.logger.app_log.warning("balanceget(balance_address, db_handler) is deprecated, use db_handler.balance_get_full(balance_address, mp.MEMPOOL) instead")
     return db_handler.balance_get_full(balance_address, mp.MEMPOOL)
+"""
 
 # TODO: kept for notice, will disappear in a later clean up
 """
@@ -176,7 +173,8 @@ def old_balanceget(balance_address, db_handler):
 """
 
 
-def blocknf(node: "Node", block_hash_delete: str, peer_ip: str, db_handler: "DbHandler", hyperblocks: bool=False):
+def blocknf(node: "Node", block_hash_delete: str, peer_ip: str, db_handler: "DbHandler", hyperblocks: bool=False) -> None:
+    # EGG_EVO: To be merged into libs/Node
     """
     Rolls back a single block, updates node object variables.
     Rollback target must be above checkpoint.
@@ -185,9 +183,7 @@ def blocknf(node: "Node", block_hash_delete: str, peer_ip: str, db_handler: "DbH
     they wouldn't find the hash and cause rollback.
     """
     node.logger.app_log.info(f"Rollback operation on {block_hash_delete} initiated by {peer_ip}")
-
     my_time = ttime()
-
     if not node.db_lock.locked():
         node.db_lock.acquire()
         node.logger.app_log.warning(f"Database lock acquired")
@@ -290,9 +286,6 @@ def blocknf(node: "Node", block_hash_delete: str, peer_ip: str, db_handler: "DbH
         node.logger.app_log.info(reason)
 
 
-
-# init
-
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
         # this is a dedicated thread for each client (not ip)
@@ -300,16 +293,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             node.logger.app_log.warning("Inbound: Rejected incoming cnx, node is stopping")
             return
 
+
         db_handler = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram,
                                node.ledger_ram_file, node.logger, trace_db_calls=node.config.trace_db_calls)
 
         client_instance = client.Client()
 
-        try:
-            peer_ip = self.request.getpeername()[0]
-        except:
-            node.logger.app_log.warning("Inbound: Transport endpoint was not connected")
-            return
 
         threading.current_thread().name = f"in_{peer_ip}"
         # if threading.active_count() < node.config.thread_limit or peer_ip == "127.0.0.1":

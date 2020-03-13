@@ -161,6 +161,10 @@ class DbHandler:
             alias_last_block = int(self.index_cursor.fetchone()[0])
         except:
             alias_last_block = 0
+        # Egg note: this is not the real last anchor. We use the last alias index as anchor.
+        # If many blocks passed by since, every call to update will have to parse large data (with like% query).
+        # We could have an anchor table in index.db , with real anchor from last check.
+        # to be dropped in case of rollback ofc.
         self.logger.app_log.warning("Alias anchor block: {}".format(alias_last_block))
         self.h.execute(
             "SELECT block_height, address, openfield FROM transactions WHERE openfield LIKE ? AND block_height >= ? ORDER BY block_height ASC, timestamp ASC;",

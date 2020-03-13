@@ -66,15 +66,17 @@ def tokens_update(node, db_handler_instance):
                     node.logger.app_log.warning("Txid: {}".format(txid))
 
                     total = x[6].split(":")[1]
+                    # NEGG ote: Maybe force this to be positive int?
                     node.logger.app_log.warning("Total amount: {}".format(total))
 
                     db_handler_instance.index_cursor.execute("INSERT INTO tokens VALUES (?,?,?,?,?,?,?)",
-                                                              (block_height, timestamp, token_name, "issued", issued_by, txid, total))
+                                                              (block_height, timestamp, token_name, "issued",
+                                                               issued_by, txid, total))
 
                     if node.plugin_manager:
                         node.plugin_manager.execute_action_hook('token_issue',
-                                                           {'token': token_name, 'issuer': issued_by,
-                                                            'txid': txid, 'total': total})
+                                                                {'token': token_name, 'issuer': issued_by,
+                                                                 'txid': txid, 'total': total})
 
                 else:
                     node.logger.app_log.warning("This token is already registered: {}".format(x[1]))
