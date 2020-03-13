@@ -22,7 +22,7 @@ import threading
 from sys import version_info, exc_info
 from time import time as ttime, sleep
 
-import aliases  # PREFORK_ALIASES
+# import aliases  # PREFORK_ALIASES
 # import aliasesv2 as aliases # POSTFORK_ALIASES
 
 # Bis specific modules
@@ -941,7 +941,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "aliasget":  # all for a single address, no protection against overlapping
                     if node.peers.is_allowed(peer_ip, data):
-                        aliases.aliases_update(node, db_handler)
+                        db_handler.aliases_update()
                         alias_address = sanitize_address(receive(self.request))
                         send(self.request, db_handler.aliasget(alias_address))
                     else:
@@ -949,7 +949,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "aliasesget":  # only gets the first one, for multiple addresses
                     if node.peers.is_allowed(peer_ip, data):
-                        aliases.aliases_update(node, db_handler)
+                        db_handler.aliases_update()
                         aliases_request = receive(self.request)
                         results = db_handler.aliasesget(aliases_request)
                         send(self.request, results)
@@ -989,9 +989,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "addfromalias":
                     if node.peers.is_allowed(peer_ip, data):
-
-                        aliases.aliases_update(node, db_handler)
-
+                        db_handler.aliases_update()
                         alias_address = receive(self.request)
                         address_fetch = db_handler.addfromalias(alias_address)
                         node.logger.app_log.warning(f"Fetched the following alias address: {address_fetch}")

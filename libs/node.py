@@ -18,7 +18,6 @@ from bismuthcore.helpers import just_int_from, download_file
 from essentials import keys_check, keys_load  # To be handled by polysign
 from essentials import checkpoint_set  # To be moved here
 from difficulty import difficulty  # where does this belongs? check usages
-import aliases  # Aliases are to be moved to db_handler
 
 from libs.config import Config
 from libs.solodbhandler import SoloDbHandler
@@ -28,7 +27,7 @@ if TYPE_CHECKING:
   from libs.dbhandler import DbHandler
 
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
 
 class Node:
@@ -367,7 +366,7 @@ class Node:
 
         checkpoint_set(self)
         self.logger.app_log.warning("Status: Indexing aliases")
-        aliases.aliases_update(self, db_handler)
+        db_handler.aliases_update()
 
     def single_user_checks(self) -> None:
         """Called at instanciation time, when db is not shared yet.

@@ -5,6 +5,7 @@ Sqlite3 Database handler module for Bismuth nodes
 from time import sleep
 import sqlite3
 import sys
+import re
 # import essentials
 from decimal import Decimal
 from bismuthcore.compat import quantize_two, quantize_eight
@@ -22,7 +23,9 @@ if TYPE_CHECKING:
   from libs.logger import Logger
 
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
+
+ALIAS_REGEXP = r'^alias='
 
 
 def sql_trace_callback(log, sql_id, statement: str):
@@ -52,6 +55,7 @@ class DbHandler:
         self.index.text_factory = str
         self.index.execute('PRAGMA case_sensitive_like = 1;')
         self.index_cursor = self.index.cursor()  # Cursor to the index db
+        # EGG_EVO: cursors to be moved to private properties at a later stage.
 
         self.hdd = sqlite3.connect(self.ledger_path, timeout=1)
         if self.trace_db_calls:
@@ -149,6 +153,32 @@ class DbHandler:
             self.logger.app_log.warning(f"Rolled back the alias index below {(height)}")
         except Exception as e:
             self.logger.app_log.warning(f"Failed to roll back the alias index below {(height)} due to {e}")
+
+    def aliases_update(self):
+        """Updates the aliases index"""
+        self._execute(self.index_cursor, "SELECT block_height FROM aliases ORDER BY block_height DESC LIMIT 1;")
+        try:
+            alias_last_block = int(self.index_cursor.fetchone()[0])
+        except:
+            alias_last_block = 0
+        self.logger.app_log.warning("Alias anchor block: {}".format(alias_last_block))
+        self.h.execute(
+            "SELECT block_height, address, openfield FROM transactions WHERE openfield LIKE ? AND block_height >= ? ORDER BY block_height ASC, timestamp ASC;",
+            ("alias=" + '%',) + (alias_last_block,))
+        # include the anchor block in case indexation stopped there
+        result = self.h.fetchall()
+        for openfield in result:
+            alias = re.sub(ALIAS_REGEXP, "", openfield[2])  # Remove leading "alias="
+            # Egg: since the query filters on openfield beginning with "alias=", a [6:] may be as simple.
+            self.logger.app_log.warning(f"Processing alias registration: {alias}")
+            try:
+                self.index_cursor.execute("SELECT * from aliases WHERE alias = ?", (alias,))
+                dummy = self.index_cursor.fetchall()[0]  # check for uniqueness
+                self.logger.app_log.warning(f"Alias already registered: {alias}")
+            except:
+                self.index_cursor.execute("INSERT INTO aliases VALUES (?,?,?)", (openfield[0], openfield[1], alias))
+                self.index.commit()
+                self.logger.app_log.warning(f"Added alias to the database: {alias} from block {openfield[0]}")
 
     # ==== Tokens ==== #
 
