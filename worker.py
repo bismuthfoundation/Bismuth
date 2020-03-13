@@ -101,13 +101,14 @@ def worker(host: str, port: int, node: "Node"):
         node.logger.app_log.info(f"Connected to {this_client}")
         node.logger.app_log.info(f"Current active pool: {node.peers.connection_pool}")
 
-    if not node.peers.is_banned(host) and node.peers.version_allowed(host, node.config.version_allow) and not node.IS_STOPPING:
-        db_handler = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram, node.ledger_ram_file, node.logger)
+    if node.peers.is_banned(host) or node.IS_STOPPING:
+        return
+    if not node.peers.version_allowed(host, node.config.version_allow):
+        return
+    db_handler = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram, node.ledger_ram_file, node.logger)
 
     while not node.peers.is_banned(host) and node.peers.version_allowed(host, node.config.version_allow) and not node.IS_STOPPING:
         try:
-            #ensure_good_peer_version(host)
-
             data = receive(s)  # receive data, one and the only root point
             # print(data)
 

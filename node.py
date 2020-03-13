@@ -285,7 +285,8 @@ def blocknf(node: "Node", block_hash_delete: str, peer_ip: str, db_handler: "DbH
         node.plugin_manager.execute_action_hook('rollback', rollback)
         node.logger.app_log.info(reason)
 
-
+# TODO: this requestHandler to be renamed and moved into a mfile of its own.
+# Then check what can be factorized between it and worker.py
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self) -> None:
         # this is a dedicated thread for each client (not ip)
@@ -454,15 +455,15 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             block_req = node.peers.consensus_max
                             node.logger.app_log.warning("Longest chain rule triggered")
 
+                        # Nothing guarantees "received_block_height" has been defined before or is up to date.
+                        # Should for a pristine client, but can't make sure.
+                        # TODO Egg: Add some state here in the flow, at least a flag.
                         if int(received_block_height) >= block_req and int(received_block_height) > node.last_block:
-
                             try:  # they claim to have the longest chain, things must go smooth or ban
                                 node.logger.app_log.warning(f"Confirming to sync from {peer_ip}")
                                 node.plugin_manager.execute_action_hook('sync', {'what': 'syncing_from', 'ip': peer_ip})
                                 send(self.request, "blockscf")
-
                                 segments = receive(self.request)
-
                             except:
                                 if node.peers.warning(self.request, peer_ip, "Failed to deliver the longest chain"):
                                     node.logger.app_log.info(f"{peer_ip} banned")
@@ -569,7 +570,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "blocknf":
                     block_hash_delete = receive(self.request)
-                    # print peer_ip
+                    # TODO Egg: Same as above, some state to keep here, consensus_blockheight may be undefined or not up to date.
                     if consensus_blockheight == node.peers.consensus_max:
                         blocknf(node, block_hash_delete, peer_ip, db_handler)
                         if node.peers.warning(self.request, peer_ip, "Rollback", 2):
@@ -950,7 +951,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 # Not mandatory, but may help to reindex with minimal sql queries
 
                 elif data == "tokensget":
-                    # TODO: to be handled by token modules, with no sql here in node.
+                    # TODO: to be handled by token/dbhandler modules, with no sql here in node.
                     if node.peers.is_allowed(peer_ip, data):
                         tokens_address = sanitize_address(receive(self.request))
                         tokens_user = db_handler.tokens_user(tokens_address)
@@ -982,10 +983,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if node.peers.is_allowed(peer_ip, data):
                         db_handler.aliases_update()
                         alias_address = receive(self.request)
+                        # Egg: we could add an optional "update" boolean flag to addfromalias, that would auto prepend aliases_update.
+                        # Avoids line above, and avoids doing the update if we finally get no alias
                         address_fetch = db_handler.addfromalias(alias_address)
                         node.logger.app_log.warning(f"Fetched the following alias address: {address_fetch}")
                         send(self.request, address_fetch)
-
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for addfromalias command")
 
@@ -995,14 +997,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         target_public_key_b64encoded = db_handler.pubkeyget(pub_key_address)
                         # returns as stored in the DB, that is b64 encoded, except for RSA where it's b64 encoded twice.
                         send(self.request, target_public_key_b64encoded)
-
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for pubkeyget command")
 
                 elif data == "aliascheck":
                     if node.peers.is_allowed(peer_ip, data):
                         reg_string = str(receive(self.request))  # sanitize user input
-
                         """
                         # EGG_EVO these requests could have been huge (no limit).
                         # Moving to mempool and dbhandler to decouple from low level db format.
@@ -1010,6 +1010,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         db_handler._execute_param(db_handler.h, "SELECT timestamp FROM transactions WHERE openfield = ?;", ("alias=" + reg_string,))
                         registered_already = db_handler.h.fetchone()
                         """
+                        # Egg: No prior db_handler.aliases_update() here? could be needed
                         registered_pending = mp.MEMPOOL.alias_exists(reg_string)  # this will lookup from mp transactions
                         registered_already = db_handler.alias_exists(reg_string)  # this looks up in alias table, faster.
                         if not registered_already and not registered_pending:
@@ -1026,8 +1027,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     - dup code for assembling and signing the TX
                     TODO: DEPRECATED
                     """
+                    # TODO: To remove.
                     if node.peers.is_allowed(peer_ip, data):
+                        send(self.request, "txsend is unsafe and deprecated, please don't use.")
                         node.logger.app_log.warning("txsend is unsafe and deprecated, please don't use.")
+                        """
                         tx_remote = receive(self.request)
 
                         # receive data necessary for remote tx construction
@@ -1070,31 +1074,25 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         send(self.request, str(remote_signature_enc))
                         # wipe variables
                         (tx_remote, remote_tx_privkey, tx_remote_key) = (None, None, None)
+                        """
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for txsend command")
 
                 # less important methods
                 elif data == "addvalidate":
                     if node.peers.is_allowed(peer_ip, data):
-
                         address_to_validate = receive(self.request)
                         if essentials.address_validate(address_to_validate):
                             result = "valid"
                         else:
                             result = "invalid"
-
                         send(self.request, result)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for addvalidate command")
 
                 elif data == "annget":
                     if node.peers.is_allowed(peer_ip):
-
-                        # with open(peerlist, "r") as peer_list:
-                        #    peers_file = peer_list.read()
-
                         result = db_handler.annget(node.config.genesis)
-
                         send(self.request, result)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for annget command")
@@ -1103,14 +1101,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if node.peers.is_allowed(peer_ip):
                         result = db_handler.annverget(node.config.genesis)
                         send(self.request, result)
-
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for annget command")
 
                 elif data == "peersget":
                     if node.peers.is_allowed(peer_ip, data):
                         send(self.request, node.peers.peer_list_disk_format())
-
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for peersget command")
 
@@ -1267,15 +1263,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 node.logger.app_log.info(f"Server loop finished for {peer_ip}")
 
             except Exception as e:
-
                 node.logger.app_log.info(f"Inbound: Lost connection to {peer_ip}")
                 node.logger.app_log.info(f"Inbound: {e}")
-
                 # remove from consensus (connection from them)
                 node.peers.consensus_remove(peer_ip)
                 # remove from consensus (connection from them)
                 self.request.close()
-
                 if node.config.debug:
                     if "Socket EOF" not in str(e) and "Broken pipe" not in str(e) and "Socket POLLHUP" not in str(e) and "Bad file descriptor" not in str(e):
                         # raise if debug, but not for innocuous closed pipes.
