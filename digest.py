@@ -62,7 +62,7 @@ class Block:
 
 
 def fork_reward_check(node, db_handler):
-    # fork handling
+    """Checks whether fork conditions apply"""
     if node.is_testnet:
         if node.last_block > fork.POW_FORK_TESTNET:
             if not fork.check_postfork_reward_testnet(db_handler):
@@ -74,9 +74,9 @@ def fork_reward_check(node, db_handler):
                 print("Rolling back")
                 db_handler.rollback_under(fork.POW_FORK - 1)
                 raise ValueError("Rolling back chain due to old fork data")
-    # fork handling
 
 def rewards(node, block_instance, db_handler, miner_tx):
+    """Checks whether reward conditions apply, development rewards and hn contract rewards"""
     if int(block_instance.block_height_new) % 10 == 0:  # every 10 blocks
         db_handler.dev_reward(node, block_instance, miner_tx, block_instance.mining_reward, block_instance.mirror_hash)
         db_handler.hn_reward(node,block_instance,miner_tx,block_instance.mirror_hash)
@@ -109,8 +109,12 @@ def transaction_validate(node, tx):
                              f"to {tx.received_recipient} amount {tx.received_amount}")
 
 def sort_transactions(block, tx, block_instance, miner_tx, node):
-    # print("sort_transactions")
-    # print("block_instance.tx_count", block_instance.tx_count)
+    """
+    Sanitizes transactions inside a block,
+    checks whether coinbase transaction sends 0,
+    defines coinbase transaction,
+    appends transaction to a list of sanitized transactions (sanitized block)
+    """
 
     for tx_index, transaction in enumerate(block):
         # print("tx_index", tx_index)
@@ -153,6 +157,14 @@ def sort_transactions(block, tx, block_instance, miner_tx, node):
         transaction_validate(node=node, tx=tx)
 
 def process_transactions(node, db_handler, block, block_instance, miner_tx, block_transactions):
+    """
+    Checks transaction age and rejects it if it's too old,
+    sanitizes transaction (again, needlessly, it was done in sort_transactions()),
+    fee calculation with regards to the rest of the block,
+    decides reward,
+    appends to block_transactions variable (again, because checks are not in one place)
+    """
+
     try:
         fees_block = []
         block_instance.mining_reward = 0  # avoid warning
@@ -245,6 +257,7 @@ def process_transactions(node, db_handler, block, block_instance, miner_tx, bloc
             except:
                 # tx was not or is no more in the local mempool
                 pass
+
     except Exception as e:
         print(e)
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -253,6 +266,9 @@ def process_transactions(node, db_handler, block, block_instance, miner_tx, bloc
         raise
 
 def check_signature(block, node, db_handler, peer_ip, block_instance):
+    """
+    Checks signature presence in the chain, raises an error if it is already present so it is not included twice
+    """
     # TODO EGG: benchmark this loop vs a single "WHERE IN" SQL
     signature_list = []
 
@@ -295,6 +311,7 @@ def check_signature(block, node, db_handler, peer_ip, block_instance):
 
 
 def process_blocks(blocks, node, db_handler, block_instance, miner_tx, peer_ip, tx, block_transactions):
+
     # here, functions in functions use both local vars or parent variables, it's a call for nasty bugs.
     # take care of pycharms hints, do not define func in funcs.
     try:
