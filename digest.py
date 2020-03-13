@@ -364,9 +364,11 @@ def process_blocks(blocks, node, db_handler, block_instance, miner_tx, peer_ip, 
             # node.logger.app_log.info("Nonce: {}".format(nonce))
 
             # check if we already have the sha_hash
-            db_handler._execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
-                                      (block_instance.block_hash,))
-            dummy = db_handler.h.fetchone()
+            dummy = db_handler.block_height_from_hash(block_instance.block_hash)
+
+            #db_handler._execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE block_hash = ?", (block_instance.block_hash,))
+            #dummy = db_handler.h.fetchone()
+
             if dummy:
                 raise ValueError(
                     "Skipping digestion of block {} from {}, because we already have it on block_height {}".
