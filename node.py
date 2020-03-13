@@ -287,24 +287,21 @@ def blocknf(node: "Node", block_hash_delete: str, peer_ip: str, db_handler: "DbH
 
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
-    def handle(self):
+    def handle(self) -> None:
         # this is a dedicated thread for each client (not ip)
         if node.IS_STOPPING:
             node.logger.app_log.warning("Inbound: Rejected incoming cnx, node is stopping")
             return
+        try:
+            peer_ip = self.request.getpeername()[0]
+        except:
+            node.logger.app_log.warning("Inbound: Transport endpoint was not connected")
+            return
 
-
-        db_handler = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram,
-                               node.ledger_ram_file, node.logger, trace_db_calls=node.config.trace_db_calls)
-
-        client_instance = client.Client()
-
-
-        threading.current_thread().name = f"in_{peer_ip}"
-        # if threading.active_count() < node.config.thread_limit or peer_ip == "127.0.0.1":
         # Always keep a slot for whitelisted (wallet could be there)
         if threading.active_count() < node.config.thread_limit / 3 * 2 or node.peers.is_whitelisted(peer_ip):  # inbound
-            client_instance.connected = True
+            # Avoid writing hard to read negative condition
+            pass
         else:
             try:
                 node.logger.app_log.info(f"Free capacity for {peer_ip} unavailable, disconnected")
@@ -318,10 +315,17 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
         dict_ip = {'ip': peer_ip}
         node.plugin_manager.execute_filter_hook('peer_ip', dict_ip)
-
         if node.peers.is_banned(peer_ip) or dict_ip['ip'] == 'banned':
             self.request.close()
             node.logger.app_log.info(f"IP {peer_ip} banned, disconnected")
+
+        # Only now that we handled the exclusions, we can allocate ressources.
+
+        threading.current_thread().name = f"in_{peer_ip}"
+        db_handler = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram,
+                               node.ledger_ram_file, node.logger, trace_db_calls=node.config.trace_db_calls)
+        client_instance = client.Client()
+        client_instance.connected = True
 
         # TODO: I'd like to call
         """
@@ -331,10 +335,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         TODO: Workaround: make sure our external ip and port is present in the peers we announce, or new nodes are likely never to be announced. 
         Warning: needs public ip/port, not local ones!
         """
-
         timeout_operation = 120  # timeout
         timer_operation = ttime()  # start counting
-
         while not node.peers.is_banned(peer_ip) and node.peers.version_allowed(peer_ip, node.config.version_allow) and client_instance.connected:
             try:
                 # Failsafe
