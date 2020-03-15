@@ -213,18 +213,18 @@ class SoloDbHandler:
         self.logger.app_log.warning("Defragmenting hyper...")
         self._hyper_cursor.execute("VACUUM")  # Can take some time
 
-    def db_to_ram(self, source_db: str, dest_ram_db: str) -> None:
+    def db_to_ram(self, source_db: str, dest_ram_db: str) -> sqlite3.Connection:
         """Copies source db to provided ram instance"""
         if self.py_version >= 370:
-            temp_target = sqlite3.connect(dest_ram_db, uri=True, isolation_level=None, timeout=1)
+            target = sqlite3.connect(dest_ram_db, uri=True, isolation_level=None, timeout=1)
             if self.trace_db_calls:
-                temp_target.set_trace_callback(
+                target.set_trace_callback(
                     functools.partial(sql_trace_callback, self.logger.app_log, "TEMP-TARGET"))
             temp_source = sqlite3.connect(source_db, uri=True, isolation_level=None, timeout=1)
             if self.trace_db_calls:
                 temp_source.set_trace_callback(
                     functools.partial(sql_trace_callback, self.logger.app_log, "TEMP-SOURCE"))
-            temp_source.backup(temp_target)
+            temp_source.backup(target)
             temp_source.close()
         else:
             # Older python version do not have a backup method
@@ -233,14 +233,15 @@ class SoloDbHandler:
             if self.trace_db_calls:
                 temp_source.set_trace_callback(
                     functools.partial(sql_trace_callback, self.logger.app_log, "TEMP-SOURCE"))
-            temp_target = sqlite3.connect(dest_ram_db, uri=True, timeout=1, isolation_level=None)
+            target = sqlite3.connect(dest_ram_db, uri=True, timeout=1, isolation_level=None)
             if self.trace_db_calls:
-                temp_target.set_trace_callback(
+                target.set_trace_callback(
                     functools.partial(sql_trace_callback, self.logger.app_log, "TEMP-TARGET"))
-            temp_target.text_factory = str
+                target.text_factory = str
             query = "".join(line for line in temp_source.iterdump())
-            temp_target.executescript(query)
+            target.executescript(query)
             temp_source.close()
+        return target
 
     def _sequencing_check(self, sequencing_last, cursor, name) -> int:
         y = 0

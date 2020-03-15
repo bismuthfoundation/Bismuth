@@ -37,7 +37,7 @@ class Node:
                  "last_block_ago", "difficulty", "ledger_temp", "hyper_temp", "recompress", "peerfile",
                  "ledger_ram_file", "index_db", "peerfile_suggested", "config", "logger", "keys", "plugin_manager",
                  "apihandler", "db_lock", "q", "is_testnet", "is_regnet", "is_mainnet", "hdd_block", "hdd_hash",
-                 "last_block_hash", "last_block", "peers", "syncing", "checkpoint", "digest_block")
+                 "last_block_hash", "last_block", "peers", "syncing", "checkpoint", "digest_block", "ram_db")
 
     def __init__(self, digest_block, config: Config=None, app_version: str="", logger=None, keys=None, run_checks=True):
         # TODO EGG: digest_block will need to be integrated in this class. current hack necessary to avoid circular references.
@@ -71,6 +71,7 @@ class Node:
         # default mainnet config
         self.peerfile = "peers.txt"
         self.ledger_ram_file = "file:ledger?mode=memory&cache=shared"
+        self.ram_db = None
         self.index_db = "static/index.db"
         self.peerfile_suggested = "suggested_peers.txt"
 
@@ -342,10 +343,11 @@ class Node:
         # Copy hyper db into ram
         if not self.config.ram:
             # Early exit to limit indents
+            self.ram_db = None
             return
         try:
             self.logger.app_log.warning("Status: Moving database to RAM")
-            solo_handler.db_to_ram(self.config.hyper_path, self.ledger_ram_file)
+            self.ram_db = solo_handler.db_to_ram(self.config.hyper_path, self.ledger_ram_file)
             self.logger.app_log.warning("Status: Hyperblock ledger moved to RAM")
         except Exception as e:
             self.logger.app_log.warning("Move to ram: {}".format(e))
