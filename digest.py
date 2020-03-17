@@ -75,13 +75,15 @@ def fork_reward_check(node, db_handler):
                 db_handler.rollback_under(fork.POW_FORK - 1)
                 raise ValueError("Rolling back chain due to old fork data")
 
-def rewards(node, block_instance, db_handler, miner_tx):
+
+def rewards(node: "Node", block_instance, db_handler, miner_tx):
     """Checks whether reward conditions apply, development rewards and hn contract rewards"""
     if int(block_instance.block_height_new) % 10 == 0:  # every 10 blocks
         db_handler.dev_reward(node, block_instance, miner_tx, block_instance.mining_reward, block_instance.mirror_hash)
-        db_handler.hn_reward(node,block_instance,miner_tx,block_instance.mirror_hash)
+        db_handler.hn_reward(node, block_instance, miner_tx, block_instance.mirror_hash)
 
-def transaction_validate(node, tx):
+
+def transaction_validate(node: "Node", tx):
     """Validates all transaction elements. Raise a ValueError exception on error."""
 
     # Begin with costless checks first, so we can early exit. Time of tx

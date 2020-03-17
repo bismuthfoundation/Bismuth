@@ -23,9 +23,11 @@ if TYPE_CHECKING:
   from libs.logger import Logger
 
 
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 
 ALIAS_REGEXP = r'^alias='
+SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+SQL_TO_MISC = "INSERT INTO misc VALUES (?,?)"
 
 
 def sql_trace_callback(log, sql_id, statement: str):
@@ -34,9 +36,12 @@ def sql_trace_callback(log, sql_id, statement: str):
 
 
 class DbHandler:
-    # todo: define  slots. One instance per thread, can be significant.
-    def __init__(self, index_db: str, ledger_path: str, hyper_path: str, ram: bool, ledger_ram_file: str, logger: "Logger",
-                 trace_db_calls: bool=False):
+    # Define  slots. One instance per thread, can be significant.
+    __slots__ = ("ram", "ledger_ram_file", "ledger_path", "hyper_path", "logger", "trace_db_calls", "index_db",
+                 "index", "index_cursor", "hdd", "h", "hdd2", "h2", "conn", "c")
+
+    def __init__(self, index_db: str, ledger_path: str, hyper_path: str, ram: bool, ledger_ram_file: str,
+                 logger: "Logger", trace_db_calls: bool=False):
         """To be used only for tests - See .from_node() factory above."""
         self.ram = ram
         self.ledger_ram_file = ledger_ram_file
@@ -79,9 +84,6 @@ class DbHandler:
         self.conn.execute('PRAGMA case_sensitive_like = 1;')
         self.conn.text_factory = str
         self.c = self.conn.cursor()  # c is a Cursor to either on disk hyper db or in ram ledger, depending on config. It's the working db for all recent queries.
-
-        self.SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
-        self.SQL_TO_MISC = "INSERT INTO misc VALUES (?,?)"
 
     @classmethod
     def from_node(cls, node: "Node") -> "DbHandler":
@@ -505,10 +507,10 @@ class DbHandler:
                             (block_array.block_height_new, diff_save))
         self.commit(self.conn)
 
-        # db_handler.execute_many(db_handler.c, self.SQL_TO_TRANSACTIONS, block_transactions)
+        # db_handler.execute_many(db_handler.c, SQL_TO_TRANSACTIONS, block_transactions)
 
         for transaction2 in block_transactions:
-            self._execute_param(self.c, self.SQL_TO_TRANSACTIONS,
+            self._execute_param(self.c, SQL_TO_TRANSACTIONS,
                                 (str(transaction2[0]), str(transaction2[1]), str(transaction2[2]),
                                       str(transaction2[3]), str(transaction2[4]), str(transaction2[5]),
                                       str(transaction2[6]), str(transaction2[7]), str(transaction2[8]),
@@ -520,24 +522,24 @@ class DbHandler:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
         def transactions_to_h(data):
             for x in data:  # we want to save to ledger.db
-                self._execute_param(self.h, self.SQL_TO_TRANSACTIONS,
+                self._execute_param(self.h, SQL_TO_TRANSACTIONS,
                                     (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
             self.commit(self.hdd)
 
         def misc_to_h(data):
             for x in data:  # we want to save to ledger.db from RAM/hyper.db depending on ram conf
-                self._execute_param(self.h, self.SQL_TO_MISC, (x[0], x[1]))
+                self._execute_param(self.h, SQL_TO_MISC, (x[0], x[1]))
             self.commit(self.hdd)
 
         def transactions_to_h2(data):
             for x in data:
-                self._execute_param(self.h2, self.SQL_TO_TRANSACTIONS,
+                self._execute_param(self.h2, SQL_TO_TRANSACTIONS,
                                     (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
             self.commit(self.hdd2)
 
         def misc_to_h2(data):
             for x in data:
-                self._execute_param(self.h2, self.SQL_TO_MISC, (x[0], x[1]))
+                self._execute_param(self.h2, SQL_TO_MISC, (x[0], x[1]))
             self.commit(self.hdd2)
 
         try:
@@ -573,38 +575,38 @@ class DbHandler:
 
     def dev_reward(self, node: "Node", block_array, miner_tx, mining_reward, mirror_hash) -> None:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
-        self._execute_param(self.c, self.SQL_TO_TRANSACTIONS,
+        self._execute_param(self.c, SQL_TO_TRANSACTIONS,
                             (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Development Reward", str(node.config.genesis),
                                   str(mining_reward), "0", "0", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
 
-    def hn_reward(self, node,block_array, miner_tx, mirror_hash):
+    def hn_reward(self, node, block_array, miner_tx, mirror_hash):
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
         fork = Fork()
 
         if node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET:
-            self.reward_sum = 24 - 10 * (node.last_block + 5 - fork.POW_FORK_TESTNET) / 3000000
+            reward_sum = 24 - 10 * (node.last_block + 5 - fork.POW_FORK_TESTNET) / 3000000
 
         elif node.is_mainnet and node.last_block >= fork.POW_FORK:
-            self.reward_sum = 24 - 10*(node.last_block + 5 - fork.POW_FORK)/3000000
+            reward_sum = 24 - 10*(node.last_block + 5 - fork.POW_FORK)/3000000
         else:
-            self.reward_sum = 24
+            reward_sum = 24
 
-        if self.reward_sum < 0.5:
-            self.reward_sum = 0.5
+        if reward_sum < 0.5:
+            reward_sum = 0.5
 
-        self.reward_sum = '{:.8f}'.format(self.reward_sum)
+        reward_sum = '{:.8f}'.format(reward_sum)
 
-        self._execute_param(self.c, self.SQL_TO_TRANSACTIONS,
+        self._execute_param(self.c, SQL_TO_TRANSACTIONS,
                             (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Hypernode Payouts",
                             "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16",
-                            self.reward_sum, "0", "0", mirror_hash, "0", "0", "0", "0"))
+                            reward_sum, "0", "0", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
 
     # ====  Core helpers that should not be called from the outside ====
     # TODO EGG_EVO: Stopped there for now.
 
-    def commit(self, connection) -> None:
+    def commit(self, connection: sqlite3.Connection) -> None:
         """Secure commit for slow nodes"""
         while True:
             try:
@@ -634,7 +636,7 @@ class DbHandler:
                 self.logger.app_log.warning(f"Database retry reason: {e}")
                 sleep(1)
 
-    def _execute_param(self, cursor, query:str, param: Union[list, tuple]) -> None:
+    def _execute_param(self, cursor, query: str, param: Union[list, tuple]) -> None:
         """Secure _execute w/ param for slow nodes"""
 
         while True:
@@ -654,16 +656,17 @@ class DbHandler:
                 self.logger.app_log.warning(f"Database retry reason: {e}")
                 sleep(1)
 
-    def fetchall(self, cursor, query:str, param: Union[list, tuple, None]=None) -> list:
+    def fetchall(self, cursor, query: str, param: Union[list, tuple, None]=None) -> list:
         """Helper to simplify calling code, _execute and fetch in a single line instead of 2"""
         # EGG_EVO: convert to a private method as well.
         if param is None:
             self._execute(cursor, query)
         else:
+
             self._execute_param(cursor, query, param)
         return cursor.fetchall()
 
-    def fetchone(self, cursor, query:str, param: list=None) -> Union[None, str, int, float, bool]:
+    def fetchone(self, cursor, query: str, param: list=None) -> Union[None, str, int, float, bool]:
         """Helper to simplify calling code, _execute and fetch in a single line instead of 2"""
         # EGG_EVO: convert to a private method as well.
         if param is None:
