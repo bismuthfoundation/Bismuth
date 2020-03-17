@@ -9,7 +9,7 @@ import os
 import tarfile
 import sys
 import platform
-from time import sleep, time as ttime
+from time import sleep
 from shutil import copy
 from math import floor
 
@@ -24,7 +24,7 @@ from libs.solodbhandler import SoloDbHandler
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-  from libs.dbhandler import DbHandler
+    from libs.dbhandler import DbHandler
 
 
 __version__ = "0.0.7"
@@ -40,17 +40,14 @@ class Node:
                  "last_block_hash", "last_block", "peers", "syncing", "checkpoint", "digest_block", "ram_db")
 
     def __init__(self, digest_block, config: Config=None, app_version: str="", logger=None, keys=None, run_checks=True):
-        # TODO EGG: digest_block will need to be integrated in this class. current hack necessary to avoid circular references.
-        # Self built info
+        # TODO EGG: digest_block will need to be integrated in this class.
+        # current hack necessary to avoid circular references.
         self.py_version = int(str(sys.version_info.major) + str(sys.version_info.minor) + str(sys.version_info.micro))
         self.linux = "Linux" in platform.system()
-
         # temp
         self.digest_block = digest_block
-
         # core flags
         self.IS_STOPPING = False
-
         # core properties
         self.app_version = app_version
         self.startup_time = None
@@ -85,33 +82,6 @@ class Node:
         self.db_lock = threading.Lock()
         self.q = queue.Queue()
 
-        """ Processed items - all checked and converted on the whole codebase
-        # config items, to be taken from config property
-        #- self.version_allow = None
-        #- self.version = None
-        #- self.port = None
-        #- self.hyper_path = None
-        #- self.ledger_path = None
-        #- self.hyper_recompress = True
-        #- self.debug_level = None
-        #- self.verify = None
-        #- self.thread_limit = None
-        #- self.rebuild_db = None
-        #- self.debug = None
-        #- self.pause = None
-        #- self.tor = None
-        #- self.ram = None
-        #- self.reveal_address = None
-        #- self.terminal_output = None
-        #- self.egress = None
-        #- self.genesis = None
-        #- self.accept_peers = config.accept_peers
-        #- self.full_ledger = config.full_ledger
-        #- self.trace_db_calls = config.trace_db_calls
-        #- self.heavy3_path = config.heavy3_path
-        #- self.old_sqlite = config.old_sqlite
-        """
-
         # startup sequence
 
         # Net type
@@ -122,18 +92,17 @@ class Node:
 
         self.load_keys()
 
-        # TODO: EGG: migrate all "single mode" methods from top level node.py in there
-        # Add a "level" inner state and trigger by outside call.
+        # Migrated all "single mode" methods from top level node.py in there
         if run_checks:
             self.single_user_checks()
         else:
-            self.logger.app_log.warning("Warning: Node was instanciated without startup checks. Make sure you know what you are doing!!")
+            self.logger.app_log.warning("Warning: Node was instanciated without startup checks. "
+                                        "Make sure you know what you are doing!!")
 
     def _setup_net_type(self):
         """
         Adjust node properties depending on mainnet, testnet or regnet config
         """
-        # Done: only deals with 'node' structure, candidate for single user mode.
         self.logger.app_log.warning("Node init: Entering Net Type Setup")
         if "testnet" in self.config.version:
             self.is_testnet = True
@@ -152,7 +121,8 @@ class Node:
 
             redownload_test = input("Status: Welcome to the testnet. Redownload test ledger? y/n")
             if redownload_test == "y":
-                types = ['static/ledger_test.db-wal', 'static/ledger_test.db-shm', 'static/index_test.db', 'static/hyper_test.db-wal', 'static/hyper_test.db-shm']
+                types = ['static/ledger_test.db-wal', 'static/ledger_test.db-shm', 'static/index_test.db',
+                         'static/hyper_test.db-wal', 'static/hyper_test.db-shm']
                 for dbtype in types:
                     for file in glob.glob(dbtype):
                         os.remove(file)
@@ -202,7 +172,8 @@ class Node:
 
     def close(self, message: str="", force_exit: bool=False):
         """Terminate the node, with an optional message.
-        if force_exit is True, will call sys.exit(), else it will just raise its flag and wait for the main loop to terminate."""
+        if force_exit is True, will call sys.exit(), else it will just raise its flag
+        and wait for the main loop to terminate."""
         if message != '':
             self.logger.app_log.error(message)
         self.IS_STOPPING = True
@@ -217,8 +188,8 @@ class Node:
         """Initial loading of crypto keys"""
         keys_check(self.logger.app_log, "wallet.der")
         self.keys.key, self.keys.public_key_readable, self.keys.private_key_readable, _, _, \
-        self.keys.public_key_b64encoded, self.keys.address, self.keys.keyfile = \
-            keys_load("privkey.der", "pubkey.der")
+            self.keys.public_key_b64encoded, self.keys.address, self.keys.keyfile \
+            = keys_load("privkey.der", "pubkey.der")
         if self.is_regnet:
             regnet.PRIVATE_KEY_READABLE = self.keys.private_key_readable
             regnet.PUBLIC_KEY_B64ENCODED = self.keys.public_key_b64encoded
@@ -251,7 +222,8 @@ class Node:
             raise
 
     def _check_db_schema(self, solo_handler: SoloDbHandler):
-        # Was named "check_integrity". It was rather a crude db schema check, will need adjustments to handle the various possible dbs.
+        # Was named "check_integrity". It was rather a crude db schema check,
+        # will need adjustments to handle the various possible dbs.
         # some parts below also where in "initial_db_check()" but also are schema checks. merged into here
         if not os.path.exists("static"):
             os.mkdir("static")
@@ -264,7 +236,8 @@ class Node:
         try:
             ledger_schema = solo_handler.transactions_schema()
             if len(ledger_schema) != 12:
-                # EGG_EVO: Kept this test for the time being, but will need more complete and distinctive test depending on the db type
+                # EGG_EVO: Kept this test for the time being, but will need more complete and distinctive test
+                # depending on the db type
                 self.logger.app_log.error(
                     f"Status: Integrity check on ledger failed, bootstrapping from the website")
                 redownload = True
@@ -286,7 +259,8 @@ class Node:
             hdd2_block_last = solo_handler.block_height_max_hyper()
             hdd2_block_last_misc = solo_handler.block_height_max_diff_hyper()
             # cross-integrity check
-            if hdd_block_max == hdd2_block_last == hdd2_block_last_misc == hdd_block_max_diff and self.config.hyper_recompress:  # cross-integrity check
+            if hdd_block_max == hdd2_block_last == hdd2_block_last_misc == hdd_block_max_diff \
+                    and self.config.hyper_recompress:  # cross-integrity check
                 self.logger.app_log.warning("Status: Recompressing hyperblocks (keeping full ledger)")
                 self.recompress = True
                 # print (hdd_block_max,hdd2_block_last,node.config.hyper_recompress)
@@ -329,7 +303,7 @@ class Node:
         # Now gather all active addresses
         unique_addressess = solo_handler.distinct_hyper_recipients(depth_specific)
         for address in unique_addressess:
-            end_balance = solo_handler.update_hyper_balance_at_height(address, depth_specific)
+            solo_handler.update_hyper_balance_at_height(address, depth_specific)
         solo_handler.hyper_commit()
         solo_handler.cleanup_hypo(depth_specific)
         solo_handler.close()
@@ -395,9 +369,6 @@ class Node:
 
         self._ram_init(solo_handler)  # Save this one for the end (time consuming if something goes wrong)
         #
-        # TODO: WIP
-        #
-        #
         self.logger.app_log.warning("Status: Single user checks done.")
 
     def _initial_files_checks(self):
@@ -414,7 +385,7 @@ class Node:
 
     def checkpoint_set(self):
 
-        def round_down(number, order):
+        def round_down(number, order):  # Local helper
             return int(floor(number / order)) * order
 
         limit = 30
