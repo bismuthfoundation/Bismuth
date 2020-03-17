@@ -203,6 +203,8 @@ if __name__ == "__main__":
     node.logger.app_log = log.log("local_test.log", node.config.debug_level, node.config.terminal_output)
     node.logger.app_log.warning("Configuration settings loaded")
 
+    # EGG: kept this constructor for testing purposes, out of a Node instance.
+
     db_handler = dbhandler.DbHandler("static/index_local_test.db","static/ledger.db","static/hyper.db", False, None,
                                      node.logger, False)
 

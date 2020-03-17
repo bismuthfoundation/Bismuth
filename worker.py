@@ -105,7 +105,7 @@ def worker(host: str, port: int, node: "Node"):
         return
     if not node.peers.version_allowed(host, node.config.version_allow):
         return
-    db_handler = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram, node.ledger_ram_file, node.logger)
+    db_handler = DbHandler.from_node(node)
 
     while not node.peers.is_banned(host) and node.peers.version_allowed(host, node.config.version_allow) and not node.IS_STOPPING:
         try:

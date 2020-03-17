@@ -323,8 +323,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         # Only now that we handled the exclusions, we can allocate ressources.
 
         threading.current_thread().name = f"in_{peer_ip}"
-        db_handler = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram,
-                               node.ledger_ram_file, node.logger, trace_db_calls=node.config.trace_db_calls)
+        db_handler = DbHandler.from_node(node)
         client_instance = client.Client()
         client_instance.connected = True
 
@@ -1317,9 +1316,7 @@ if __name__ == "__main__":
             # Until here, we were in single user mode.
 
             # EGG_EVO: Is this just used once for initial sync?
-            db_handler_initial = DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path,
-                                           node.config.ram, node.ledger_ram_file, node.logger,
-                                           trace_db_calls=node.config.trace_db_calls)
+            db_handler_initial = DbHandler.from_node(node)
             node.node_block_init(db_handler_initial)  # Egg: to be called after single user mode only
 
             if node.config.tor:

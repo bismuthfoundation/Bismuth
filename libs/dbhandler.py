@@ -34,13 +34,10 @@ def sql_trace_callback(log, sql_id, statement: str):
 
 
 class DbHandler:
-    # todo: define  slots
+    # todo: define  slots. One instance per thread, can be significant.
     def __init__(self, index_db: str, ledger_path: str, hyper_path: str, ram: bool, ledger_ram_file: str, logger: "Logger",
                  trace_db_calls: bool=False):
-        # TODO: most of the params could be taken from the config object instead of being listed in the call
-        # prototype would become __init__(self, config, logger=None, trace_db_calls=False):
-        # logguer, as it's a global one, could be a config property as well.
-        # __init__(self, config, trace_db_calls=False):
+        """To be used only for tests - See .from_node() factory above."""
         self.ram = ram
         self.ledger_ram_file = ledger_ram_file
         self.hyper_path = hyper_path
@@ -85,6 +82,12 @@ class DbHandler:
 
         self.SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
         self.SQL_TO_MISC = "INSERT INTO misc VALUES (?,?)"
+
+    @classmethod
+    def from_node(cls, node: "Node") -> "DbHandler":
+        """All params we need are known to node."""
+        return DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram,
+                         node.ledger_ram_file, node.logger, trace_db_calls=node.config.trace_db_calls)
 
     # ==== Aliases ==== #
 
