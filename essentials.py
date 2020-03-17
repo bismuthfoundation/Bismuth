@@ -116,32 +116,6 @@ def checkpoint_set(node: "Node"):
         node.logger.app_log.warning(f"Checkpoint set to {node.checkpoint}")
 
 
-def ledger_balance3(address, cache, db_handler):
-    # TODO: EGG_EVO This belongs to DbHandler
-    # Important: keep this as c (ram hyperblock access)
-    # Many heavy blocks are pool payouts, same address.
-    # Cache pre_balance instead of recalc for every tx
-    if address in cache:
-        return cache[address]
-    credit_ledger = Decimal(0)
-
-    db_handler._execute_param(db_handler.c, "SELECT amount, reward FROM transactions WHERE recipient = ?;", (address,))
-    entries = db_handler.c.fetchall()
-
-    for entry in entries:
-        credit_ledger += quantize_eight(entry[0]) + quantize_eight(entry[1])
-
-    debit_ledger = Decimal(0)
-    db_handler._execute_param(db_handler.c, "SELECT amount, fee FROM transactions WHERE address = ?;", (address,))
-    entries = db_handler.c.fetchall()
-
-    for entry in entries:
-        debit_ledger += quantize_eight(entry[0]) + quantize_eight(entry[1])
-
-    cache[address] = quantize_eight(credit_ledger - debit_ledger)
-    return cache[address]
-
-
 def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, public_key_b64encoded) -> Union[bool, tuple]:
     # TODO: move, make use of polysign module
     if not key:

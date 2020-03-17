@@ -5,7 +5,7 @@ import sys
 import mempool as mp
 import mining_heavy3
 from difficulty import *
-from essentials import address_validate, address_is_rsa, checkpoint_set, ledger_balance3
+from essentials import address_validate, address_is_rsa, checkpoint_set
 from polysign.signerfactory import SignerFactory
 from bismuthcore.compat import quantize_two, quantize_eight
 from bismuthcore.helpers import fee_calculate
@@ -238,7 +238,7 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block, block_ins
                 reward = 0
                 fee = fee_calculate(db_openfield, db_operation, node.last_block)
                 fees_block.append(quantize_eight(fee))
-                balance_pre = ledger_balance3(db_address, balances, db_handler)
+                balance_pre = db_handler.ledger_balance3(db_address, balances)
                 balance = quantize_eight(balance_pre - block_debit_address)
 
                 if quantize_eight(balance_pre) < quantize_eight(db_amount):

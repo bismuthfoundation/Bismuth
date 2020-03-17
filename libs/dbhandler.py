@@ -23,7 +23,7 @@ if TYPE_CHECKING:
   from libs.logger import Logger
 
 
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 
 ALIAS_REGEXP = r'^alias='
 SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
@@ -383,6 +383,28 @@ class DbHandler:
         self._execute_param(self.h, "SELECT * FROM transactions ORDER BY block_height DESC LIMIT ?", (n,))
         result = self.h.fetchall()
         return [Transaction.from_legacy(raw_tx) for raw_tx in result]
+
+    def ledger_balance3(self, address: str, cache: dict) -> Decimal:
+        """Cached balance from hyper - used by digest, cache is local to one block         """
+        # Important: keep this as c (ram hyperblock access)
+        # Many heavy blocks are pool payouts, same address.
+        # Cache pre_balance instead of recalc for every tx
+        if address in cache:
+            return cache[address]
+        credit_ledger = Decimal(0)
+        self._execute_param(self.c, "SELECT amount, reward FROM transactions WHERE recipient = ?;",
+                                  (address,))
+        entries = self.c.fetchall()
+        for entry in entries:
+            credit_ledger += quantize_eight(entry[0]) + quantize_eight(entry[1])
+        debit_ledger = Decimal(0)
+        self._execute_param(self.c, "SELECT amount, fee FROM transactions WHERE address = ?;", (address,))
+        entries = self.c.fetchall()
+        for entry in entries:
+            debit_ledger += quantize_eight(entry[0]) + quantize_eight(entry[1])
+        cache[address] = quantize_eight(credit_ledger - debit_ledger)
+        return cache[address]
+
 
     # ---- Lookup queries ---- #
 
