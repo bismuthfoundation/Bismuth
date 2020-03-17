@@ -5,7 +5,7 @@ import sys
 import mempool as mp
 import mining_heavy3
 from difficulty import *
-from essentials import address_validate, address_is_rsa, checkpoint_set
+from essentials import address_validate, address_is_rsa
 from polysign.signerfactory import SignerFactory
 from bismuthcore.compat import quantize_two, quantize_eight
 from bismuthcore.helpers import fee_calculate
