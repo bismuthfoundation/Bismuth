@@ -101,21 +101,6 @@ def percentage_in(individual, whole):
     return (float(list(whole).count(individual) / float(len(whole)))) * 100
 
 
-def round_down(number, order):
-    return int(math.floor(number / order)) * order
-
-
-def checkpoint_set(node: "Node"):
-    # TODO: EGG_EVO This belongs to Node class
-    limit = 30
-    if node.last_block < 1450000:
-        limit = 1000
-    checkpoint = round_down(node.last_block, limit) - limit
-    if checkpoint != node.checkpoint:
-        node.checkpoint = checkpoint
-        node.logger.app_log.warning(f"Checkpoint set to {node.checkpoint}")
-
-
 def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, public_key_b64encoded) -> Union[bool, tuple]:
     # TODO: move, make use of polysign module
     if not key:

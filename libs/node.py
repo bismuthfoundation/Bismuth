@@ -11,12 +11,12 @@ import sys
 import platform
 from time import sleep, time as ttime
 from shutil import copy
+from math import floor
 
 import regnet
 import mining_heavy3
 from bismuthcore.helpers import just_int_from, download_file
 from essentials import keys_check, keys_load  # To be handled by polysign
-from essentials import checkpoint_set  # To be moved here
 from difficulty import difficulty  # where does this belongs? check usages
 
 from libs.config import Config
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
   from libs.dbhandler import DbHandler
 
 
-__version__ = "0.0.6"
+__version__ = "0.0.7"
 
 
 class Node:
@@ -366,7 +366,7 @@ class Node:
         self.hdd_hash = self.last_block_hash  # ram equals drive at this point
         self.last_block_timestamp = db_handler.last_block_timestamp()  # dup
 
-        checkpoint_set(self)
+        self.checkpoint_set()
         self.logger.app_log.warning("Status: Indexing aliases")
         db_handler.aliases_update()
 
@@ -411,3 +411,16 @@ class Node:
         self.logger.app_log.warning(f"Checking Heavy3 file, can take up to 5 minutes... {self.config.heavy3_path}")
         mining_heavy3.mining_open(self.config.heavy3_path)
         self.logger.app_log.warning(f"Status: Heavy3 file Ok!")
+
+    def checkpoint_set(self):
+
+        def round_down(number, order):
+            return int(floor(number / order)) * order
+
+        limit = 30
+        if self.last_block < 1450000:
+            limit = 1000
+        checkpoint = round_down(self.last_block, limit) - limit
+        if checkpoint != self.checkpoint:
+            self.checkpoint = checkpoint
+            self.logger.app_log.warning(f"Checkpoint set to {self.checkpoint}")

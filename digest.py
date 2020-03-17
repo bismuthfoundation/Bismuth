@@ -543,7 +543,7 @@ def digest_block(node: "Node", data, sdef, peer_ip: str, db_handler: "DbHandler"
             process_blocks(blocks=block_data, node=node, db_handler=db_handler, block_instance=block_instance,
                            miner_tx=miner_tx, peer_ip=peer_ip, tx=tx, block_transactions=block_transactions)
 
-            checkpoint_set(node)
+            node.checkpoint_set()
             return node.last_block_hash
 
         except Exception as e:
