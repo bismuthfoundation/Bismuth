@@ -118,6 +118,7 @@ def checkpoint_set(node: "Node"):
 
 def ledger_balance3(address, cache, db_handler):
     # TODO: EGG_EVO This belongs to DbHandler
+    # Important: keep this as c (ram hyperblock access)
     # Many heavy blocks are pool payouts, same address.
     # Cache pre_balance instead of recalc for every tx
     if address in cache:
