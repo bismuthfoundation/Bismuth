@@ -258,7 +258,8 @@ def blocknf(node: "Node", block_hash_delete: str, peer_ip: str, db_handler: "DbH
                                 nb_tx += 1
                                 node.logger.app_log.info(
                                     mp.MEMPOOL.merge((tx[1], tx[2], tx[3], tx[4], tx[5], tx[6], tx[10], tx[11]),
-                                                     peer_ip, db_handler.c, False, revert=True))  # will get stuck if you change it to respect node.db_lock
+                                                     peer_ip, db_handler, size_bypass=False, revert=True))
+                                # will get stuck if you change it to respect node.db_lock
                                 node.logger.app_log.warning(f"Moved tx back to mempool: {tx_short}")
                             except Exception as e:
                                 node.logger.app_log.warning(f"Error during moving tx back to mempool: {e}")
@@ -382,8 +383,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                     # receive theirs
                     segments = receive(self.request)
-                    node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, db_handler.c, False))
-                    #improvement possible - pass peer_ip from worker
+                    node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, db_handler, size_bypass=False))
+                    # improvement possible - pass peer_ip from worker
 
                     # receive theirs
 
@@ -398,7 +399,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         mempool_txs = []
 
                     # send own
-                    # node.logger.app_log.info("Inbound: Extracted from the mempool: " + str(mempool_txs))  # improve: sync based on signatures only
+                    # node.logger.app_log.info("Inbound: Extracted from the mempool: " + str(mempool_txs))
+                    # improve: sync based on signatures only
 
                     # if len(mempool_txs) > 0: same as the other
                     send(self.request, mempool_txs)
@@ -734,7 +736,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if node.peers.is_allowed(peer_ip, data):
                         mempool_insert = receive(self.request)
                         node.logger.app_log.warning("mpinsert command")
-                        mpinsert_result = mp.MEMPOOL.merge(mempool_insert, peer_ip, db_handler.c, True, True)
+                        mpinsert_result = mp.MEMPOOL.merge(mempool_insert, peer_ip, db_handler, size_bypass=True, wait=True)
                         node.logger.app_log.warning(f"mpinsert result: {mpinsert_result}")
                         send(self.request, mpinsert_result)
                     else:

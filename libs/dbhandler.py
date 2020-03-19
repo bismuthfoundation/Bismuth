@@ -38,10 +38,10 @@ def sql_trace_callback(log, sql_id, statement: str):
 class DbHandler:
     # Define  slots. One instance per thread, can be significant.
     __slots__ = ("ram", "ledger_ram_file", "ledger_path", "hyper_path", "logger", "trace_db_calls", "index_db",
-                 "index", "index_cursor", "hdd", "h", "hdd2", "h2", "conn", "c")
+                 "index", "index_cursor", "hdd", "h", "hdd2", "h2", "conn", "c", "old_sqlite")
 
     def __init__(self, index_db: str, ledger_path: str, hyper_path: str, ram: bool, ledger_ram_file: str,
-                 logger: "Logger", trace_db_calls: bool=False):
+                 logger: "Logger", old_sqlite: bool=False, trace_db_calls: bool=False):
         """To be used only for tests - See .from_node() factory above."""
         self.ram = ram
         self.ledger_ram_file = ledger_ram_file
@@ -50,6 +50,7 @@ class DbHandler:
         self.trace_db_calls = trace_db_calls
         self.index_db = index_db
         self.ledger_path = ledger_path
+        self.old_sqlite = old_sqlite
 
         self.index = sqlite3.connect(self.index_db, timeout=1)
         if self.trace_db_calls:
@@ -89,7 +90,8 @@ class DbHandler:
     def from_node(cls, node: "Node") -> "DbHandler":
         """All params we need are known to node."""
         return DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram,
-                         node.ledger_ram_file, node.logger, trace_db_calls=node.config.trace_db_calls)
+                         node.ledger_ram_file, node.logger, old_sqlite=node.config.old_sqlite,
+                         trace_db_calls=node.config.trace_db_calls)
 
     # ==== Aliases ==== #
 
@@ -291,7 +293,8 @@ class DbHandler:
         """
         # mempool fees
         base_mempool = mempool.mp_get(balance_address)
-        # TODO: EGG_EVO Here, we get raw txs. we should ask the mempool object for its mempool balance, not rely on a specific low level format.
+        # TODO: EGG_EVO Here, we get raw txs. we should ask the mempool object for its mempool balance,
+        # not rely on a specific low level format.
         debit_mempool = 0
         if base_mempool:
             for x in base_mempool:
@@ -368,13 +371,16 @@ class DbHandler:
     def transactions_for_address(self, address: str, limit: int=0, mirror: bool=False) -> List[Transaction]:
         if mirror:
             self._execute_param(self.h,
-                                "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) AND block_height < 1 ORDER BY block_height ASC LIMIT ?",
+                                "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) "
+                                "AND block_height < 1 ORDER BY block_height ASC LIMIT ?",
                                 (address, address, limit))
         else:
             if limit < 1:
-                self._execute_param(self.h, "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) ORDER BY block_height DESC", (address, address))
+                self._execute_param(self.h, "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) "
+                                            "ORDER BY block_height DESC", (address, address))
             else:
-                self._execute_param(self.h, "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) ORDER BY block_height DESC LIMIT ?", (address, address, limit))
+                self._execute_param(self.h, "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) "
+                                            "ORDER BY block_height DESC LIMIT ?", (address, address, limit))
         result = self.h.fetchall()
         return [Transaction.from_legacy(raw_tx) for raw_tx in result]
 
@@ -384,12 +390,12 @@ class DbHandler:
         result = self.h.fetchall()
         return [Transaction.from_legacy(raw_tx) for raw_tx in result]
 
-    def ledger_balance3(self, address: str, cache: dict) -> Decimal:
+    def ledger_balance3(self, address: str, cache: Union[dict, None]=None) -> Decimal:
         """Cached balance from hyper - used by digest, cache is local to one block         """
         # Important: keep this as c (ram hyperblock access)
         # Many heavy blocks are pool payouts, same address.
         # Cache pre_balance instead of recalc for every tx
-        if address in cache:
+        if cache is not None and address in cache:
             return cache[address]
         credit_ledger = Decimal(0)
         self._execute_param(self.c, "SELECT amount, reward FROM transactions WHERE recipient = ?;",
@@ -402,16 +408,18 @@ class DbHandler:
         entries = self.c.fetchall()
         for entry in entries:
             debit_ledger += quantize_eight(entry[0]) + quantize_eight(entry[1])
-        cache[address] = quantize_eight(credit_ledger - debit_ledger)
-        return cache[address]
-
+        if cache is not None:
+            cache[address] = quantize_eight(credit_ledger - debit_ledger)
+            return cache[address]
+        else:
+            return quantize_eight(credit_ledger - debit_ledger)
 
     # ---- Lookup queries ---- #
 
     def block_height_from_hash(self, hex_hash: str) -> int:
         """Lookup a block height from its hash."""
         # EGG_EVO: hash is currently supposed to be into hex format.
-        # To be tweaked to allow either bin or hex - auto recognition - and convert or not depending on the underlying db.
+        # To be tweaked to allow either bin or hex and convert or not depending on the underlying db.
         try:
             self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?;", (hex_hash,))
             result = self.h.fetchone()[0]
@@ -472,7 +480,19 @@ class DbHandler:
         transaction_list = [Transaction.from_legacy(entry) for entry in block_desired_result]
         return Block(transaction_list)
 
-    # ====  TODO: check usage of these methods ==== Update: one occurence was moved to solo handler, process the other one.
+    def transaction_signature_exists(self, encoded_signature: str) -> bool:
+        """Tells whether that transaction already exists in the ledger"""
+        # EGG_EVO will need convert and alt sql for bin storage
+        if self.old_sqlite:
+            self._execute_param(self.c, "SELECT timestamp FROM transactions WHERE signature = ?1",
+                                (encoded_signature,))
+        else:
+            self._execute_param(self.c, "SELECT timestamp FROM transactions "
+                                        "WHERE substr(signature,1,4) = substr(?1,1,4) AND signature = ?1",
+                                (encoded_signature,))
+        return bool(self.c.fetchone())
+
+    # ====  TODO: check usage of these methods ==== Update: 1 occ. was moved to solo handler, process the other one.
 
     def block_height_max(self) -> int:
         self.h.execute("SELECT max(block_height) FROM transactions")
@@ -523,7 +543,7 @@ class DbHandler:
         self.logger.app_log.error("rollback_to is deprecated, use rollback_under")
         self.rollback_under(block_height)
 
-    def to_db(self, block_array, diff_save, block_transactions):
+    def to_db(self, block_array, diff_save, block_transactions) -> None:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
         self._execute_param(self.c, "INSERT INTO misc VALUES (?, ?)",
                             (block_array.block_height_new, diff_save))
@@ -540,7 +560,7 @@ class DbHandler:
             # secure commit for slow nodes
             self.commit(self.conn)
 
-    def db_to_drive(self, node: "Node"):
+    def db_to_drive(self, node: "Node") -> None:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
         def transactions_to_h(data):
             for x in data:  # we want to save to ledger.db

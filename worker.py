@@ -298,7 +298,8 @@ def worker(host: str, port: int, node: "Node"):
                     # receive theirs
                     segments = receive(s)
 
-                    node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, db_handler.c, True))
+                    # Egg: was do we bypass size there?
+                    node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, db_handler, size_bypass=True))
 
                     # receive theirs
                     # Tell the mempool we just send our pool to a peer

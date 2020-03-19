@@ -20,7 +20,11 @@ from bismuthcore.compat import quantize_two, quantize_eight
 from bismuthcore.helpers import fee_calculate
 from bismuthcore.transaction import Transaction
 
-g__version__ = "0.0.7h"
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from libs.dbhandler import DbHandler
+
+g__version__ = "0.0.7i"
 
 """
 0.0.7h - Moves to libs and more type hintss
@@ -487,18 +491,18 @@ class Mempool:
         # Sorry, no space left for this tx type.
         return False
 
-    def merge(self, data: list, peer_ip: str, c, size_bypass: bool=False, wait: bool=False, revert: bool=False) -> list:
+    def merge(self, data: list, peer_ip: str, db_handler: "DbHandler", size_bypass: bool=False, wait: bool=False, revert: bool=False) -> list:
         """
-        Checks and merge the tx list in our mempool. Result if a list of text messages, with "Success" as last one is all went fine.
+        Checks and merge the tx list in our mempool.
+        Result is a list of text messages, with "Success" as last one is all went fine.
         :param data:
         :param peer_ip:
-        :param c:
+        :param db_handler:
         :param size_bypass: if True, will merge whatever the mempool size is
         :param wait: if True, will wait until the main db_lock is free. if False, will just drop.
         :param revert: if True, we are reverting tx from digest_block, so main lock is on. Don't bother, process without lock.
         :return:
         """
-        # EGG_EVO: c is to be replaced by a dbHandler instance.
         global REFUSE_OLDER_THAN
         # Easy cases of empty or invalid data
         if not data:
@@ -540,10 +544,9 @@ class Mempool:
         # calculate current mempool size before adding txs
         mempool_size = self.size()
 
-        # TODO: we check main ledger db is not locked before beginning, but we don't lock? ok, see comment in node.py. since it's called from a lock, it would deadlock.
+        # we check main ledger db is not locked before beginning, but we don't lock?
+        # ok, see comment in node.py. since it's called from a lock, it would deadlock.
         # merge mempool
-        # while self.lock.locked():
-        #    time.sleep(1)
         with self.lock:
             try:
                 block_list = data
@@ -562,7 +565,8 @@ class Mempool:
                         if not essentials.address_validate(transaction[1]):
                             mempool_result.append("Mempool: Invalid address {}".format(transaction[1]))
                             continue
-                        # We could now ignore the truncates here, I left them for explicit reminder of the various fields max lengths.
+                        # We could now ignore the truncates here,
+                        # I left them for explicit reminder of the various fields max lengths.
                         mempool_address = str(transaction[1])[:56]
                         if not essentials.address_validate(transaction[2]):
                             mempool_result.append("Mempool: Invalid recipient {}".format(transaction[2]))
@@ -630,12 +634,15 @@ class Mempool:
                         mempool_in = self.sig_check(mempool_signature_enc)
 
                         # Temp: get last block for HF reason
+                        last_block = db_handler.last_mining_transaction().block_height
+                        """
                         essentials.execute_param_c(c, "SELECT block_height FROM transactions WHERE 1 ORDER by block_height DESC limit ?",
                                                    (1,), self.app_log)
                         last_block = c.fetchone()[0]
+                        """
                         # reject transactions which are already in the ledger
-                        # TODO: not clean, will need to have ledger as a module too.
-                        # TODO: need better txid index, this is very sloooooooow
+                        ledger_in = db_handler.transaction_signature_exists(mempool_signature_enc)
+                        """
                         if self.config.old_sqlite:
                             essentials.execute_param_c(c, "SELECT timestamp FROM transactions WHERE signature = ?1",
                                                        (mempool_signature_enc,), self.app_log)
@@ -644,6 +651,7 @@ class Mempool:
                                                        "SELECT timestamp FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) AND signature = ?1",
                                                        (mempool_signature_enc,), self.app_log)
                         ledger_in = bool(c.fetchone())
+                        """
                         # remove from mempool if it's in both ledger and mempool already
                         if mempool_in and ledger_in:
                             try:
@@ -660,7 +668,8 @@ class Mempool:
                         if ledger_in:
                             mempool_result.append("That transaction is already in our ledger")
                             # Can be a syncing node. Do not request mempool from this peer until FREEZE_MIN min
-                            # ledger_in is the ts of the tx in ledger. if it's recent, maybe the peer is just one block late.
+                            # ledger_in is the ts of the tx in ledger.
+                            # if it's recent, maybe the peer is just one block late.
                             # give him 15 minute margin.
                             if (peer_ip != '127.0.0.1') and (ledger_in < time_now - 60 * 15):
                                 with self.peers_lock:
@@ -688,6 +697,7 @@ class Mempool:
                                 fee = fee_calculate(x[1], x[2], last_block)  # fee_calculate sends back a Decimal 8
                                 debit_mempool += debit_tx + fee
 
+                        """
                         credit = DECIMAL0
                         rewards = DECIMAL0
                         for entry in essentials.execute_param_c(c,
@@ -705,17 +715,21 @@ class Mempool:
                             fees += quantize_eight(entry[1])
 
                         debit = debit_ledger + debit_mempool
-
                         # both are Decimals
-                        balance = credit - debit - fees + rewards - quantize_eight(mempool_amount)
+                        balance = credit - debit - fees + rewards - quantize_eight(mempool_amount)                        
                         balance_pre = credit - debit_ledger - fees + rewards
+                        """
+                        balance_pre = db_handler.ledger_balance3(mempool_address)
+                        balance = balance_pre - debit_mempool - quantize_eight(mempool_amount)
 
                         fee = fee_calculate(mempool_openfield, mempool_operation, last_block)
 
                         # print("Balance", balance, fee)
 
-                        if quantize_eight(mempool_amount) > balance_pre:  # mempool_amount is a 0.8f string for some reason
-                            # mp amount is already included in "balance" var! also, that tx might already be in the mempool
+                        if quantize_eight(mempool_amount) > balance_pre:
+                            # mempool_amount is a 0.8f string for some reason
+                            # mp amount is already included in "balance" var!
+                            # also, that tx might already be in the mempool
                             mempool_result.append("Mempool: Sending more than owned")
                             continue
                         if balance - fee < 0:
@@ -746,6 +760,7 @@ class Mempool:
                     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                     self.app_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
                     mempool_result.append("Exception: {}".format(str(e)))
-                    # if left there, means debug can *not* be used in production, or exception is not sent back to the client.
+                    # if left there, means debug can *not* be used in production,
+                    # or exception is not sent back to the client.
                     raise
         return mempool_result
