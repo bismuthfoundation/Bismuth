@@ -273,7 +273,7 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block, block_ins
         raise
 
 
-def check_signature(block, node: "Node", db_handler: "DbHandler", peer_ip: str, block_instance):
+def check_signature_on_block(block, node: "Node", db_handler: "DbHandler", peer_ip: str, block_instance):
     """
     Checks signature presence in the chain, raises an error if it is already present so it is not included twice
     """
@@ -322,6 +322,19 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
                    block_transactions):
     # here, functions in functions use both local vars or parent variables, it's a call for nasty bugs.
     # take care of pycharms hints, do not define func in funcs.
+
+    """
+    Checks age of the block and whether it is newer than the most recent one saved
+    For every block in a block array, increases node.last_block, runs check_signature_on_block
+    Updates node.difficulty
+    Calculates block_hash, checks block_hash presence in the blockchain
+    Runs process_transactions (necessary?)
+    Updates both node.last_block and node.last_block_hash
+    Calculates mirror hash
+    Runs rewards()
+    Updates tokens if update var triggered
+    Updates node.difficulty and returns it
+    """
     try:
         block_instance.block_count = len(blocks)
 
@@ -369,7 +382,7 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
                 raise ValueError(f"!Block is older {miner_tx.q_block_timestamp} "
                                  f"than the previous one {node.last_block_timestamp} , will be rejected")
 
-            check_signature(block=block, node=node, db_handler=db_handler, peer_ip=peer_ip, block_instance=block_instance)
+            check_signature_on_block(block=block, node=node, db_handler=db_handler, peer_ip=peer_ip, block_instance=block_instance)
 
             # calculate current difficulty (is done for each block in block array, not super easy to isolate)
             diff = difficulty(node, db_handler)
@@ -448,21 +461,25 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
 
             # quantized vars have to be converted, since Decimal is not json serializable...
             node.plugin_manager.execute_action_hook('block',
-                                                    {'height': block_instance.block_height_new, 'diff': diff_save,
+                                                    {'height': block_instance.block_height_new,
+                                                     'diff': diff_save,
                                                      'hash': block_instance.block_hash,
                                                      'timestamp': float(miner_tx.q_block_timestamp),
-                                                     'miner': miner_tx.miner_address, 'ip': peer_ip})
+                                                     'miner': miner_tx.miner_address,
+                                                     'ip': peer_ip})
 
             node.plugin_manager.execute_action_hook('fullblock',
-                                                    {'height': block_instance.block_height_new, 'diff': diff_save,
+                                                    {'height': block_instance.block_height_new,
+                                                     'diff': diff_save,
                                                      'hash': block_instance.block_hash,
                                                      'timestamp': float(miner_tx.q_block_timestamp),
-                                                     'miner': miner_tx.miner_address, 'ip': peer_ip,
+                                                     'miner': miner_tx.miner_address,
+                                                     'ip': peer_ip,
                                                      'transactions': block_transactions})
 
             db_handler.to_db(block_instance, diff_save, block_transactions)
 
-            # new sha_hash
+            # new mirror sha_hash
             db_handler._execute(db_handler.c, "SELECT * FROM transactions "
                                               "WHERE block_height = (SELECT max(block_height) FROM transactions)")
             # Was trying to simplify, but it's the latest mirror sha_hash.
@@ -470,7 +487,7 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
             # c._execute("SELECT * FROM transactions WHERE block_height = ?", (block_instance.block_height_new -1,))
             tx_list_to_hash = db_handler.c.fetchall()
             block_instance.mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).hexdigest()
-            # /new sha_hash
+            # /new mirror sha_hash
 
             rewards(node=node, block_instance=block_instance, db_handler=db_handler, miner_tx=miner_tx)
 
