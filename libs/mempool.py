@@ -9,6 +9,7 @@ import os
 import sqlite3
 import sys
 import threading
+from typing import Union, List
 from decimal import Decimal
 import time
 
@@ -19,9 +20,10 @@ from bismuthcore.compat import quantize_two, quantize_eight
 from bismuthcore.helpers import fee_calculate
 from bismuthcore.transaction import Transaction
 
-g__version__ = "0.0.7g"
+g__version__ = "0.0.7h"
 
 """
+0.0.7h - Moves to libs and more type hintss
 0.0.5g - Add default param to mergedts for compatibility
 0.0.5f - Using polysign
 0.0.5e - add mergedts timestamp to tx for better handling of late txs
@@ -109,7 +111,7 @@ SQL_SELECT_TX_TO_SEND_SINCE = 'SELECT * FROM transactions where mergedts > ? ORD
 SQL_MEMPOOL_GET = "SELECT amount, openfield, operation FROM transactions WHERE address = ? and timestamp > strftime('%s', 'now', '-2 hour')"
 
 
-def sql_trace_callback(log, id, statement):
+def sql_trace_callback(log, id: str, statement: str) -> None:
     line = f"SQL[{id}] {statement}"
     log.warning(line)
 
@@ -117,7 +119,7 @@ def sql_trace_callback(log, id, statement):
 class Mempool:
     """The mempool manager. Thread safe"""
 
-    def __init__(self, app_log, config=None, db_lock=None, testnet=False, trace_db_calls=True):
+    def __init__(self, app_log, config=None, db_lock=None, testnet: bool=False, trace_db_calls: bool=True):
         try:
             self.app_log = app_log
             self.config = config
@@ -151,14 +153,14 @@ class Mempool:
             self.app_log.error("Error creating mempool: {}".format(e))
             raise
 
-    def mp_get(self, balance_address):
+    def mp_get(self, balance_address: str) -> list:
         """
         base mempool
         :return:
         """
-        return self._fetchall(SQL_MEMPOOL_GET, (balance_address,))
+        return self._fetchall(SQL_MEMPOOL_GET, (balance_address, ))
 
-    def check(self):
+    def check(self) -> None:
         """
         Checks if mempool exists, create if not.
         :return:
@@ -203,7 +205,7 @@ class Mempool:
                     self._commit()
                     self.app_log.warning("Status: Recreated mempool file")
 
-    def _execute(self, sql, param=None, cursor=None):
+    def _execute(self, sql: str, param: Union[None, tuple]=None, cursor: sqlite3.Connection=None) -> None:
         """
         Safely _execute the request
         :param sql:
@@ -226,7 +228,7 @@ class Mempool:
                 self.app_log.warning("Database retry reason: {}".format(e))
                 time.sleep(0.1)
 
-    def _commit(self):
+    def _commit(self) -> None:
         """
         Safe commit
         :return:
@@ -240,7 +242,7 @@ class Mempool:
                 self.app_log.warning("Database retry reason: {}".format(e))
                 time.sleep(0.1)
 
-    def _fetchone(self, sql, param=None, write=False):
+    def _fetchone(self, sql: str, param: Union[None, tuple]=None, write: bool=False) -> Union[str, list, int, float]:
         """
         Fetchs one and Returns data
         :param sql:
@@ -257,7 +259,7 @@ class Mempool:
             self._execute(sql, param, cursor)
             return cursor.fetchone()
 
-    def _fetchall(self, sql, param=None, write=False):
+    def _fetchall(self, sql: str, param: Union[None, tuple]=None, write: bool=False) -> list:
         """
         Fetchs all and Returns data
         :param sql:
@@ -274,7 +276,7 @@ class Mempool:
             self._execute(sql, param, cursor)
             return cursor.fetchall()
 
-    def vacuum(self):
+    def vacuum(self) -> None:
         """
         Maintenance
         :return:
@@ -282,11 +284,11 @@ class Mempool:
         with self.lock:
             self._execute("VACUUM")
 
-    def close(self):
+    def close(self) -> None:
         if self.db:
             self.db.close()
 
-    def purge(self):
+    def purge(self) -> None:
         """
         Purge old txs
         :return:
@@ -299,7 +301,7 @@ class Mempool:
             except Exception as e:
                 self.app_log.error("Error {} on mempool purge".format(e))
 
-    def clear(self):
+    def clear(self) -> None:
         """
         Empty mempool
         :return:
@@ -328,7 +330,7 @@ class Mempool:
             pass
         return alias_exists
 
-    def delete_transaction(self, signature):
+    def delete_transaction(self, signature: str) -> None:
         """
         Delete a single tx by its id
         :return:
@@ -340,9 +342,7 @@ class Mempool:
                 self._execute(SQL_DELETE_TX, (signature,))
             self._commit()
 
-
-
-    def sig_check(self, signature):
+    def sig_check(self, signature: str) -> bool:
         """
         Returns presence of the sig in the mempool
         :param signature:
@@ -353,10 +353,10 @@ class Mempool:
         else:
             return bool(self._fetchone(SQL_SIG_CHECK, (signature,)))
 
-    def status(self):
+    def status(self) -> Union[tuple, int]:
         """
         Stats on the current mempool
-        :return: tuple(tx#, openfield len, distinct sender#, distinct recipients#
+        :return: tuple(tx#, openfield len, distinct sender#, distinct recipients#  or 0 if error
         """
         try:
             limit = time.time()
@@ -379,7 +379,7 @@ class Mempool:
         except:
             return 0
 
-    def size(self):
+    def size(self) -> float:
         """
         Curent size of the mempool in Mo
         :return:
@@ -391,7 +391,7 @@ class Mempool:
         except:
             return 0
 
-    def sent(self, peer_ip):
+    def sent(self, peer_ip: str) -> None:
         """
         record time of last mempool send to this peer
         :param peer_ip:
@@ -406,7 +406,7 @@ class Mempool:
         with self.peers_lock:
             self.peers_sent[peer_ip] = when
 
-    def sendable(self, peer_ip):
+    def sendable(self, peer_ip: str) -> bool:
         """
         Tells is the mempool is sendable to a given peers
         (ie, we sent it more than 30 sec ago)
@@ -423,7 +423,7 @@ class Mempool:
             # self.app_log.warning("Mempool not sendable for {} yet.".format(peer_ip))
         return sendable
 
-    def tx_to_send(self, peer_ip, peer_txs=None):
+    def tx_to_send(self, peer_ip: str, peer_txs: Union[list,None]=None) -> list:
         """
         Selects the Tx to be sent to a given peer
         :param peer_ip:
@@ -458,7 +458,7 @@ class Mempool:
         else:
             return raw
 
-    def space_left_for_tx(self, transaction, mempool_size):
+    def space_left_for_tx(self, transaction, mempool_size: float) -> bool:
         """
         Tells if we should let a specific tx in, depending on space left and its characteristics.
         :param transaction:
@@ -487,9 +487,9 @@ class Mempool:
         # Sorry, no space left for this tx type.
         return False
 
-    def merge(self, data: list, peer_ip: str, c, size_bypass: bool=False, wait: bool=False, revert: bool =False) -> list:
+    def merge(self, data: list, peer_ip: str, c, size_bypass: bool=False, wait: bool=False, revert: bool=False) -> list:
         """
-        Checks and merge the tx list in our mempool
+        Checks and merge the tx list in our mempool. Result if a list of text messages, with "Success" as last one is all went fine.
         :param data:
         :param peer_ip:
         :param c:
@@ -498,6 +498,7 @@ class Mempool:
         :param revert: if True, we are reverting tx from digest_block, so main lock is on. Don't bother, process without lock.
         :return:
         """
+        # EGG_EVO: c is to be replaced by a dbHandler instance.
         global REFUSE_OLDER_THAN
         # Easy cases of empty or invalid data
         if not data:
