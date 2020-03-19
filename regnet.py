@@ -17,7 +17,7 @@ from random import getrandbits
 from typing import List
 
 import connections
-import mempool as mp
+from libs import mempool as mp
 import mining_heavy3 as mining
 
 from bismuthcore.transaction import Transaction

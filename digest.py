@@ -2,7 +2,7 @@ import hashlib
 import os
 import sys
 
-import mempool as mp
+from libs import mempool as mp
 import mining_heavy3
 from difficulty import *
 from essentials import address_validate, address_is_rsa

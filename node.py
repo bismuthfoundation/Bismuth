@@ -36,7 +36,7 @@ import wallet_keys
 from connections import send, receive
 from digest import *
 from bismuthcore.helpers import sanitize_address
-from libs import keys, client
+from libs import keys, client, mempool as mp
 from libs.logger import Logger
 from libs.node import Node
 from libs.config import Config
@@ -44,17 +44,11 @@ from libs.fork import Fork
 from libs.dbhandler import DbHandler
 
 import essentials
-from bismuthcore.compat import quantize_eight, quantize_two
-import mempool as mp  # EGG: some nasty things to fix here
 
 # todo: migrate this to polysign
-from Cryptodome.Hash import SHA
-from Cryptodome.PublicKey import RSA
-from Cryptodome.Signature import PKCS1_v1_5
-import base64
 # /todo
 
-VERSION = "5.0.5-evo"  # Experimental db-evolution branch
+VERSION = "5.0.6-evo"  # Experimental db-evolution branch
 
 fork = Fork()
 

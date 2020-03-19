@@ -14,7 +14,7 @@ import threading
 # modular handlers will need access to the database methods under some form, so it needs to be modular too.
 # Here, I just duplicated the minimum needed code from node, further refactoring with classes will follow.
 import connections
-from mempool import MEMPOOL
+from libs.mempool import MEMPOOL
 from polysign.signerfactory import SignerFactory
 from bismuthcore.transaction import Transaction
 

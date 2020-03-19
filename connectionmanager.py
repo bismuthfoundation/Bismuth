@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from libs.node import Node
     # from libs.dbhandler import DbHandler
-    from mempool import Mempool
+    from libs.mempool import Mempool
 
 
 class ConnectionManager (threading.Thread):

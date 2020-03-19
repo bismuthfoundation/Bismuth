@@ -8,7 +8,7 @@ import sys
 import re
 # import essentials
 from decimal import Decimal
-from bismuthcore.compat import quantize_two, quantize_eight
+from bismuthcore.compat import quantize_eight
 from bismuthcore.transaction import Transaction
 from bismuthcore.block import Block
 from bismuthcore.helpers import fee_calculate
@@ -19,7 +19,7 @@ from typing import Union, List
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
   from libs.node import Node
-  from mempool import Mempool  # for type hints
+  from libs.mempool import Mempool  # for type hints
   from libs.logger import Logger
 
 

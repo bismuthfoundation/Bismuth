@@ -1,14 +1,13 @@
 from node import blocknf, digest_block  # oh my!
 # import sys
 import threading
-from libs import logger
+from libs import mempool as mp
 # from libs import node, keys, client
 # import time
 import socks
 from connections import send, receive
 # from decimal import Decimal
 # from quantizer import quantize_two, quantize_eight, quantize_ten
-import mempool as mp
 from difficulty import *
 from libs import client
 from libs.dbhandler import DbHandler
