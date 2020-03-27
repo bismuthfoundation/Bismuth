@@ -21,6 +21,7 @@ from bismuthcore.transaction import Transaction
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from libs.node import Node
+    from libs.dbhandler import DbHandler
 
 __version__ = "0.0.10"
 
@@ -43,7 +44,7 @@ class ApiHandler:
         # Not used yet.
         self.callbacks = []
 
-    def dispatch(self, method, socket_handler, db_handler, peers):
+    def dispatch(self, method, socket_handler, db_handler: "DbHandler", peers):
         """
         Routes the call to the right method
         :return:
@@ -133,7 +134,7 @@ class ApiHandler:
 
         return blocks_dict
 
-    def api_mempool(self, socket_handler, db_handler, peers):
+    def api_mempool(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns all the TX from mempool
         :param socket_handler:
@@ -146,7 +147,7 @@ class ApiHandler:
         response_tuples = [transaction.to_tuple() for transaction in mempool_txs]
         connections.send(socket_handler, response_tuples)
 
-    def api_getconfig(self, socket_handler, db_handler, peers):
+    def api_getconfig(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns configuration
         :param socket_handler:
@@ -156,7 +157,7 @@ class ApiHandler:
         """
         connections.send(socket_handler, self.config.__dict__)
 
-    def api_clearmempool(self, socket_handler, db_handler, peers):
+    def api_clearmempool(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Empty the current mempool
         :param socket_handler:
@@ -167,7 +168,7 @@ class ApiHandler:
         MEMPOOL.clear()
         connections.send(socket_handler, 'ok')
 
-    def api_ping(self, socket_handler, db_handler, peers):
+    def api_ping(self, socket_handler, db_handler: "DbHandler", peers) -> None:
         """
         Void, just to allow the client to keep the socket open (avoids timeout)
         :param socket_handler:
@@ -177,7 +178,7 @@ class ApiHandler:
         """
         connections.send(socket_handler, 'api_pong')
 
-    def api_getaddressinfo(self, socket_handler, db_handler, peers):
+    def api_getaddressinfo(self, socket_handler, db_handler: "DbHandler", peers) -> None:
         """
         Returns a dict with
         known: Did that address appear on a transaction?
@@ -208,13 +209,14 @@ class ApiHandler:
         except Exception as e:
             self.app_log.warning(e)
 
-    def api_getblockfromhash(self, socket_handler, db_handler, peers):
+    def api_getblockfromhash(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns a specific block based on the provided hash.
         Warning: format is strange: we provide a hash, so there should be at most one result.
-        Or we send back a dict, with height as key, and block (including height again) as value.
+        But we send back a dict, with height as key, and block (including height again) as value.
         Should be enough to only send the block.
         **BUT** do not change, this would break current implementations using the current format (json rpc server for instance).
+        # TODO: To be added to test suite.
 
         :param socket_handler:
         :param db_handler:
@@ -233,7 +235,7 @@ class ApiHandler:
         blocks = self.blockstojson(result)
         connections.send(socket_handler, blocks)
 
-    def api_getblockfromhashextra(self, socket_handler, db_handler, peers):
+    def api_getblockfromhashextra(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns a specific block based on the provided hash.
         similar to api_getblockfromhash, but sends block dict, not a dict of a dict.
@@ -273,7 +275,7 @@ class ApiHandler:
             self.app_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
             raise
 
-    def api_getblockfromheight(self, socket_handler, db_handler, peers):
+    def api_getblockfromheight(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns a specific block based on the provided hash.
 
@@ -293,7 +295,7 @@ class ApiHandler:
         blocks = self.blockstojson(result)
         connections.send(socket_handler, blocks)
 
-    def api_getaddressrange(self, socket_handler, db_handler, peers):
+    def api_getaddressrange(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns a given number of transactions, maximum of 500 entries. Ignores blocks where no transactions of a given address happened.
         Reorganizes parameters to a quickly accessible json.
@@ -323,7 +325,7 @@ class ApiHandler:
         blocks = self.blockstojson(result)
         connections.send(socket_handler, blocks)
 
-    def api_getblockrange(self, socket_handler, db_handler, peers):
+    def api_getblockrange(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns full blocks and transactions from a block range, maximum of 50 entries.
         Includes function format_raw_txs_diffs for formatting. Useful for big data / nosql storage.
@@ -361,7 +363,7 @@ class ApiHandler:
             raise
         connections.send(socket_handler, reply)
 
-    def api_getblocksince(self, socket_handler, db_handler, peers):
+    def api_getblocksince(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns the full blocks and transactions following a given block_height
         Returns at most transactions from 10 blocks (the most recent ones if it truncates)
@@ -402,7 +404,7 @@ class ApiHandler:
             print(e)
             raise
 
-    def api_getblockswhereoflike(self, socket_handler, db_handler, peers):
+    def api_getblockswhereoflike(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns the full transactions following a given block_height and with openfield begining by the given string
         Returns at most transactions from 1440 blocks at a time (the most *older* ones if it truncates) so about 1 day worth of data.
@@ -442,7 +444,7 @@ class ApiHandler:
             self.app_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
             raise
 
-    def api_getblocksafterwhere(self, socket_handler, db_handler, peers):
+    def api_getblocksafterwhere(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns the full transactions following a given block_height and with specific conditions
         Returns at most transactions from 720 blocks at a time (the most *older* ones if it truncates) so about 12 hours worth of data.
@@ -495,7 +497,7 @@ class ApiHandler:
             # self.app_log.warning(e)
             raise
 
-    def api_getaddresssince(self, socket_handler, db_handler, peers):
+    def api_getaddresssince(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns the full transactions following a given block_height (will not include the given height) for the given address, with at least min_confirmations confirmations,
         as well as last considered block.
@@ -530,7 +532,7 @@ class ApiHandler:
             # self.app_log.warning(e)
             raise
 
-    def _get_balance(self, db_handler, address, minconf=1):
+    def _get_balance(self, db_handler: "DbHandler", address: str, minconf=1):
         """
         Queries the db to get the balance of a single address
         :param address:
@@ -559,7 +561,7 @@ class ApiHandler:
             raise
         return balance
 
-    def api_getbalance(self, socket_handler, db_handler, peers):
+    def api_getbalance(self, socket_handler, db_handler: "DbHandler", peers):
         """
         returns total balance for a list of addresses and minconf
         BEWARE: this is NOT the json rpc getbalance (that get balance for an account, not an address)
@@ -583,7 +585,7 @@ class ApiHandler:
         except Exception as e:
             raise
 
-    def _get_received(self, db_handler, address, minconf=1):
+    def _get_received(self, db_handler: "DbHandler", address: str, minconf: int=1):
         """
         Queries the db to get the total received amount of a single address
         :param address:
@@ -605,7 +607,7 @@ class ApiHandler:
             raise
         return credit
 
-    def api_getreceived(self, socket_handler, db_handler, peers):
+    def api_getreceived(self, socket_handler, db_handler: "DbHandler", peers):
         """
         returns total received amount for a *list* of addresses and minconf
         :param socket_handler:
@@ -629,7 +631,7 @@ class ApiHandler:
             # self.app_log.warning(e)
             raise
 
-    def api_listreceived(self, socket_handler, db_handler, peers):
+    def api_listreceived(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns the total amount received for each given address with minconf, including empty addresses or not.
         :param socket_handler:
@@ -658,7 +660,7 @@ class ApiHandler:
             # self.app_log.warning(e)
             raise
 
-    def api_listbalance(self, socket_handler, db_handler, peers):
+    def api_listbalance(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns the total amount received for each given address with minconf, including empty addresses or not.
         :param socket_handler:
@@ -685,7 +687,7 @@ class ApiHandler:
             # self.app_log.warning(e)
             raise
 
-    def api_gettransaction(self, socket_handler, db_handler, peers):
+    def api_gettransaction(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns the full transaction matching a tx id. Takes txid anf format as params (json output if format is True)
         :param socket_handler:
@@ -747,7 +749,7 @@ class ApiHandler:
             # self.app_log.warning(e)
             raise
 
-    def api_gettransactionbysignature(self, socket_handler, db_handler, peers):
+    def api_gettransactionbysignature(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns the full transaction matching a signature. Takes signature and format as params (json output if format is True)
         :param socket_handler:
@@ -809,7 +811,7 @@ class ApiHandler:
             # self.app_log.warning(e)
             raise
 
-    def api_getpeerinfo(self, socket_handler, db_handler, peers):
+    def api_getpeerinfo(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns a list of connected peers
         See https://bitcoin.org/en/developer-reference#getpeerinfo
@@ -817,7 +819,7 @@ class ApiHandler:
         :return: list(dict)
         """
         print('api_getpeerinfo')
-        # TODO: Get what we can from peers, more will come when connections and connection stats will be modular, too.
+        # TODO: Get what we can from peers, more will come when connections and connection stats will be modular, too.
         try:
             info = [{'id':id, 'addr':ip, 'inbound': True} for id, ip in enumerate(peers.consensus)]
             # TODO: peers will keep track of extra info, like port, last time, block_height aso.
@@ -826,7 +828,7 @@ class ApiHandler:
         except Exception as e:
             self.app_log.warning(e)
 
-    def api_gettransaction_for_recipients(self, socket_handler, db_handler, peers):
+    def api_gettransaction_for_recipients(self, socket_handler, db_handler: "DbHandler", peers):
             """
             Warning: this is currently very slow
             Returns the full transaction matching a tx id for a list of recipient addresses.
