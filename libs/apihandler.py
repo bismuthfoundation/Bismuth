@@ -53,7 +53,7 @@ class ApiHandler:
             """
             All API methods share the same interface. Not storing in properties since it has to be thread safe.
             This is not pretty, this will evolve with more modular code.
-            Primary goal is to limit the changes in node.py code and allow more flexibility in this class, like some plugin.
+            Primary goal is to limit the changes in node.py code and allow more flexibility in this class, like plugin.
             """
             result = getattr(self, method)(socket_handler, db_handler, peers)
             return result
@@ -62,7 +62,8 @@ class ApiHandler:
             self.app_log.warning(f"API Method <{method}> does not exist.")
             return False
 
-    def blockstojson(self, raw_blocks: list):
+    def blockstojson(self, raw_blocks: list) -> dict:
+        """Beware, returns a dict, not a json encoded payload"""
         tx_list = []
         block = {}
         blocks = {}
@@ -72,7 +73,7 @@ class ApiHandler:
             # EGG_EVO: Is decode_pubkey needed? Where is that used?
             transaction = Transaction.from_legacy(transaction_raw).to_dict(legacy=True, decode_pubkey=True)
             height = transaction['block_height']
-            hash = transaction['block_hash']
+            block_hash = transaction['block_hash']
 
             del transaction['block_height']
             del transaction['block_hash']
@@ -84,7 +85,7 @@ class ApiHandler:
             tx_list.append(transaction)
 
             block['block_height'] = height
-            block['block_hash'] = hash
+            block['block_hash'] = block_hash
             block['transactions'] = list(tx_list)
             blocks[height] = dict(block)
 
@@ -92,7 +93,8 @@ class ApiHandler:
 
         return blocks
 
-    def blocktojsondiffs(self, list_of_txs: list, list_of_diffs: list):
+    def blocktojsondiffs(self, list_of_txs: list, list_of_diffs: list) -> dict:
+        """Beware, returns a dict, not a json encoded payload"""
         i = 0
         blocks_dict = {}
         block_dict = {}
@@ -105,7 +107,6 @@ class ApiHandler:
             height = transaction_formatted["block_height"]
 
             del transaction_formatted["block_height"]
-
             #  del transaction_formatted["signature"]  # optional
             #  del transaction_formatted["pubkey"]  # optional
 
@@ -180,11 +181,11 @@ class ApiHandler:
         """
         Returns a dict with
         known: Did that address appear on a transaction?
-        pubkey: The pubkey of the address if it signed a transaction,
+        pubkey: The DECODED pubkey of the address if it signed a transaction,
         :param address: The bismuth address to examine
         :return: dict
         """
-        info = {'known': False, 'pubkey':''}
+        info = {'known': False, 'pubkey': ''}
         # get the address
         address = connections.receive(socket_handler)
         # print('api_getaddressinfo', address)
@@ -195,24 +196,14 @@ class ApiHandler:
                 connections.send(socket_handler, info)
                 return
             try:
-                db_handler._execute_param(db_handler.h,
-                                          ('SELECT block_height FROM transactions WHERE address= ? or recipient= ? LIMIT 1;'),
-                                          (address,address))
-                _ = db_handler.h.fetchone()[0]
-                # no exception? then we have at least one known tx
-                info['known'] = True
-                db_handler._execute_param(db_handler.h, ('SELECT public_key FROM transactions WHERE address= ? and reward = 0 LIMIT 1;'), (address,))
-                try:
-                    info['pubkey'] = db_handler.h.fetchone()[0]
-                    info['pubkey'] = base64.b64decode(info['pubkey']).decode('utf-8')
-                except Exception as e:
-                    self.app_log.warning(e)
-
+                info['known'] = db_handler.known_address(address)
+                info['pubkey'] = db_handler.pubkeyget(address)
+                # kept for legacy compatibility -
+                # EGG: could need a switch whether it's a new address (not double encoded)
+                # or a legacy one (double encoded)
             except Exception as e:
-                self.app_log.warning(e)
+                self.app_log.warning("api_getaddressinfo: {}".format(e))
 
-            # returns info
-            # print("info", info)
             connections.send(socket_handler, info)
         except Exception as e:
             self.app_log.warning(e)

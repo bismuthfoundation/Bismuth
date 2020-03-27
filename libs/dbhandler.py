@@ -436,6 +436,16 @@ class DbHandler:
         # EGG_EVO: if new db, convert bin to hex
         return self.c.fetchone()[0]
 
+    def known_address(self, address: str) -> bool:
+        """Returns whether the address appears in chain, be it as sender or receiver"""
+        # EGG EVO: db format invariant
+        # TODO: we don't care the result, maybe another query would be faster.
+        # TODO: add a testnet test on that
+        self.h.execute('SELECT block_height FROM transactions WHERE address= ? or recipient= ? LIMIT 1',
+                       (address, address))
+        res = self.h.fetchone()
+        return res is not None
+
     def blocksync(self, block_height: int) -> List[list]:
         """
         Returns a list of blocks following block_height, until end of chain or total size >= 500000 octets
