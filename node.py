@@ -1306,8 +1306,9 @@ if __name__ == "__main__":
         node.logger.app_log.warning(f"Status: Starting node version {VERSION}")
         node.startup_time = ttime()
         try:
+            # TODO: Node could create them itself at instanciation, only relies on node properties.
             node.peers = peershandler.Peers(node.logger.app_log, config=config, node=node)
-            node.apihandler = ApiHandler(node.logger.app_log, config)
+            node.apihandler = ApiHandler(node)
             mp.MEMPOOL = mp.Mempool(node.logger.app_log, config, node.db_lock, node.is_testnet, trace_db_calls=node.config.trace_db_calls)
             # Until here, we were in single user mode.
 

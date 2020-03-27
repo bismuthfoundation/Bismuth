@@ -18,7 +18,11 @@ from libs.mempool import MEMPOOL
 from polysign.signerfactory import SignerFactory
 from bismuthcore.transaction import Transaction
 
-__version__ = "0.0.9"
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from libs.node import Node
+
+__version__ = "0.0.10"
 
 
 class ApiHandler:
@@ -30,13 +34,13 @@ class ApiHandler:
 
     __slots__ = ('app_log', 'config', 'callback_lock', 'callbacks')
 
-    def __init__(self, app_log, config=None):
-        self.app_log = app_log
-        self.config = config
+    def __init__(self, node: "Node"):
+        self.app_log = node.logger.app_log
+        self.config = node.config
         # Avoid mixing answers to commands with callbacks
         self.callback_lock = threading.Lock()
         # list of sockets that asked for a callback (new block notification)
-        # Not used yet.
+        # Not used yet.
         self.callbacks = []
 
     def dispatch(self, method, socket_handler, db_handler, peers):
