@@ -21,13 +21,16 @@ from difficulty import difficulty  # where does this belongs? check usages
 
 from libs.config import Config
 from libs.solodbhandler import SoloDbHandler
+from libs.apihandler import ApiHandler
+from libs.peershandler import Peers
+from libs.plugins import PluginManager
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
 
 
-__version__ = "0.0.7"
+__version__ = "0.0.8"
 
 
 class Node:
@@ -98,6 +101,12 @@ class Node:
         else:
             self.logger.app_log.warning("Warning: Node was instanciated without startup checks. "
                                         "Make sure you know what you are doing!!")
+        # create a plugin manager, load all plugin modules and init
+        self.plugin_manager = PluginManager(app_log=self.logger.app_log, config=self.config, init=True)
+        # Egg: kept the detailled params instead of just "Node" so the plugin handler
+        # remains generic outside of Node context.
+        self.peers = Peers(self)
+        self.apihandler = ApiHandler(self)
 
     def _setup_net_type(self):
         """

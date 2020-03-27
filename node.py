@@ -39,9 +39,6 @@ from libs.node import Node
 from libs.config import Config
 from libs.fork import Fork
 from libs.dbhandler import DbHandler
-from libs.apihandler import ApiHandler
-from libs.plugins import PluginManager
-from libs.peershandler import Peers
 
 import essentials
 
@@ -1290,12 +1287,11 @@ if __name__ == "__main__":
     # upgrade wallet location after nuitka-required "files" folder introduction
 
     # Will start node init sequence
+    # Node instanciation is now responsible for lots of things that were previously done here or below
     node = Node(digest_block, config,  app_version=VERSION, logger=logger, keys=keys.Keys())
     node.logger.app_log.warning(f"Python version: {node.py_version}")
 
     try:
-        # create a plugin manager, load all plugin modules and init
-        node.plugin_manager = PluginManager(app_log=node.logger.app_log, config=config, init=True)
         # get the potential extra command prefixes from plugin
         extra_commands = {}  # global var, used by the server part.
         extra_commands = node.plugin_manager.execute_filter_hook('extra_commands_prefixes', extra_commands)
@@ -1304,9 +1300,6 @@ if __name__ == "__main__":
         node.logger.app_log.warning(f"Status: Starting node version {VERSION}")
         node.startup_time = ttime()
         try:
-            # TODO: Node could create them itself at instanciation, only relies on node properties.
-            node.peers = Peers(node)
-            node.apihandler = ApiHandler(node)
             mp.MEMPOOL = mp.Mempool(node)
             # Until here, we were in single user mode.
 
