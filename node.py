@@ -27,7 +27,6 @@ from time import time as ttime, sleep
 # import aliasesv2 as aliases # POSTFORK_ALIASES
 
 # Bis specific modules
-import apihandler
 import connectionmanager
 import log
 import peershandler
@@ -42,6 +41,7 @@ from libs.node import Node
 from libs.config import Config
 from libs.fork import Fork
 from libs.dbhandler import DbHandler
+from libs.apihandler import ApiHandler
 
 import essentials
 
@@ -1307,7 +1307,7 @@ if __name__ == "__main__":
         node.startup_time = ttime()
         try:
             node.peers = peershandler.Peers(node.logger.app_log, config=config, node=node)
-            node.apihandler = apihandler.ApiHandler(node.logger.app_log, config)
+            node.apihandler = ApiHandler(node.logger.app_log, config)
             mp.MEMPOOL = mp.Mempool(node.logger.app_log, config, node.db_lock, node.is_testnet, trace_db_calls=node.config.trace_db_calls)
             # Until here, we were in single user mode.
 

@@ -491,7 +491,8 @@ class Mempool:
         # Sorry, no space left for this tx type.
         return False
 
-    def merge(self, data: list, peer_ip: str, db_handler: "DbHandler", size_bypass: bool=False, wait: bool=False, revert: bool=False) -> list:
+    def merge(self, data: list, peer_ip: str, db_handler: "DbHandler", size_bypass: bool=False, wait: bool=False,
+              revert: bool=False) -> list:
         """
         Checks and merge the tx list in our mempool.
         Result is a list of text messages, with "Success" as last one is all went fine.
