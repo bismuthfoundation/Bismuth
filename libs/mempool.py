@@ -23,11 +23,12 @@ from bismuthcore.transaction import Transaction
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
+    from libs.node import Node
 
-g__version__ = "0.0.7i"
+g__version__ = "0.0.8i"
 
 """
-0.0.7h - Moves to libs and more type hintss
+0.0.7h - Moves to libs and more type hints
 0.0.5g - Add default param to mergedts for compatibility
 0.0.5f - Using polysign
 0.0.5e - add mergedts timestamp to tx for better handling of late txs
@@ -123,11 +124,11 @@ def sql_trace_callback(log, id: str, statement: str) -> None:
 class Mempool:
     """The mempool manager. Thread safe"""
 
-    def __init__(self, app_log, config=None, db_lock=None, testnet: bool=False, trace_db_calls: bool=True):
+    def __init__(self, node: "Node"):
         try:
-            self.app_log = app_log
-            self.config = config
-            self.db_lock = db_lock
+            self.app_log = node.logger.app_log
+            self.config = node.config
+            self.db_lock = node.db_lock
             self.ram = self.config.mempool_ram
             if self.config.version == 'regnet':
                 self.app_log.warning("Regtest mode, ram mempool")
@@ -139,12 +140,12 @@ class Mempool:
             self.peers_sent = dict()
             self.db = None
             self.cursor = None
-            self.trace_db_calls = trace_db_calls
+            self.trace_db_calls = node.config.trace_db_calls
 
-            self.testnet = testnet
+            self.testnet = node.is_testnet
 
             if self.testnet:
-                app_log.warning("Starting mempool in testnet mode")
+                self.app_log.warning("Starting mempool in testnet mode")
                 self.mempool_path = "mempool_testnet.db"
                 self.mempool_ram_file = "file:mempool_testnet?mode=memory&cache=shared"
             else:

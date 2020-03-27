@@ -1307,7 +1307,7 @@ if __name__ == "__main__":
             # TODO: Node could create them itself at instanciation, only relies on node properties.
             node.peers = Peers(node)
             node.apihandler = ApiHandler(node)
-            mp.MEMPOOL = mp.Mempool(node.logger.app_log, config, node.db_lock, node.is_testnet, trace_db_calls=node.config.trace_db_calls)
+            mp.MEMPOOL = mp.Mempool(node)
             # Until here, we were in single user mode.
 
             # EGG_EVO: Is this just used once for initial sync?
@@ -1354,7 +1354,8 @@ if __name__ == "__main__":
         if node.IS_STOPPING:
             if not node.db_lock.locked():
                 mining_heavy3.mining_close()
-                node.logger.app_log.warning("Status: Securely disconnected main processes, subprocess termination in progress.")
+                node.logger.app_log.warning("Status: Securely disconnected main processes, "
+                                            "subprocess termination in progress.")
                 break
         sleep(0.5)
     node.logger.app_log.warning("Status: Clean Stop")
