@@ -29,7 +29,6 @@ from time import time as ttime, sleep
 # Bis specific modules
 import connectionmanager
 import log
-import peershandler
 import wallet_keys
 from connections import send, receive
 from digest import *
@@ -42,6 +41,7 @@ from libs.fork import Fork
 from libs.dbhandler import DbHandler
 from libs.apihandler import ApiHandler
 from libs.plugins import PluginManager
+from libs.peershandler import Peers
 
 import essentials
 
@@ -1305,7 +1305,7 @@ if __name__ == "__main__":
         node.startup_time = ttime()
         try:
             # TODO: Node could create them itself at instanciation, only relies on node properties.
-            node.peers = peershandler.Peers(node.logger.app_log, config=config, node=node)
+            node.peers = Peers(node)
             node.apihandler = ApiHandler(node)
             mp.MEMPOOL = mp.Mempool(node.logger.app_log, config, node.db_lock, node.is_testnet, trace_db_calls=node.config.trace_db_calls)
             # Until here, we were in single user mode.

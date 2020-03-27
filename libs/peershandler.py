@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
   from libs.node import Node
 
-__version__ = "0.0.20"
+__version__ = "0.0.21"
 
 
 class Peers:
@@ -31,9 +31,9 @@ class Peers:
                  'tried', 'peer_dict', 'peerfile', 'suggested_peerfile', 'banlist', 'whitelist', 'ban_threshold',
                  'ip_to_mainnet', 'peers', 'accept_peers', 'peerlist_updated')
 
-    def __init__(self, app_log, config=None, logstats:bool =True, node: "Node"=None):
-        self.app_log = app_log
-        self.config = config
+    def __init__(self, node: "Node", logstats: bool =True):
+        self.app_log = node.logger.app_log
+        self.config = node.config
         self.logstats = logstats
         self.peersync_lock = threading.Lock()
         self.startup_time = time()
@@ -48,10 +48,10 @@ class Peers:
         self.ip_to_mainnet = {}
         self.connection_pool = []
         # We store them apart from the initial config, could diverge somehow later on.
-        self.banlist = config.banlist
-        self.whitelist = config.whitelist
-        self.ban_threshold = config.ban_threshold
-        self.accept_peers = config.accept_peers
+        self.banlist = node.config.banlist
+        self.whitelist = node.config.whitelist
+        self.ban_threshold = node.config.ban_threshold
+        self.accept_peers = node.config.accept_peers
         self.node = node
         self.peerfile = node.peerfile
         self.suggested_peerfile = node.peerfile_suggested
