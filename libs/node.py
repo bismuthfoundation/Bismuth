@@ -344,6 +344,7 @@ class Node:
         self.logger.app_log.warning("Status: Starting Node blocks init...")
         self.hdd_block = db_handler.block_height_max()
         self.difficulty = difficulty(self, db_handler)  # check diff for miner
+        print("Current difficulty", self.difficulty)
         self.last_block = self.hdd_block  # ram equals drive at this point
 
         self.last_block_hash = db_handler.last_block_hash()  # dup

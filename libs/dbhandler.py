@@ -394,14 +394,19 @@ class DbHandler:
         # EGG_EVO: if new db, convert bin to hex
         return self.c.fetchone()[0]
 
-    def last_block_timestamp(self) -> float:
+    def last_block_timestamp(self, back: int=0) -> Union[float, None]:
         """
         Returns the timestamp (python float) of the latest known block
+        back = 0 gives the last block
+        back = 1 gives the previous block timestamp
         :return:
         """
-        self._execute(self.c, "SELECT timestamp FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
+        self._execute(self.c, "SELECT timestamp FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT {},1".format(back))
         # return quantize_two(self.c.fetchone()[0])
-        return self.c.fetchone()[0]  # timestamps do not need quantize
+        try:
+            return self.c.fetchone()[0]  # timestamps do not need quantize
+        except:
+            return None
 
     def difflast(self) -> List[Union[int, float]]:
         """

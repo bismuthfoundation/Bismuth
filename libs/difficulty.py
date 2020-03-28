@@ -1,23 +1,120 @@
 from decimal import Decimal
 from libs import regnet
-import math
+from math import ceil, log
 import time
+import sys, os
 from libs.quantizer import quantize_two, quantize_ten
 from libs.fork import Fork
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from libs.node import Node
+    from libs.dbhandler import DbHandler
+
+FORK = Fork()  # No need to instanciate one for every call to difficulty()
+
+# See https://github.com/EggPool/bis-temp/blob/master/int/exp4.py
 
 
-def difficulty(node, db_handler):
+def difficulty(node: "Node", db_handler: "DbHandler") -> tuple:
+    return deprecated_difficulty(node, db_handler)
+
+
+def _difficulty(node: "Node", db_handler: "DbHandler") -> tuple:
+    """ EGG: Working on it, not final, do not use"""
     try:
-        fork = Fork()
+        last_block = db_handler.last_mining_transaction()
+        timestamp_last, block_height = last_block.timestamp, last_block.block_height
+        # Beware, this is not thread safe! -
+        node.last_block_timestamp = timestamp_last
+        # node.last_block = block_height do not fetch this here, could interfere with block saving
 
+        previous_block_ts = db_handler.last_block_timestamp(back=1)
+        node.last_block_ago = int(time.time() - timestamp_last)
+
+        # Failsafe for regtest starting at block 1}
+        timestamp_before_last = timestamp_last if previous_block_ts is None else previous_block_ts
+
+        timestamp_1441 = db_handler.last_block_timestamp(back=1441)
+        block_time_prev = (timestamp_before_last - timestamp_1441) / 1440
+        temp = db_handler.last_block_timestamp(back=1441)
+        timestamp_1440 = timestamp_1441 if temp is None else temp
+        block_time = (timestamp_last - timestamp_1440) / 1440
+
+        db_handler._execute(db_handler.c, "SELECT difficulty FROM misc ORDER BY block_height DESC LIMIT 1")
+        diff_block_previous = float(db_handler.c.fetchone()[0])
+
+        time_to_generate = timestamp_last - timestamp_before_last
+
+        if node.is_regnet:
+            return (float('%.10f' % regnet.REGNET_DIFF), float('%.10f' % (regnet.REGNET_DIFF - 8)), float(time_to_generate),
+                    float(regnet.REGNET_DIFF), float(block_time), float(0), float(0), block_height)
+
+        hashrate = pow(2, diff_block_previous / 2.0) / (block_time * ceil(28 - diff_block_previous / 16.0))
+        # Calculate new difficulty for desired blocktime of 60 seconds
+        target = 60.00
+        # D0 = diff_block_previous
+        difficulty_new = (2 / log(2)) * log(hashrate * target * ceil(28 - diff_block_previous / 16.0))
+        # Feedback controller
+        Kd = 10
+        difficulty_new = difficulty_new - Kd * (block_time - block_time_prev)
+        diff_adjustment = (difficulty_new - diff_block_previous) / 720  # reduce by factor of 720
+
+        if diff_adjustment > 1.0:
+            diff_adjustment = 1.0
+
+        difficulty_new_adjusted = quantize_ten(diff_block_previous + diff_adjustment)
+        difficulty2 = difficulty_new_adjusted
+
+        # fork handling
+        if node.is_mainnet:
+            if block_height == FORK.POW_FORK - FORK.FORK_AHEAD:
+                FORK.limit_version(node)
+        # /fork handling
+
+        diff_drop_time = 180
+
+        if time.time() > timestamp_last + 2 * diff_drop_time:
+            # Emergency diff drop
+            # Egg: kept the quantize2 to avoid side effects on specific values.
+            # Should go away with a future fork.
+            time_difference = quantize_two(time.time()) - quantize_two(timestamp_last)
+            diff_dropped = difficulty2 - 1 - 10 * (time_difference - 2 * diff_drop_time) / diff_drop_time
+        elif time.time() > timestamp_last + diff_drop_time:
+            time_difference = quantize_two(time.time()) - quantize_two(timestamp_last)
+            diff_dropped = difficulty2 + 1 - time_difference / diff_drop_time
+        else:
+            diff_dropped = difficulty2
+
+        if difficulty2 < 50:
+            difficulty2 = 50
+        if diff_dropped < 50:
+            diff_dropped = 50
+
+        # Egg: kept the float('%.10f' % ...) to avoid side effects on specific values.
+        return (float('%.10f' % difficulty2), float('%.10f' % diff_dropped), time_to_generate, diff_block_previous,
+                block_time, hashrate, diff_adjustment, block_height)
+        # need to keep float types here for database inserts support
+    except:
+        # new chain or regnet
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
+
+        difficulty2 = (24, 24, 0, 0, 0, 0, 0, 0)
+        return difficulty2
+
+
+def deprecated_difficulty(node, db_handler):
+    try:
         db_handler._execute(db_handler.c, "SELECT * FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 2")
         result = db_handler.c.fetchone()
 
         timestamp_last = Decimal(result[1])
         block_height = int(result[0])
 
+        # Beware, this is not thread safe! -
         node.last_block_timestamp = timestamp_last
-        #node.last_block = block_height do not fetch this here, could interfere with block saving
+        # node.last_block = block_height do not fetch this here, could interfere with block saving
 
         previous = db_handler.c.fetchone()
 
@@ -45,12 +142,12 @@ def difficulty(node, db_handler):
                     float(regnet.REGNET_DIFF), float(block_time), float(0), float(0), block_height)
 
         hashrate = pow(2, diff_block_previous / Decimal(2.0)) / (
-                block_time * math.ceil(28 - diff_block_previous / Decimal(16.0)))
+                block_time * ceil(28 - diff_block_previous / Decimal(16.0)))
         # Calculate new difficulty for desired blocktime of 60 seconds
         target = Decimal(60.00)
-        ##D0 = diff_block_previous
+        # D0 = diff_block_previous
         difficulty_new = Decimal(
-            (2 / math.log(2)) * math.log(hashrate * target * math.ceil(28 - diff_block_previous / Decimal(16.0))))
+            (2 / log(2)) * log(hashrate * target * ceil(28 - diff_block_previous / Decimal(16.0))))
         # Feedback controller
         Kd = 10
         difficulty_new = difficulty_new - Kd * (block_time - block_time_prev)
@@ -60,36 +157,36 @@ def difficulty(node, db_handler):
             diff_adjustment = Decimal(1.0)
 
         difficulty_new_adjusted = quantize_ten(diff_block_previous + diff_adjustment)
-        difficulty = difficulty_new_adjusted
+        difficulty2 = difficulty_new_adjusted
 
-        #fork handling
+        # fork handling
         if node.is_mainnet:
-            if block_height == fork.POW_FORK - fork.FORK_AHEAD:
-                fork.limit_version(node)
-        #fork handling
+            if block_height == FORK.POW_FORK - FORK.FORK_AHEAD:
+                FORK.limit_version(node)
+        # /fork handling
 
         diff_drop_time = Decimal(180)
 
         if Decimal(time.time()) > Decimal(timestamp_last) + Decimal(2 * diff_drop_time):
             # Emergency diff drop
             time_difference = quantize_two(time.time()) - quantize_two(timestamp_last)
-            diff_dropped = quantize_ten(difficulty) - quantize_ten(1) \
+            diff_dropped = quantize_ten(difficulty2) - quantize_ten(1) \
                            - quantize_ten(10 * (time_difference - 2 * diff_drop_time) / diff_drop_time)
         elif Decimal(time.time()) > Decimal(timestamp_last) + Decimal(diff_drop_time):
             time_difference = quantize_two(time.time()) - quantize_two(timestamp_last)
-            diff_dropped = quantize_ten(difficulty) + quantize_ten(1) - quantize_ten(time_difference / diff_drop_time)
+            diff_dropped = quantize_ten(difficulty2) + quantize_ten(1) - quantize_ten(time_difference / diff_drop_time)
         else:
-            diff_dropped = difficulty
+            diff_dropped = difficulty2
 
-        if difficulty < 50:
-            difficulty = 50
+        if difficulty2 < 50:
+            difficulty2 = 50
         if diff_dropped < 50:
             diff_dropped = 50
 
         return (
-            float('%.10f' % difficulty), float('%.10f' % diff_dropped), float(time_to_generate), float(diff_block_previous),
+            float('%.10f' % difficulty2), float('%.10f' % diff_dropped), float(time_to_generate), float(diff_block_previous),
             float(block_time), float(hashrate), float(diff_adjustment),
             block_height)  # need to keep float here for database inserts support
-    except: #new chain or regnet
-        difficulty = [24,24,0,0,0,0,0,0]
-        return difficulty
+    except:  # new chain or regnet
+        difficulty2 = [24, 24, 0, 0, 0, 0, 0, 0]
+        return difficulty2

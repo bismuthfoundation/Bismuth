@@ -3,6 +3,7 @@ import threading
 from libs import mempool as mp
 # from libs import node, keys, client
 # import time
+from time import time as ttime
 import socks
 from libs.connections import send, receive
 # from decimal import Decimal
@@ -55,7 +56,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
         return
 
     timeout_operation = 60  # timeout
-    timer_operation = time.time()  # start counting
+    timer_operation = ttime()  # start counting
 
     try:
         s = socks.socksocket()
@@ -115,8 +116,8 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                 node.peers.peersync(subdata)
 
             elif data == "sync":
-                if not time.time() <= timer_operation + timeout_operation:
-                    timer_operation = time.time()  # reset timer
+                if not ttime() <= timer_operation + timeout_operation:
+                    timer_operation = ttime()  # reset timer
 
                 try:
                     while len(node.syncing) >= 3:
@@ -244,7 +245,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                     node.logger.app_log.warning(f"Skipping sync from {peer_ip}, syncing already in progress")
 
                 else:
-                    if int(node.last_block_timestamp) < (time.time() - 600):
+                    if int(node.last_block_timestamp) < (ttime() - 600):
                         block_req = node.peers.consensus_most_common
                         node.logger.app_log.warning("Most common block rule triggered")
 

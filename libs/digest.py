@@ -6,7 +6,7 @@ def digest_block(node: "Node", data, sdef, peer_ip: str, db_handler: "DbHandler"
 import hashlib
 import os
 import sys
-
+from time import time as ttime, sleep
 from libs import mempool as mp, mining_heavy3
 from libs.difficulty import difficulty
 from libs.essentials import address_validate, address_is_rsa
@@ -60,7 +60,7 @@ class Block:
 
         self.mining_reward = None
         self.mirror_hash = None
-        self.start_time_block = quantize_two(time.time())
+        self.start_time_block = quantize_two(ttime())
         self.tokens_operation_present = False
 
 
@@ -124,7 +124,7 @@ def sort_transactions(block, tx, block_instance, miner_tx, node: "Node"):
 
     for tx_index, transaction in enumerate(block):
         # print("tx_index", tx_index)
-        tx.start_time_tx = quantize_two(time.time())
+        tx.start_time_tx = quantize_two(ttime())
         tx.q_received_timestamp = quantize_two(transaction[0])
         tx.received_timestamp = '%.2f' % tx.q_received_timestamp
         tx.received_address = str(transaction[1])[:56]
@@ -367,7 +367,7 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
             # HCL:wip converting to new format
 
             block_instance.block_height_new = node.last_block + 1
-            block_instance.start_time_block = quantize_two(time.time())
+            block_instance.start_time_block = quantize_two(ttime())
 
             fork_reward_check(node=node, db_handler=db_handler)
 
@@ -389,6 +389,8 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
 
             # calculate current difficulty (is done for each block in block array, not super easy to isolate)
             diff = difficulty(node, db_handler)
+            # print("difficulty 1", diff)
+            # sleep(1)
             node.difficulty = diff
 
             node.logger.app_log.warning(f"Time to generate block {node.last_block + 1}: {'%.2f' % diff[2]}")
@@ -499,7 +501,7 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
             node.logger.app_log.warning(f"Valid block: {block_instance.block_height_new}: "
                                         f"{block_instance.block_hash[:10]} with {len(block)} txs, "
                                         f"digestion from {peer_ip} completed in "
-                                        f"{str(time.time() - float(block_instance.start_time_block))[:5]}s.")
+                                        f"{str(ttime() - float(block_instance.start_time_block))[:5]}s.")
 
             if block_instance.tokens_operation_present:
                 db_handler.tokens_update()
@@ -509,6 +511,8 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
 
             # This new block may change the int(diff). Trigger the hook whether it changed or not.
             diff = difficulty(node, db_handler)
+            # print("difficulty 2 ", diff)
+            # sleep(1)
             node.difficulty = diff
             node.plugin_manager.execute_action_hook('diff', diff[0])
             # We could recalc diff after inserting block, and then only trigger the block hook,
@@ -545,7 +549,7 @@ def digest_block(node: "Node", data, sdef, peer_ip: str, db_handler: "DbHandler"
         node.logger.app_log.warning(f"Database lock acquired")
 
         while mp.MEMPOOL.lock.locked():
-            time.sleep(0.1)
+            sleep(0.1)
             node.logger.app_log.info(f"Chain: Waiting for mempool to unlock {peer_ip}")
 
         node.logger.app_log.warning(f"Chain: Digesting started from {peer_ip}")
@@ -589,7 +593,7 @@ def digest_block(node: "Node", data, sdef, peer_ip: str, db_handler: "DbHandler"
             node.db_lock.release()
             node.logger.app_log.warning(f"Database lock released")
 
-            delta_t = time.time() - float(block_instance.start_time_block)
+            delta_t = ttime() - float(block_instance.start_time_block)
             # node.logger.app_log.warning("Block: {}: {} digestion completed in {}s."
             # .format(block_instance.block_height_new,  block_hash[:10], delta_t))
             node.plugin_manager.execute_action_hook('digestblock',

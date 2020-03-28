@@ -3,6 +3,8 @@
 
 import threading
 from time import time, sleep
+import sys
+import os
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -78,4 +80,8 @@ class NodeBackgroundThread (threading.Thread):
                     if not self.node.IS_STOPPING:
                         sleep(1)
             except Exception as e:
-                self.node.logger.app_log.warning(f"Error in connection manger ({e})")
+                self.node.logger.app_log.warning(f"Error in NodeBackgroundThread ({e})")
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
+                self.node.close("Error NodeBackgroundThread")
