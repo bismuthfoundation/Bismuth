@@ -1,16 +1,15 @@
 """
 
-test cmd for the hn_last_block_ts command.
+cmd for the hn_reg_round command.
 
 
 Usage:
 
-python3 cmd_hn_last_block_ts
+python3 cmd_hn_reg_round.py round
 
 """
 
-
-import connections
+from libs import connections
 import json
 import socks
 import sys
@@ -28,17 +27,19 @@ END_ROUND_SLOTS = 1
 ROUND_TIME_SEC = POS_SLOT_TIME_SEC * (MAX_ROUND_SLOTS + END_ROUND_SLOTS)
 
 
-def hn_last_block_ts():
+def hn_reg_round(round: int, pow_height: int=0):
     s = socks.socksocket()
     s.settimeout(10)
     s.connect(("127.0.0.1", 5658))
+    timestamp = ORIGIN_OF_TIME + round * ROUND_TIME_SEC
     # Last param is ip, to get feed of a specific ip, False for all.
-    connections.send(s, "HN_last_block_ts")
+    connections.send(s, "HN_reg_round {} {} {} False".format(round, timestamp, pow_height))
     res = connections.receive(s)
     return res
 
 
 if __name__ == "__main__":
-    res_as_dict = hn_last_block_ts()
+    _, round_string = sys.argv
+    res_as_dict = hn_reg_round(int(round_string))
     print("Answer (<=0 means fail):")
     print(json.dumps(res_as_dict, indent=2))

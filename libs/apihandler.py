@@ -13,7 +13,7 @@ import threading
 
 # modular handlers will need access to the database methods under some form, so it needs to be modular too.
 # Here, I just duplicated the minimum needed code from node, further refactoring with classes will follow.
-import connections
+from libs import connections
 from libs.mempool import MEMPOOL
 from polysign.signerfactory import SignerFactory
 from bismuthcore.transaction import Transaction
@@ -417,7 +417,7 @@ class ApiHandler:
         info = []
         # get the last known block
         since_height = int(connections.receive(socket_handler))
-        where_openfield_like = connections.receive(socket_handler)+'%'
+        where_openfield_like = connections.receive(socket_handler) + '%'
         #print('api_getblockswhereoflike', since_height, where_openfield_like)
         try:
             try:

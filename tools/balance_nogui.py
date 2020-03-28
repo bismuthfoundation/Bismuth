@@ -1,11 +1,19 @@
-import essentials, connections, socks
+"""
+Command line balance checker
+
+# TODO: still uses old privkey/pubkey wallet, to be upgraded or merged as part as command line client.
+"""
+import sys
+sys.path.append('../')
+import essentials, socks
+from libs import connections
 from libs.config import Config
 
 config = Config()
 node_ip = config.node_ip
 port = config.port
 
-key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address = essentials.keys_load("privkey.der", "pubkey.der")
+key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address = essentials.keys_load("../privkey.der", "../pubkey.der")
 
 s = socks.socksocket()
 s.settimeout(10)

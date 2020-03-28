@@ -3,7 +3,7 @@ Modularize the mining algo check
 """
 
 import hashlib
-from quantizer import quantize_two, quantize_eight, quantize_ten
+from libs.quantizer import quantize_ten
 
 
 __version__ = '0.0.1'

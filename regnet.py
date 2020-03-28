@@ -16,9 +16,7 @@ from hashlib import sha224
 from random import getrandbits
 from typing import List
 
-import connections
-from libs import mempool as mp
-import mining_heavy3 as mining
+from libs import mempool as mp, connections, mining_heavy3 as mining
 
 from bismuthcore.transaction import Transaction
 from typing import TYPE_CHECKING

@@ -1,4 +1,5 @@
-import socks, connections
+import socks
+from libs import connections
 from libs.config import Config
 
 config = Config()

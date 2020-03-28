@@ -11,8 +11,8 @@ import os
 import struct
 import sys
 from hashlib import sha224
-from hmac_drbg import DRBG
-from quantizer import quantize_ten
+from libs.hmac_drbg import DRBG
+from libs.quantizer import quantize_ten
 from decimal import Decimal
 
 import regnet
@@ -123,16 +123,16 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
                 diff_dropped = 50
             if real_diff >= int(diff_dropped):
                 if app_log:
-                    app_log.info ("Readjusted difficulty requirement satisfied for block {} from {}, {} >= {} (factor {})"
-                                  .format(block_height_new, peer_ip, real_diff, int(diff_dropped), factor))
+                    app_log.info("Readjusted difficulty requirement satisfied for block {} from {}, {} >= {} (factor {})"
+                                 .format(block_height_new, peer_ip, real_diff, int(diff_dropped), factor))
                 diff_save = diff0
                 # lie about what diff was matched not to mess up the diff algo
             else:
-                raise ValueError ("Readjusted difficulty too low for block {} from {}, {} should be at least {}"
-                                  .format(block_height_new, peer_ip, real_diff, diff_dropped))
+                raise ValueError("Readjusted difficulty too low for block {} from {}, {} should be at least {}"
+                                 .format(block_height_new, peer_ip, real_diff, diff_dropped))
         else:
-            raise ValueError ("Difficulty {} too low for block {} from {}, should be at least {}"
-                              .format(real_diff, block_height_new, peer_ip, diff0))
+            raise ValueError("Difficulty {} too low for block {} from {}, should be at least {}"
+                             .format(real_diff, block_height_new, peer_ip, diff0))
         return diff_save
     except Exception as e:
             # Left for edge cases debug

@@ -5,7 +5,6 @@ Peers handler module for Bismuth nodes
 
 import json
 import os
-import random
 import shutil
 # import re
 import sys
@@ -13,14 +12,15 @@ import threading
 from time import time
 import socks
 
-import connections
+from libs import connections
 # import regnet
 from essentials import most_common_dict, percentage_in
+from libs.helpers import dict_shuffle
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
   from libs.node import Node
 
-__version__ = "0.0.21"
+__version__ = "0.0.22"
 
 
 class Peers:
@@ -74,11 +74,6 @@ class Peers:
             # regnet takes over testnet
             return True
         return "regnet" in self.config.version
-
-    def dict_shuffle(self, dictionary: dict) -> dict:
-        l = list(dictionary.items())
-        random.shuffle(l)
-        return dict(l)
 
     def status_dict(self) -> dict:
         """Returns a status as a dict"""
@@ -463,8 +458,8 @@ class Peers:
     def client_loop(self, node: "Node", this_target) -> None:
         """Manager loop called every 30 sec. Handles maintenance"""
         try:
-            for key, value in dict(self.dict_shuffle(self.peer_dict)).items():
-                # The dict() above is not an error or a cast,
+            for key, value in dict(dict_shuffle(self.peer_dict)).items():
+                # Important: The dict() above is not an error nor a cast,
                 # it's to make a copy of the dict and avoid "dictionary changed size during iteration"
                 host = key
                 port = int(value)

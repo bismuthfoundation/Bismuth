@@ -24,16 +24,16 @@ from time import time as ttime, sleep
 
 # moved to DbHandler
 # import aliases  # PREFORK_ALIASES
-# import aliasesv2 as aliases # POSTFORK_ALIASES
+# import future.aliasesv2 as aliases # POSTFORK_ALIASES
 
 # Bis specific modules
-import connectionmanager
 import log
 import wallet_keys
-from connections import send, receive
+from libs.connections import send, receive
 from digest import *
 from bismuthcore.helpers import sanitize_address
 from libs import keys, client, mempool as mp
+from libs.nodebackgroundthread import NodeBackgroundThread
 from libs.logger import Logger
 from libs.node import Node
 from libs.config import Config
@@ -43,7 +43,7 @@ from libs.dbhandler import DbHandler
 import essentials
 
 
-VERSION = "5.0.7-evo"  # Experimental db-evolution branch
+VERSION = "5.0.8-evo"  # Experimental db-evolution branch
 
 fork = Fork()
 
@@ -1328,10 +1328,8 @@ if __name__ == "__main__":
                 server_thread.start()
                 node.logger.app_log.warning("Status: Server loop running.")
 
-            # start connection manager
-            connection_manager = connectionmanager.ConnectionManager(node, mp.MEMPOOL)
-            connection_manager.start()
-            # start connection manager
+            background_thread = NodeBackgroundThread(node, mp.MEMPOOL)
+            background_thread.start()
 
         except Exception as e:
             node.logger.app_log.info(e)

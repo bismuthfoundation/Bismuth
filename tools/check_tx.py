@@ -6,19 +6,19 @@ A Demo script that takes a transaction id as input, and sends back a json with i
 - in mempool (shows timestamp, from, to, amount, first 50 chars of openfield)
 - in ledger (shows timestamp, from, to, amount, first 50 chars of openfield as well as number of confirmations)
 
-This script is supposed to be run in the node directory, it needs access to both ledger.db and mempool.db
+This script is supposed to be run in a subdir of the node directory, it needs access to both ../static/ledger.db and ../mempool.db
 """
 
 import sqlite3, sys, json
 
 # Default ledger path
-ledger_path = "static/ledger.db"
+ledger_path = "../static/ledger.db"
 
 # Default mempool path
-mempool_path = "mempool.db"
+mempool_path = "../mempool.db"
 
 
-def list_to_tx(result):
+def list_to_tx(result: list) -> dict:
 	"""
 	Converts the query result into a dict
 	"""
@@ -27,7 +27,7 @@ def list_to_tx(result):
 	return dict(zip(keys,result))
 
 
-def is_in_mempool(txid):
+def is_in_mempool(txid: str) -> tuple:
 	"""
 	If txid is in mempool, sends back details of the tx
 	"""
@@ -37,12 +37,12 @@ def is_in_mempool(txid):
 	m.execute("SELECT timestamp, address, recipient, amount, openfield FROM transactions WHERE signature like ?;", (txid+"%",))
 	result = m.fetchone()
 	if result:
-		return (True, list_to_tx(list(result)))
+		return True, list_to_tx(list(result))
 	else:
-		return (False, None)
+		return False, None
 
 
-def is_in_ledger(txid):
+def is_in_ledger(txid: str) -> tuple:
 	"""
 	If txid is in ledger, sends back details of the tx and number of confirmations
 	"""
@@ -54,9 +54,9 @@ def is_in_ledger(txid):
 	if result:
 		m.execute("SELECT block_height FROM transactions ORDER BY block_height desc LIMIT 1")
 		last = m.fetchone()
-		return (True, list_to_tx(list(result)), last[0])
+		return True, list_to_tx(list(result)), last[0]
 	else:
-		return (False, None, None)
+		return False, None, None
 
 
 if __name__ == "__main__":
@@ -65,7 +65,7 @@ if __name__ == "__main__":
 	else:
 		txid = sys.argv[1]
 
-	res = {"TxId":txid, "Status":"Unknown"}
+	res = {"TxId": txid, "Status": "Unknown"}
 
 	isit, details = is_in_mempool(txid)
 	if isit:

@@ -12,17 +12,17 @@ if TYPE_CHECKING:
     from libs.mempool import Mempool
 
 
-class ConnectionManager (threading.Thread):
+class NodeBackgroundThread (threading.Thread):
     def __init__(self, node: "Node", mempool: "Mempool"):
-        threading.Thread.__init__(self, name="ConnectionManagerThread")
+        threading.Thread.__init__(self, name="NodeBackgroundThread")
         self.node = node
         self.mempool = mempool
 
     def run(self) -> None:
-        self.connection_manager()
+        self.background_thread()
 
-    def connection_manager(self) -> None:
-        self.node.logger.app_log.warning("Status: Starting connection manager")
+    def background_thread(self) -> None:
+        self.node.logger.app_log.warning("Status: Starting Node background Thread")
         until_purge = 0
 
         while not self.node.IS_STOPPING:

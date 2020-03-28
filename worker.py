@@ -5,7 +5,7 @@ from libs import mempool as mp
 # from libs import node, keys, client
 # import time
 import socks
-from connections import send, receive
+from libs.connections import send, receive
 # from decimal import Decimal
 # from quantizer import quantize_two, quantize_eight, quantize_ten
 from difficulty import *

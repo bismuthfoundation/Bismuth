@@ -9,7 +9,7 @@ from decimal import Decimal
 
 # custom modules
 sys.path.append('../')
-from quantizer import quantize_two, quantize_eight, quantize_ten
+from libs.quantizer import quantize_eight
 
 LEDGER_PATH = '../static/ledger.db'
 HYPER_PATH = '../static/hyper.db'

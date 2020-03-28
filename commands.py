@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import socks, connections, time, sys, json
+import socks, time, sys, json
+from libs import connections
 from libs.config import Config
 
 config = Config()

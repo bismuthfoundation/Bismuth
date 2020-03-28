@@ -9,7 +9,7 @@
 
 import sqlite3
 import log
-from quantizer import quantize_eight
+from libs.quantizer import quantize_eight
 from libs import mempool as mp
 from hashlib import blake2b
 from essentials import percentage

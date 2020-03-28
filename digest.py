@@ -2,8 +2,7 @@ import hashlib
 import os
 import sys
 
-from libs import mempool as mp
-import mining_heavy3
+from libs import mempool as mp, mining_heavy3
 from difficulty import *
 from essentials import address_validate, address_is_rsa
 from polysign.signerfactory import SignerFactory

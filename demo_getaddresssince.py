@@ -25,7 +25,7 @@ eg:
 No proper error checking.
 """
 
-import connections
+from libs import connections
 import json
 import socks
 import sys

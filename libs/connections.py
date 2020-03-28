@@ -14,7 +14,7 @@ def send(sdef, data, slen: int=SLEN) -> None:
 
 if "Linux" in platform.system():
     READ_OR_ERROR = select.POLLIN | select.POLLPRI | select.POLLHUP | select.POLLERR | select.POLLNVAL
-    #READ_ONLY = select.POLLIN | select.POLLPRI
+    # READ_ONLY = select.POLLIN | select.POLLPRI
 
     def receive(sdef, slen: int=SLEN, timeout: int=LTIMEOUT):
         try:
@@ -26,16 +26,16 @@ if "Linux" in platform.system():
                 # logical timeout
                 return "*"
             fd, flag = ready[0]
-            if (flag & ( select.POLLHUP | select.POLLERR | select.POLLNVAL)):
+            if flag & ( select.POLLHUP | select.POLLERR | select.POLLNVAL):
                 # No need to read
                 raise RuntimeError("Socket POLLHUP")
-            if (flag & (select.POLLIN|select.POLLPRI)):
+            if flag & (select.POLLIN|select.POLLPRI):
                 data = sdef.recv(slen)
                 if not data:
                     # POLLIN and POLLHUP are not exclusive. We can have both.
                     raise RuntimeError("Socket EOF")
                 data = int(data)  # receive length
-            elif (flag & (select.POLLERR | select.POLLHUP | select.POLLNVAL)):
+            elif flag & (select.POLLERR | select.POLLHUP | select.POLLNVAL):
                 raise RuntimeError("Socket error {}".format(flag))
             else:
                 raise RuntimeError("Socket Unexpected Error")
@@ -46,16 +46,16 @@ if "Linux" in platform.system():
                 if not ready:
                     raise RuntimeError("Socket Timeout2")
                 fd, flag = ready[0]
-                if (flag & ( select.POLLHUP | select.POLLERR | select.POLLNVAL)):
+                if flag & ( select.POLLHUP | select.POLLERR | select.POLLNVAL):
                     # No need to read
                     raise RuntimeError("Socket POLLHUP2")
-                if (flag & (select.POLLIN|select.POLLPRI)):
+                if flag & (select.POLLIN|select.POLLPRI):
                     chunk = sdef.recv(min(data - bytes_recd, 2048))
                     if not chunk:
                         raise RuntimeError("Socket EOF2")
                     chunks.append(chunk)
                     bytes_recd = bytes_recd + len(chunk)
-                elif (flag & (select.POLLERR | select.POLLHUP | select.POLLNVAL)):
+                elif flag & (select.POLLERR | select.POLLHUP | select.POLLNVAL):
                     raise RuntimeError("Socket Error {}".format(flag))
                 else:
                     raise RuntimeError("Socket Unexpected Error")
@@ -74,7 +74,7 @@ if "Linux" in platform.system():
                 poller.unregister(sdef)
             except Exception as e2:
                 pass
-                #print ("Exception unregistering: {}".format(e2))
+                # print ("Exception unregistering: {}".format(e2))
             raise RuntimeError(f"Connections: {e}")
 
 
@@ -86,13 +86,13 @@ else:
         if ready[0]:
             try:
                 data = int(sdef.recv(slen))  # receive length
-                #print ("To receive: {}".format(data))
+                # print ("To receive: {}".format(data))
             except:
                 raise RuntimeError("Connection closed by the remote host")
         else:
             # logical timeout
             return "*"
-            #raise RuntimeError("Socket timeout")
+            # raise RuntimeError("Socket timeout")
 
         chunks = []
         bytes_recd = 0
@@ -108,5 +108,5 @@ else:
                  raise RuntimeError("Socket timeout")
 
         segments = b''.join(chunks).decode("utf-8")
-        #print(f"Received segments: {segments} from {sdef.getpeername()[0]}")
+        # print(f"Received segments: {segments} from {sdef.getpeername()[0]}")
         return json.loads(segments)
