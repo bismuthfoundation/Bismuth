@@ -8,8 +8,9 @@ import glob
 import os
 import tarfile
 import sys
+from sys import exc_info
 import platform
-from time import sleep
+from time import sleep, time as ttime
 from shutil import copy
 from math import floor
 
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
 
 
-__version__ = "0.0.8"
+__version__ = "0.0.10"
 
 
 class Node:
@@ -186,6 +187,7 @@ class Node:
         if message != '':
             self.logger.app_log.error(message)
         self.IS_STOPPING = True
+        mining_heavy3.mining_close()
         if force_exit:
             sys.exit()
 
@@ -404,3 +406,115 @@ class Node:
         if checkpoint != self.checkpoint:
             self.checkpoint = checkpoint
             self.logger.app_log.warning(f"Checkpoint set to {self.checkpoint}")
+
+    def blocknf(self, block_hash_delete: str, peer_ip: str, db_handler: "DbHandler", hyperblocks: bool=False) -> None:
+        """
+        Rolls back a single block, updates node object variables.
+        Rollback target must be above checkpoint.
+        Hash to rollback must match in case our ledger moved.
+        Not trusting hyperblock nodes for old blocks because of trimming,
+        they wouldn't find the hash and cause rollback.
+        """
+        self.logger.app_log.info(f"Rollback operation on {block_hash_delete} initiated by {peer_ip}")
+        my_time = ttime()
+        if not self.db_lock.locked():
+            self.db_lock.acquire()
+            self.logger.app_log.warning(f"Database lock acquired")
+            backup_data = None  # used in "finally" section
+            skip = False
+            reason = ""
+
+            try:
+                block_max_ram = db_handler.last_mining_transaction().to_dict(legacy=True)
+                db_block_height = block_max_ram['block_height']
+                db_block_hash = block_max_ram['block_hash']
+
+                ip = {'ip': peer_ip}
+                self.plugin_manager.execute_filter_hook('filter_rollback_ip', ip)
+                if ip['ip'] == 'no':
+                    reason = "Filter blocked this rollback"
+                    skip = True
+
+                elif db_block_height < self.checkpoint:
+                    reason = "Block is past checkpoint, will not be rolled back"
+                    skip = True
+
+                elif db_block_hash != block_hash_delete:
+                    # print db_block_hash
+                    # print block_hash_delete
+                    reason = "We moved away from the block to rollback, skipping"
+                    skip = True
+
+                elif hyperblocks and self.last_block_ago > 30000:  # more than 5000 minutes/target blocks away
+                    reason = f"{peer_ip} is running on hyperblocks and our last block is too old, skipping"
+                    skip = True
+
+                else:
+                    backup_data = db_handler.backup_higher(db_block_height)
+
+                    self.logger.app_log.warning(f"Node {peer_ip} didn't find block {db_block_height} ({db_block_hash})")
+
+                    # roll back hdd too
+                    db_handler.rollback_under(db_block_height)
+                    # /roll back hdd too
+
+                    # rollback indices
+                    db_handler.tokens_rollback(db_block_height)
+                    db_handler.aliases_rollback(db_block_height)
+                    # /rollback indices
+
+                    self.last_block_timestamp = db_handler.last_block_timestamp()
+                    self.last_block_hash = db_handler.last_block_hash()
+                    self.last_block = db_block_height - 1
+                    self.hdd_hash = db_handler.last_block_hash()
+                    self.hdd_block = db_block_height - 1
+                    db_handler.tokens_update()
+
+            except Exception as e:
+                if self.config.debug:
+                    exc_type, exc_obj, exc_tb = exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    self.logger.app_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
+                self.logger.app_log.warning(e)
+
+            finally:
+                self.db_lock.release()
+
+                self.logger.app_log.warning(f"Database lock released")
+
+                if skip:
+                    rollback = {"timestamp": my_time, "height": db_block_height, "ip": peer_ip,
+                                "hash": db_block_hash, "skipped": True, "reason": reason}
+                    self.plugin_manager.execute_action_hook('rollback', rollback)
+                    self.logger.app_log.info(f"Skipping rollback: {reason}")
+                else:
+                    try:
+                        nb_tx = 0
+                        for tx in backup_data:
+                            tx_short = f"{tx[1]} - {tx[2]} to {tx[3]}: {tx[4]} ({tx[11]})"
+                            if tx[9] == 0:
+                                try:
+                                    nb_tx += 1
+                                    self.logger.app_log.info(
+                                        mp.MEMPOOL.merge((tx[1], tx[2], tx[3], tx[4], tx[5], tx[6], tx[10], tx[11]),
+                                                         peer_ip, db_handler, size_bypass=False, revert=True))
+                                    # will get stuck if you change it to respect self.db_lock
+                                    self.logger.app_log.warning(f"Moved tx back to mempool: {tx_short}")
+                                except Exception as e:
+                                    self.logger.app_log.warning(f"Error during moving tx back to mempool: {e}")
+                            else:
+                                # It's the coinbase tx, so we get the miner address
+                                miner = tx[3]
+                                height = tx[0]
+                        rollback = {"timestamp": my_time, "height": height, "ip": peer_ip, "miner": miner,
+                                    "hash": db_block_hash, "tx_count": nb_tx, "skipped": False, "reason": ""}
+                        self.plugin_manager.execute_action_hook('rollback', rollback)
+
+                    except Exception as e:
+                        self.logger.app_log.warning(f"Error during moving txs back to mempool: {e}")
+
+        else:
+            reason = "Skipping rollback, other ledger operation in progress"
+            rollback = {"timestamp": my_time, "ip": peer_ip, "skipped": True, "reason": reason}
+            self.plugin_manager.execute_action_hook('rollback', rollback)
+            self.logger.app_log.info(reason)

@@ -14,16 +14,17 @@ from bismuthcore.block import Block
 from bismuthcore.helpers import fee_calculate
 import functools
 from libs.fork import Fork
+from libs.helpers import blake2bhash_generate
 
 from typing import Union, List
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-  from libs.node import Node
-  from libs.mempool import Mempool  # for type hints
-  from libs.logger import Logger
+    from libs.node import Node
+    from libs.mempool import Mempool  # for type hints
+    from libs.logger import Logger
 
 
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 
 ALIAS_REGEXP = r'^alias='
 SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
@@ -38,10 +39,10 @@ def sql_trace_callback(log, sql_id, statement: str):
 class DbHandler:
     # Define  slots. One instance per thread, can be significant.
     __slots__ = ("ram", "ledger_ram_file", "ledger_path", "hyper_path", "logger", "trace_db_calls", "index_db",
-                 "index", "index_cursor", "hdd", "h", "hdd2", "h2", "conn", "c", "old_sqlite")
+                 "index", "index_cursor", "hdd", "h", "hdd2", "h2", "conn", "c", "old_sqlite", "plugin_manager")
 
     def __init__(self, index_db: str, ledger_path: str, hyper_path: str, ram: bool, ledger_ram_file: str,
-                 logger: "Logger", old_sqlite: bool=False, trace_db_calls: bool=False):
+                 logger: "Logger", old_sqlite: bool=False, trace_db_calls: bool=False, plugin_manager=None):
         """To be used only for tests - See .from_node() factory above."""
         self.ram = ram
         self.ledger_ram_file = ledger_ram_file
@@ -51,6 +52,7 @@ class DbHandler:
         self.index_db = index_db
         self.ledger_path = ledger_path
         self.old_sqlite = old_sqlite
+        self.plugin_manager = plugin_manager
 
         self.index = sqlite3.connect(self.index_db, timeout=1)
         if self.trace_db_calls:
@@ -91,7 +93,7 @@ class DbHandler:
         """All params we need are known to node."""
         return DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram,
                          node.ledger_ram_file, node.logger, old_sqlite=node.config.old_sqlite,
-                         trace_db_calls=node.config.trace_db_calls)
+                         trace_db_calls=node.config.trace_db_calls, plugin_manager=node.plugin_manager)
 
     # ==== Aliases ==== #
 
@@ -174,8 +176,9 @@ class DbHandler:
         # to be dropped in case of rollback ofc.
         self.logger.app_log.warning("Alias anchor block: {}".format(alias_last_block))
         self.h.execute(
-            "SELECT block_height, address, openfield FROM transactions WHERE openfield LIKE ? AND block_height >= ? ORDER BY block_height ASC, timestamp ASC;",
-            ("alias=" + '%',) + (alias_last_block,))
+            "SELECT block_height, address, openfield FROM transactions "
+            "WHERE openfield LIKE ? AND block_height >= ? ORDER BY block_height ASC, timestamp ASC;",
+            ("alias=%", alias_last_block))
         # include the anchor block in case indexation stopped there
         result = self.h.fetchall()
         for openfield in result:
@@ -219,6 +222,153 @@ class DbHandler:
             self.logger.app_log.warning(f"Rolled back the token index below {(height)}")
         except Exception as e:
             self.logger.app_log.warning(f"Failed to roll back the token index below {(height)} due to {e}")
+
+    def tokens_update(self):
+        self.index_cursor.execute(
+            "CREATE TABLE IF NOT EXISTS tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)")
+        self.index.commit()
+        self.index_cursor.execute("SELECT block_height FROM tokens ORDER BY block_height DESC LIMIT 1;")
+        try:
+            token_last_block = int(self.index_cursor.fetchone()[0])
+        except:
+            token_last_block = 0
+        self.logger.app_log.warning("Token anchor block: {}".format(token_last_block))
+        self.c.execute(
+            "SELECT block_height, timestamp, address, recipient, signature, operation, openfield FROM transactions "
+            "WHERE block_height >= ? AND operation = ? AND reward = 0 ORDER BY block_height ASC;",
+            (token_last_block, "token:issue"))
+        results = self.c.fetchall()
+        self.logger.app_log.warning(results)
+        tokens_processed = []
+
+        for x in results:
+            try:
+                token_name = x[6].split(":")[0].lower().strip()
+                try:
+                    self.index_cursor.execute("SELECT * from tokens WHERE token = ?", (token_name,))
+                    dummy = self.index_cursor.fetchall()[0]  # check for uniqueness
+                    self.logger.app_log.warning("Token issuance already processed: {}".format(token_name, ))
+                except:
+                    if token_name not in tokens_processed:
+                        block_height = x[0]
+                        self.logger.app_log.warning("Block height {}".format(block_height))
+                        timestamp = x[1]
+                        self.logger.app_log.warning("Timestamp {}".format(timestamp))
+                        tokens_processed.append(token_name)
+                        self.logger.app_log.warning("Token: {}".format(token_name))
+                        issued_by = x[3]
+                        self.logger.app_log.warning("Issued by: {}".format(issued_by))
+                        txid = x[4][:56]
+                        self.logger.app_log.warning("Txid: {}".format(txid))
+                        total = x[6].split(":")[1]
+                        # EGG Note: Maybe force this to be positive int?
+                        self.logger.app_log.warning("Total amount: {}".format(total))
+                        self.index_cursor.execute("INSERT INTO tokens VALUES (?,?,?,?,?,?,?)",
+                                                  (block_height, timestamp, token_name, "issued",
+                                                   issued_by, txid, total))
+                        if self.plugin_manager:
+                            self.plugin_manager.execute_action_hook('token_issue',
+                                                                    {'token': token_name, 'issuer': issued_by,
+                                                                     'txid': txid, 'total': total})
+                    else:
+                        self.logger.app_log.warning("This token is already registered: {}".format(x[1]))
+            except:
+                self.logger.app_log.warning("Error parsing")
+
+        self.index.commit()
+        self.c.execute(
+            "SELECT operation, openfield FROM transactions "
+            "WHERE (block_height >= ? OR block_height <= ?) AND operation = ? and reward = 0 ORDER BY block_height ASC",
+            (token_last_block, -token_last_block, "token:transfer",))  # includes mirror blocks
+        openfield_transfers = self.c.fetchall()
+        # print(openfield_transfers)
+        tokens_transferred = []
+        for transfer in openfield_transfers:
+            token_name = transfer[1].split(":")[0].lower().strip()
+            if token_name not in tokens_transferred:
+                tokens_transferred.append(token_name)
+        if tokens_transferred:
+            self.logger.app_log.warning("Token transferred: {}".format(tokens_transferred))
+        for token in tokens_transferred:
+            try:
+                self.logger.app_log.warning("processing {}".format(token))
+                self.c.execute(
+                    "SELECT block_height, timestamp, address, recipient, signature, operation, openfield "
+                    "FROM transactions WHERE (block_height >= ? OR block_height <= ?) "
+                    "AND operation = ? AND openfield LIKE ? AND reward = 0 ORDER BY block_height ASC;",
+                    (token_last_block, -token_last_block, "token:transfer", token + ':%',))
+                results2 = self.c.fetchall()
+                self.logger.app_log.warning(results2)
+                for r in results2:
+                    block_height = r[0]
+                    self.logger.app_log.warning("Block height {}".format(block_height))
+                    timestamp = r[1]
+                    self.logger.app_log.warning("Timestamp {}".format(timestamp))
+                    token = r[6].split(":")[0]
+                    self.logger.app_log.warning("Token {} operation".format(token))
+                    sender = r[2]
+                    self.logger.app_log.warning("Transfer from {}".format(sender))
+                    recipient = r[3]
+                    self.logger.app_log.warning("Transfer to {}".format(recipient))
+                    txid = r[4][:56]
+                    if txid == "0":
+                        txid = blake2bhash_generate(r)
+                    self.logger.app_log.warning("Txid: {}".format(txid))
+                    try:
+                        transfer_amount = int(r[6].split(":")[1])
+                    except:
+                        transfer_amount = 0
+                    self.logger.app_log.warning("Transfer amount {}".format(transfer_amount))
+                    # calculate balances
+                    self.index_cursor.execute(
+                        "SELECT sum(amount) FROM tokens WHERE recipient = ? AND block_height < ? AND token = ?",
+                        (sender, block_height, token,))
+                    try:
+                        credit_sender = int(self.index_cursor.fetchone()[0])
+                    except:
+                        credit_sender = 0
+                    self.logger.app_log.warning("Sender's credit {}".format(credit_sender))
+                    self.index_cursor.execute(
+                        "SELECT sum(amount) FROM tokens WHERE address = ? AND block_height <= ? AND token = ?",
+                        (sender, block_height, token,))
+                    try:
+                        debit_sender = int(self.index_cursor.fetchone()[0])
+                    except:
+                        debit_sender = 0
+                    self.logger.app_log.warning("Sender's debit: {}".format(debit_sender))
+                    # /calculate balances
+
+                    balance_sender = credit_sender - debit_sender
+                    self.logger.app_log.warning("Sender's balance {}".format(balance_sender))
+                    try:
+                        self.index_cursor.execute("SELECT txid from tokens WHERE txid = ?", (txid,))
+                        dummy = self.index_cursor.fetchone()  # check for uniqueness
+                        if dummy:
+                            self.logger.app_log.warning("Token operation already processed: {} {}".format(token, txid))
+                        else:
+                            if (balance_sender - transfer_amount >= 0) and (transfer_amount > 0):
+                                self.index_cursor.execute("INSERT INTO tokens VALUES (?,?,?,?,?,?,?)",
+                                                          (abs(block_height), timestamp, token, sender, recipient,
+                                                           txid, transfer_amount))
+                                if self.plugin_manager:
+                                    self.plugin_manager.execute_action_hook('token_transfer',
+                                                                            {'token': token, 'from': sender,
+                                                                             'to': recipient, 'txid': txid,
+                                                                             'amount': transfer_amount})
+
+                            else:
+                                # save block height and txid so that we do not have to process the invalid transactions again
+                                self.logger.app_log.warning("Invalid transaction by {}".format(sender))
+                                self.index_cursor.execute("INSERT INTO tokens VALUES (?,?,?,?,?,?,?)",
+                                                          (block_height, "", "", "", "", txid, ""))
+                    except Exception as e:
+                        self.logger.app_log.warning("Exception {}".format(e))
+
+                    self.logger.app_log.warning("Processing of {} finished".format(token))
+            except:
+                self.logger.app_log.warning("Error parsing")
+
+            self.index.commit()
 
     # ==== Main chain methods ==== #
 
@@ -595,7 +745,7 @@ class DbHandler:
             self.commit(self.hdd2)
 
         try:
-            node.logger.app_log.warning(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
+            self.logger.app_log.warning(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
 
             self._execute_param(self.c, "SELECT * FROM transactions WHERE block_height > ? "
                                                    "OR block_height < ? ORDER BY block_height ASC",
@@ -618,9 +768,9 @@ class DbHandler:
             node.hdd_block = node.last_block
             node.hdd_hash = node.last_block_hash
 
-            node.logger.app_log.warning(f"Chain: {len(result1)} txs moved to HDD")
+            self.logger.app_log.warning(f"Chain: {len(result1)} txs moved to HDD")
         except Exception as e:
-            node.logger.app_log.warning(f"Chain: Exception Moving new data to HDD: {e}")
+            self.logger.app_log.warning(f"Chain: Exception Moving new data to HDD: {e}")
             # app_log.warning("Ledger digestion ended")  # dup with more informative digest_block notice.
 
     # ====  Rewards ====

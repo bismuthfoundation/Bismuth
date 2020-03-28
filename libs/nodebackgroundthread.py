@@ -3,7 +3,6 @@
 
 import threading
 from time import time, sleep
-from worker import worker
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -39,7 +38,7 @@ class NodeBackgroundThread (threading.Thread):
                 # peer management
                 if not self.node.is_regnet:
                     # regnet never tries to connect
-                    self.node.peers.client_loop(self.node, this_target=worker)
+                    self.node.peers.client_loop(self.node)
                 self.node.logger.app_log.warning(f"Status: Threads at {threading.active_count()} / {self.node.config.thread_limit}")
                 self.node.logger.app_log.info(f"Status: Syncing nodes: {self.node.syncing}")
                 self.node.logger.app_log.info(f"Status: Syncing nodes: {len(self.node.syncing)}/3")

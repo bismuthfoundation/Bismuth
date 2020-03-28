@@ -1,3 +1,7 @@
+"""
+Was ported to dbHandler, kept for reference only.
+"""
+
 
 # operation: token:issue
 # openfield: token_name:total_number
@@ -9,7 +13,9 @@
 import log
 from hashlib import blake2b
 from libs.config import Config
-from libs import node, logger, dbhandler
+from libs import logger
+from libs.node import Node
+from libs.dbhandler import DbHandler
 
 __version__ = '0.0.2'
 
@@ -21,7 +27,7 @@ def blake2bhash_generate(data):
     # new hash
 
 
-def tokens_update(node, db_handler_instance):
+def _tokens_update(node: Node, db_handler_instance: DbHandler):
 
     db_handler_instance.index_cursor.execute("CREATE TABLE IF NOT EXISTS tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)")
     db_handler_instance.index.commit()
@@ -171,7 +177,7 @@ def tokens_update(node, db_handler_instance):
                     if dummy:
                         node.logger.app_log.warning("Token operation already processed: {} {}".format(token, txid))
                     else:
-                        if (balance_sender - transfer_amount >= 0 and transfer_amount > 0):
+                        if (balance_sender - transfer_amount >= 0) and (transfer_amount > 0):
                             db_handler_instance.index_cursor.execute("INSERT INTO tokens VALUES (?,?,?,?,?,?,?)",
                                                                       (abs(block_height), timestamp, token, sender, recipient, txid, transfer_amount))
                             if node.plugin_manager:
@@ -195,7 +201,7 @@ def tokens_update(node, db_handler_instance):
 if __name__ == "__main__":
 
     config = Config()
-    node = node.Node(config=config)
+    node = Node(config=config)
     node.config.debug_level = "WARNING"
     node.config.terminal_output = True
 
@@ -205,8 +211,7 @@ if __name__ == "__main__":
 
     # EGG: kept this constructor for testing purposes, out of a Node instance.
 
-    db_handler = dbhandler.DbHandler("static/index_local_test.db","static/ledger.db","static/hyper.db", False, None,
-                                     node.logger, False)
-
-    tokens_update(node, db_handler)
-    # tokens_update("tokens.db","reindex")
+    db_handler = DbHandler("static/index_local_test.db","static/ledger.db","static/hyper.db", ram=False, ledger_ram_file='', logger=node.logger)
+    db_handler.tokens_update()
+    # _tokens_update(node, db_handler)
+    # _tokens_update("tokens.db","reindex")

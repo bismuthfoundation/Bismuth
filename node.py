@@ -11,17 +11,13 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-# import functools
-# import glob
-# import shutil
-# import sqlite3
-# import tarfile
 import platform
 import socketserver
 import threading
 from sys import version_info, exc_info
+import os
 from time import time as ttime, sleep
-
+from decimal import Decimal
 # moved to DbHandler
 # import aliases  # PREFORK_ALIASES
 # import future.aliasesv2 as aliases # POSTFORK_ALIASES
@@ -30,7 +26,7 @@ from time import time as ttime, sleep
 import log
 import wallet_keys
 from libs.connections import send, receive
-from digest import *
+from digest import digest_block
 from bismuthcore.helpers import sanitize_address
 from libs import keys, client, mempool as mp
 from libs.nodebackgroundthread import NodeBackgroundThread
@@ -39,11 +35,12 @@ from libs.node import Node
 from libs.config import Config
 from libs.fork import Fork
 from libs.dbhandler import DbHandler
+import regnet
 
 import essentials
 
 
-VERSION = "5.0.8-evo"  # Experimental db-evolution branch
+VERSION = "5.0.9-evo"  # Experimental db-evolution branch
 
 fork = Fork()
 
@@ -51,232 +48,8 @@ appname = "Bismuth"
 appauthor = "Bismuth Foundation"
 
 
-def sql_trace_callback(log, id, statement):
-    line = f"SQL[{id}] {statement}"
-    log.warning(line)
-
-""" no more needed - see DbHandler.rollback(height)"""
-"""
-def rollback(node: "Node", db_handler: "DbHandler", block_height: str) -> None:
-    node.logger.app_log.warning(f"Status: Rolling back below: {block_height}")
-    db_handler.rollback_under(block_height)
-    # rollback indices
-    db_handler.tokens_rollback(block_height)
-    db_handler.aliases_rollback(block_height)
-    # rollback indices
-    node.logger.app_log.warning(f"Status: Chain rolled back below {block_height} and will be resynchronized")
-"""
-
-"""
-def balanceget(balance_address, db_handler):
-    # EGG_EVO: Multi step refactoring
-    # Returns full detailled balance info
-    # return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
-    node.logger.app_log.warning("balanceget(balance_address, db_handler) is deprecated, use db_handler.balance_get_full(balance_address, mp.MEMPOOL) instead")
-    return db_handler.balance_get_full(balance_address, mp.MEMPOOL)
-"""
-
-# TODO: kept for notice, will disappear in a later clean up
-"""
-def old_balanceget(balance_address, db_handler):
-    # TODO: To move in db_handler, call by db_handler.balance_get(address, mp)
-    # verify balance
-
-    # node.logger.app_log.info("Mempool: Verifying balance")
-    # node.logger.app_log.info("Mempool: Received address: " + str(balance_address))
-
-    base_mempool = mp.MEMPOOL.mp_get(balance_address)
-
-    # include mempool fees
-
-    debit_mempool = 0
-    if base_mempool:
-        for x in base_mempool:
-            debit_tx = Decimal(x[0])
-            fee = fee_calculate(x[1], x[2], node.last_block)
-            debit_mempool = quantize_eight(debit_mempool + debit_tx + fee)
-    else:
-        debit_mempool = 0
-    # include mempool fees
-
-    credit_ledger = Decimal("0")
-
-    try:
-        db_handler._execute_param(db_handler.h, "SELECT amount FROM transactions WHERE recipient = ?;", (balance_address,))
-        entries = db_handler.h.fetchall()
-    except:
-        entries = []
-
-    try:
-        for entry in entries:
-            credit_ledger = quantize_eight(credit_ledger) + quantize_eight(entry[0])
-            credit_ledger = 0 if credit_ledger is None else credit_ledger
-    except:
-        credit_ledger = 0
-
-    fees = Decimal("0")
-    debit_ledger = Decimal("0")
-
-    try:
-        db_handler._execute_param(db_handler.h, "SELECT fee, amount FROM transactions WHERE address = ?;", (balance_address,))
-        entries = db_handler.h.fetchall()
-    except:
-        entries = []
-
-    try:
-        for entry in entries:
-            fees = quantize_eight(fees) + quantize_eight(entry[0])
-            fees = 0 if fees is None else fees
-    except:
-        fees = 0
-
-    try:
-        for entry in entries:
-            debit_ledger = debit_ledger + Decimal(entry[1])
-            debit_ledger = 0 if debit_ledger is None else debit_ledger
-    except:
-        debit_ledger = 0
-
-    debit = quantize_eight(debit_ledger + debit_mempool)
-
-    rewards = Decimal("0")
-
-    try:
-        db_handler._execute_param(db_handler.h, "SELECT reward FROM transactions WHERE recipient = ?;", (balance_address,))
-        entries = db_handler.h.fetchall()
-    except:
-        entries = []
-
-    try:
-        for entry in entries:
-            rewards = quantize_eight(rewards) + quantize_eight(entry[0])
-            rewards = 0 if str(rewards) == "0E-8" else rewards
-            rewards = 0 if rewards is None else rewards
-    except:
-        rewards = 0
-
-    balance = quantize_eight(credit_ledger - debit - fees + rewards)
-    balance_no_mempool = float(credit_ledger) - float(debit_ledger) - float(fees) + float(rewards)
-    # node.logger.app_log.info("Mempool: Projected transction address balance: " + str(balance))
-    return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
-"""
-
-
-def blocknf(node: "Node", block_hash_delete: str, peer_ip: str, db_handler: "DbHandler", hyperblocks: bool=False) -> None:
-    # EGG_EVO: To be merged into libs/Node
-    """
-    Rolls back a single block, updates node object variables.
-    Rollback target must be above checkpoint.
-    Hash to rollback must match in case our ledger moved.
-    Not trusting hyperblock nodes for old blocks because of trimming,
-    they wouldn't find the hash and cause rollback.
-    """
-    node.logger.app_log.info(f"Rollback operation on {block_hash_delete} initiated by {peer_ip}")
-    my_time = ttime()
-    if not node.db_lock.locked():
-        node.db_lock.acquire()
-        node.logger.app_log.warning(f"Database lock acquired")
-        backup_data = None  # used in "finally" section
-        skip = False
-        reason = ""
-
-        try:
-            block_max_ram = db_handler.last_mining_transaction().to_dict(legacy=True)
-            db_block_height = block_max_ram['block_height']
-            db_block_hash = block_max_ram['block_hash']
-
-            ip = {'ip': peer_ip}
-            node.plugin_manager.execute_filter_hook('filter_rollback_ip', ip)
-            if ip['ip'] == 'no':
-                reason = "Filter blocked this rollback"
-                skip = True
-
-            elif db_block_height < node.checkpoint:
-                reason = "Block is past checkpoint, will not be rolled back"
-                skip = True
-
-            elif db_block_hash != block_hash_delete:
-                # print db_block_hash
-                # print block_hash_delete
-                reason = "We moved away from the block to rollback, skipping"
-                skip = True
-
-            elif hyperblocks and node.last_block_ago > 30000: #more than 5000 minutes/target blocks away
-                reason = f"{peer_ip} is running on hyperblocks and our last block is too old, skipping"
-                skip = True
-
-            else:
-                backup_data = db_handler.backup_higher(db_block_height)
-
-                node.logger.app_log.warning(f"Node {peer_ip} didn't find block {db_block_height} ({db_block_hash})")
-
-                # roll back hdd too
-                db_handler.rollback_under(db_block_height)
-                # /roll back hdd too
-
-                # rollback indices
-                db_handler.tokens_rollback(db_block_height)
-                db_handler.aliases_rollback(db_block_height)
-                # /rollback indices
-
-                node.last_block_timestamp = db_handler.last_block_timestamp()
-                node.last_block_hash = db_handler.last_block_hash()
-                node.last_block = db_block_height - 1
-                node.hdd_hash = db_handler.last_block_hash()
-                node.hdd_block = db_block_height - 1
-                tokens.tokens_update(node, db_handler)
-
-        except Exception as e:
-            if node.config.debug:
-                exc_type, exc_obj, exc_tb = exc_info()
-                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                node.logger.app_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
-            node.logger.app_log.warning(e)
-
-        finally:
-            node.db_lock.release()
-
-            node.logger.app_log.warning(f"Database lock released")
-
-            if skip:
-                rollback = {"timestamp": my_time, "height": db_block_height, "ip": peer_ip,
-                            "hash": db_block_hash, "skipped": True, "reason": reason}
-                node.plugin_manager.execute_action_hook('rollback', rollback)
-                node.logger.app_log.info(f"Skipping rollback: {reason}")
-            else:
-                try:
-                    nb_tx = 0
-                    for tx in backup_data:
-                        tx_short = f"{tx[1]} - {tx[2]} to {tx[3]}: {tx[4]} ({tx[11]})"
-                        if tx[9] == 0:
-                            try:
-                                nb_tx += 1
-                                node.logger.app_log.info(
-                                    mp.MEMPOOL.merge((tx[1], tx[2], tx[3], tx[4], tx[5], tx[6], tx[10], tx[11]),
-                                                     peer_ip, db_handler, size_bypass=False, revert=True))
-                                # will get stuck if you change it to respect node.db_lock
-                                node.logger.app_log.warning(f"Moved tx back to mempool: {tx_short}")
-                            except Exception as e:
-                                node.logger.app_log.warning(f"Error during moving tx back to mempool: {e}")
-                        else:
-                            # It's the coinbase tx, so we get the miner address
-                            miner = tx[3]
-                            height = tx[0]
-                    rollback = {"timestamp": my_time, "height": height, "ip": peer_ip, "miner": miner,
-                                "hash": db_block_hash, "tx_count": nb_tx, "skipped": False, "reason": ""}
-                    node.plugin_manager.execute_action_hook('rollback', rollback)
-
-                except Exception as e:
-                    node.logger.app_log.warning(f"Error during moving txs back to mempool: {e}")
-
-    else:
-        reason = "Skipping rollback, other ledger operation in progress"
-        rollback = {"timestamp": my_time, "ip": peer_ip, "skipped": True, "reason": reason}
-        node.plugin_manager.execute_action_hook('rollback', rollback)
-        node.logger.app_log.info(reason)
-
-# TODO: this requestHandler to be renamed and moved into a mfile of its own.
-# Then check what can be factorized between it and worker.py
+# TODO: this requestHandler to be renamed and moved into a file of its own.
+# Then check what can be factorized between it and clientworker.py
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self) -> None:
         # this is a dedicated thread for each client (not ip)
@@ -513,7 +286,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             if client_block is None:
                                 node.logger.app_log.warning(f"Inbound: Block {data[:8]} of {peer_ip} not found")
                                 if node.config.full_ledger:
-                                    send(self.request, "blocknf")  # announce block hash was not found
+                                    send(self.request, "_blocknf")  # announce block hash was not found
                                 else:
                                     send(self.request, "blocknfhb")  # announce we are on hyperblocks
                                 send(self.request, data)
@@ -558,11 +331,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "nonewblk":
                     send(self.request, "sync")
 
-                elif data == "blocknf":
+                elif data == "_blocknf":
                     block_hash_delete = receive(self.request)
                     # TODO Egg: Same as above, some state to keep here, consensus_blockheight may be undefined or not up to date.
                     if consensus_blockheight == node.peers.consensus_max:
-                        blocknf(node, block_hash_delete, peer_ip, db_handler)
+                        node.blocknf(block_hash_delete, peer_ip, db_handler)
                         if node.peers.warning(self.request, peer_ip, "Rollback", 2):
                             node.logger.app_log.info(f"{peer_ip} banned")
                             break
@@ -576,7 +349,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     block_hash_delete = str(receive(self.request))
                     # print peer_ip
                     if consensus_blockheight == node.peers.consensus_max:
-                        blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=True)
+                        node.blocknf(block_hash_delete, peer_ip, db_handler, hyperblocks=True)
                         if node.peers.warning(self.request, peer_ip, "Rollback", 2):
                             node.logger.app_log.info(f"{peer_ip} banned")
                             break
@@ -1021,50 +794,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if node.peers.is_allowed(peer_ip, data):
                         send(self.request, "txsend is unsafe and deprecated, please don't use.")
                         node.logger.app_log.warning("txsend is unsafe and deprecated, please don't use.")
-                        """
-                        tx_remote = receive(self.request)
-
-                        # receive data necessary for remote tx construction
-                        remote_tx_timestamp = tx_remote[0]
-                        remote_tx_privkey = tx_remote[1]
-                        remote_tx_recipient = tx_remote[2]
-                        remote_tx_amount = tx_remote[3]
-                        remote_tx_operation = tx_remote[4]
-                        remote_tx_openfield = tx_remote[5]
-                        # receive data necessary for remote tx construction
-
-                        # derive remaining data
-                        tx_remote_key = RSA.importKey(remote_tx_privkey)
-                        remote_tx_pubkey = tx_remote_key.publickey().exportKey().decode("utf-8")
-
-                        remote_tx_pubkey_b64encoded = base64.b64encode(remote_tx_pubkey.encode('utf-8')).decode("utf-8")
-
-                        remote_tx_address = hashlib.sha224(remote_tx_pubkey.encode("utf-8")).hexdigest()
-                        # derive remaining data
-
-                        # construct tx
-                        remote_tx = (str(remote_tx_timestamp), str(remote_tx_address), str(remote_tx_recipient),
-                                     '%.8f' % quantize_eight(remote_tx_amount), str(remote_tx_operation),
-                                     str(remote_tx_openfield))  # this is signed
-
-                        remote_hash = SHA.new(str(remote_tx).encode("utf-8"))
-                        remote_signer = PKCS1_v1_5.new(tx_remote_key)
-                        remote_signature = remote_signer.sign(remote_hash)
-                        remote_signature_enc = base64.b64encode(remote_signature).decode("utf-8")
-                        # construct tx
-
-                        # insert to mempool, where everything will be verified
-                        mempool_data = ((str(remote_tx_timestamp), str(remote_tx_address), str(remote_tx_recipient),
-                                         '%.8f' % quantize_eight(remote_tx_amount), str(remote_signature_enc),
-                                         str(remote_tx_pubkey_b64encoded), str(remote_tx_operation),
-                                         str(remote_tx_openfield)))
-
-                        node.logger.app_log.info(mp.MEMPOOL.merge(mempool_data, peer_ip, db_handler.c, True, True))
-
-                        send(self.request, str(remote_signature_enc))
-                        # wipe variables
-                        (tx_remote, remote_tx_privkey, tx_remote_key) = (None, None, None)
-                        """
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for txsend command")
 
@@ -1213,8 +942,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "block_height_from_hash":
                     if node.peers.is_allowed(peer_ip, data):
-                        hash = receive(self.request)
-                        response = db_handler.block_height_from_hash(hash)
+                        ahash = receive(self.request)
+                        response = db_handler.block_height_from_hash(ahash)
                         send(self.request, response)
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for block_height_from_hash command")
@@ -1344,7 +1073,6 @@ if __name__ == "__main__":
     while True:
         if node.IS_STOPPING:
             if not node.db_lock.locked():
-                mining_heavy3.mining_close()
                 node.logger.app_log.warning("Status: Securely disconnected main processes, "
                                             "subprocess termination in progress.")
                 break

@@ -1,4 +1,3 @@
-from node import blocknf, digest_block  # oh my!
 # import sys
 import threading
 from libs import mempool as mp
@@ -11,6 +10,7 @@ from libs.connections import send, receive
 from difficulty import *
 from libs import client
 from libs.dbhandler import DbHandler
+from digest import digest_block
 
 # See why we do that: https://stackoverflow.com/questions/39740632/python-type-hinting-without-cyclic-imports
 # I'm not using from __future__ because some nodes still run on python 3.6
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from libs.node import Node
 
 
-def sendsync(sdef, peer_ip:str, status:str, node: "Node"):
+def sendsync(sdef, peer_ip: str, status: str, node: "Node") -> None:
     """ Save peer_ip to peerlist and send `sendsync`
 
     :param sdef: socket object
@@ -43,7 +43,7 @@ def sendsync(sdef, peer_ip:str, status:str, node: "Node"):
     send(sdef, "sendsync")
 
 
-def worker(host: str, port: int, node: "Node"):
+def client_worker(host: str, port: int, node: "Node") -> None:
     if node.IS_STOPPING:
         return
     this_client = f"{host}:{port}"
@@ -158,7 +158,7 @@ def worker(host: str, port: int, node: "Node"):
                         if not client_block:
                             node.logger.app_log.warning(f"Outbound: Block {data[:8]} of {peer_ip} not found")
                             if node.config.full_ledger:
-                                send(s, "blocknf")
+                                send(s, "_blocknf")
                             else:
                                 send(s, "blocknfhb")
                             send(s, data)
@@ -222,30 +222,23 @@ def worker(host: str, port: int, node: "Node"):
                 # print peer_ip
                 # if max(consensus_blockheight_list) == int(received_block_height):
                 if int(received_block_height) == node.peers.consensus_max:
-
-                    blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=True)
-
+                    node.blocknf(block_hash_delete, peer_ip, db_handler, hyperblocks=True)
                     if node.peers.warning(s, peer_ip, "Rollback", 2):
                         raise ValueError(f"{peer_ip} is banned")
-
                 sendsync(s, peer_ip, "Block not found", node)
 
-            elif data == "blocknf":  # one of the possible outcomes
+            elif data == "_blocknf":  # one of the possible outcomes
                 block_hash_delete = receive(s)
                 # print peer_ip
                 # if max(consensus_blockheight_list) == int(received_block_height):
                 if int(received_block_height) == node.peers.consensus_max:
-
-                    blocknf(node, block_hash_delete, peer_ip, db_handler)
-
+                    node.blocknf(block_hash_delete, peer_ip, db_handler)
                     if node.peers.warning(s, peer_ip, "Rollback", 2):
                         raise ValueError(f"{peer_ip} is banned")
-
                 sendsync(s, peer_ip, "Block not found", node)
 
             elif data == "blocksfnd":
                 node.logger.app_log.info(f"Outbound: Node {peer_ip} has the block(s)")  # node should start sending txs in this step
-
                 # node.logger.app_log.info("Inbound: Combined segments: " + segments)
                 # print peer_ip
                 if node.db_lock.locked():
@@ -265,17 +258,14 @@ def worker(host: str, port: int, node: "Node"):
                     if int(received_block_height) >= block_req and int(received_block_height) > node.last_block:
                         try:  # they claim to have the longest chain, things must go smooth or ban
                             node.logger.app_log.warning(f"Confirming to sync from {peer_ip}")
-
                             send(s, "blockscf")
                             segments = receive(s)
                             #ensure_good_peer_version(host)
-
                         except:
                             if node.peers.warning(s, peer_ip, "Failed to deliver the longest chain", 2):
                                 raise ValueError(f"{peer_ip} is banned")
                         else:
                             digest_block(node, segments, s, peer_ip, db_handler)
-
                             # receive theirs
                     else:
                         send(s, "blocksrj")

@@ -9,7 +9,6 @@ from polysign.signerfactory import SignerFactory
 from bismuthcore.compat import quantize_two, quantize_eight
 from bismuthcore.helpers import fee_calculate
 from libs.fork import Fork
-import tokensv2 as tokens
 from decimal import Decimal
 from bismuthcore.transaction import Transaction
 
@@ -498,7 +497,7 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
                                         f"{str(time.time() - float(block_instance.start_time_block))[:5]}s.")
 
             if block_instance.tokens_operation_present:
-                tokens.tokens_update(node, db_handler)
+                db_handler.tokens_update()
 
             del block_transactions[:]
             node.peers.unban(peer_ip)
