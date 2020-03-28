@@ -5,8 +5,8 @@ Command line balance checker
 """
 import sys
 sys.path.append('../')
-import essentials, socks
-from libs import connections
+import socks
+from libs import connections, essentials
 from libs.config import Config
 
 config = Config()

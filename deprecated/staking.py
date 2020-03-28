@@ -8,11 +8,10 @@
 #last working integrated implementation: https://github.com/bismuthfoundation/Bismuth/commit/69fd3aafd31cce6def1b09ffc64c95d457243c8a
 
 import sqlite3
-import log
 from libs.quantizer import quantize_eight
-from libs import mempool as mp
+from libs import mempool as mp, log
 from hashlib import blake2b
-from essentials import percentage
+from libs.essentials import percentage
 from libs.config import Config
 from decimal import Decimal
 

@@ -1,6 +1,6 @@
 import threading
 import time
-import log
+from libs import log
 from libs.config import Config
 
 

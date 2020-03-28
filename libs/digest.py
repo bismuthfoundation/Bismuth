@@ -1,10 +1,15 @@
+"""
+Exports digest_block, the main block digesting function.
+def digest_block(node: "Node", data, sdef, peer_ip: str, db_handler: "DbHandler")
+"""
+
 import hashlib
 import os
 import sys
 
 from libs import mempool as mp, mining_heavy3
-from difficulty import *
-from essentials import address_validate, address_is_rsa
+from libs.difficulty import difficulty
+from libs.essentials import address_validate, address_is_rsa
 from polysign.signerfactory import SignerFactory
 from bismuthcore.compat import quantize_two, quantize_eight
 from bismuthcore.helpers import fee_calculate

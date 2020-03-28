@@ -1,4 +1,5 @@
-import sqlite3,time
+import sqlite3
+import time
 
 reward_10 = 14.99999
 row_init = 10

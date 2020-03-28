@@ -11,6 +11,10 @@ Borrows code from Hypernodes, pow_interface
 
 Still very alpha and not optimized.
 """
+
+# TODO EGG: used by hypernodes plugin. low level sql, dup with ledger queries...
+# HN plugin will need a rework, either amend dbHandler with hn required queries, either reworking ledger_queries
+
 import math
 from logging import getLogger
 from time import sleep, time

@@ -9,13 +9,13 @@ import os
 import sqlite3
 import sys
 import threading
-from typing import Union, List
+from typing import Union
 from decimal import Decimal
 import time
 
 from polysign.signerfactory import SignerFactory
 
-import essentials
+from libs import essentials
 from bismuthcore.compat import quantize_two, quantize_eight
 from bismuthcore.helpers import fee_calculate
 from bismuthcore.transaction import Transaction

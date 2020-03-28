@@ -14,7 +14,7 @@ import socks
 
 from libs import connections
 # import regnet
-from essentials import most_common_dict, percentage_in
+from libs.essentials import most_common_dict, percentage_in
 from libs.clientworker import client_worker
 from libs.helpers import dict_shuffle
 from typing import TYPE_CHECKING

@@ -14,7 +14,7 @@
 import platform
 import socketserver
 import threading
-from sys import version_info, exc_info
+from sys import version_info
 import os
 from time import time as ttime, sleep
 from decimal import Decimal
@@ -23,24 +23,19 @@ from decimal import Decimal
 # import future.aliasesv2 as aliases # POSTFORK_ALIASES
 
 # Bis specific modules
-import log
-import wallet_keys
 from libs.connections import send, receive
-from digest import digest_block
+from libs.digest import digest_block
 from bismuthcore.helpers import sanitize_address
-from libs import keys, client, mempool as mp
+from libs import keys, client, mempool as mp, regnet, log, essentials
 from libs.nodebackgroundthread import NodeBackgroundThread
 from libs.logger import Logger
 from libs.node import Node
 from libs.config import Config
 from libs.fork import Fork
 from libs.dbhandler import DbHandler
-import regnet
+from libs.deprecated import rsa_key_generate
 
-import essentials
-
-
-VERSION = "5.0.9-evo"  # Experimental db-evolution branch
+VERSION = "5.0.10-evo"  # Experimental db-evolution branch
 
 fork = Fork()
 
@@ -584,7 +579,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "keygen":
                     # if (peer_ip in allowed or "any" in allowed):
                     if node.peers.is_allowed(peer_ip, data):
-                        (gen_private_key_readable, gen_public_key_readable, gen_address) = wallet_keys.generate()
+                        (gen_private_key_readable, gen_public_key_readable, gen_address) = rsa_key_generate()
+                        node.logger.app_log.warning("keygen is unsafe and deprecated, please don't use.")
                         send(self.request, (gen_private_key_readable, gen_public_key_readable, gen_address))
                         (gen_private_key_readable, gen_public_key_readable, gen_address) = (None, None, None)
                     else:
@@ -593,11 +589,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "keygenjson":
                     # if (peer_ip in allowed or "any" in allowed):
                     if node.peers.is_allowed(peer_ip, data):
-                        (gen_private_key_readable, gen_public_key_readable, gen_address) = wallet_keys.generate()
+                        (gen_private_key_readable, gen_public_key_readable, gen_address) = rsa_key_generate()
                         response = {"private_key": gen_private_key_readable,
                                     "public_key": gen_public_key_readable,
                                     "address": gen_address}
-
+                        node.logger.app_log.warning("keygenjson is unsafe and deprecated, please don't use.")
                         send(self.request, response)
                         (gen_private_key_readable, gen_public_key_readable, gen_address) = (None, None, None)
                     else:

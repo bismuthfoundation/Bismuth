@@ -21,8 +21,8 @@ from libs import mempool as mp, connections, mining_heavy3 as mining
 from bismuthcore.transaction import Transaction
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-  from libs.node import Node
-  from libs.dbhandler import DbHandler
+    from libs.node import Node
+    from libs.dbhandler import DbHandler
 
 # fixed diff for regnet
 REGNET_DIFF = 16
@@ -89,8 +89,9 @@ def generate_one_block(blockhash: str, mempool_txs: List[Transaction], node: "No
                 seed = ('%0x' % getrandbits(128 - 32))
                 prefix = ADDRESS + seed
                 possibles = [nonce for nonce in try_arr if
-                         mining_condition in (mining.anneal3(mining.MMAP, int.from_bytes(
-                             sha224((prefix + nonce + blockhash).encode("utf-8")).digest(), 'big')))]
+                             mining_condition in (mining.anneal3(
+                                 mining.MMAP,
+                                 int.from_bytes(sha224((prefix + nonce + blockhash).encode("utf-8")).digest(), 'big')))]
                 if possibles:
                     nonce = seed + possibles[0]
                     node.logger.app_log.warning("Generate got a block in {} tries len {}".format(i, len(possibles)))

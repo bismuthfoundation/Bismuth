@@ -1,6 +1,8 @@
 # import sqlite3
 # import re
-import log
+from libs import log
+
+
 # import functools
 
 

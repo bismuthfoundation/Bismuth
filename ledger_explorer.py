@@ -1,8 +1,10 @@
-import sqlite3, time, sys
-from libs.config import Config
-
+import sqlite3
+import time
+import sys
 import tornado.ioloop
 import tornado.web
+
+from libs.config import Config
 
 config = Config()
 hyper_path = config.hyper_path
@@ -261,8 +263,8 @@ class MainHandler(tornado.web.RequestHandler):
         self.write(''.join(html))
         #self.render("ex.html", data=data)
 
-def make_app():
 
+def make_app():
     return tornado.web.Application([
         (r"/", MainHandler),
         (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "static"}),

@@ -15,7 +15,7 @@ from libs.hmac_drbg import DRBG
 from libs.quantizer import quantize_ten
 from decimal import Decimal
 
-import regnet
+from libs import regnet
 
 from libs.fork import Fork
 fork = Fork()

@@ -7,7 +7,7 @@ import sqlite3
 from decimal import Decimal
 from libs.quantizer import quantize_eight
 from devtools import process_search
-from essentials import address_validate
+from libs.essentials import address_validate
 
 
 class Tar:

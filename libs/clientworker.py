@@ -7,10 +7,9 @@ import socks
 from libs.connections import send, receive
 # from decimal import Decimal
 # from quantizer import quantize_two, quantize_eight, quantize_ten
-from difficulty import *
 from libs import client
 from libs.dbhandler import DbHandler
-from digest import digest_block
+from libs.digest import digest_block
 
 # See why we do that: https://stackoverflow.com/questions/39740632/python-type-hinting-without-cyclic-imports
 # I'm not using from __future__ because some nodes still run on python 3.6

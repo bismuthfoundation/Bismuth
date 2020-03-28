@@ -14,11 +14,10 @@ from time import sleep, time as ttime
 from shutil import copy
 from math import floor
 
-import regnet
-from libs import mining_heavy3
+from libs import mining_heavy3, regnet
 from bismuthcore.helpers import just_int_from, download_file
-from essentials import keys_check, keys_load  # To be handled by polysign
-from difficulty import difficulty  # where does this belongs? check usages
+from libs.essentials import keys_check, keys_load  # To be handled by polysign
+from libs.difficulty import difficulty  # where does this belongs? check usages
 
 from libs.config import Config
 from libs.solodbhandler import SoloDbHandler

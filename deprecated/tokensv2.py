@@ -10,10 +10,9 @@ Was ported to dbHandler, kept for reference only.
 # openfield: token_name:amount
 
 # import sqlite3
-import log
 from hashlib import blake2b
 from libs.config import Config
-from libs import logger
+from libs import logger, log
 from libs.node import Node
 from libs.dbhandler import DbHandler
 

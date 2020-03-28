@@ -1,9 +1,10 @@
 from decimal import Decimal
-import regnet
+from libs import regnet
 import math
 import time
 from libs.quantizer import quantize_two, quantize_ten
 from libs.fork import Fork
+
 
 def difficulty(node, db_handler):
     try:
