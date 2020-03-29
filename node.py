@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.4.0.9"  # Post fork candidate 9
+VERSION = "4.4.0.10"  # Post fork candidate 9
 
 import functools
 import glob
@@ -2067,7 +2067,7 @@ if __name__ == "__main__":
     node.logger.app_log.warning(f"Heavy3 file Ok!")
     try:
         # create a plugin manager, load all plugin modules and init
-        node.plugin_manager = plugins.PluginManager(app_log=node.logger.app_log, init=True)
+        node.plugin_manager = plugins.PluginManager(app_log=node.logger.app_log, config=node.config, init=True)
         # get the potential extra command prefixes from plugin
         extra_commands = {}  # global var, used by the server part.
         extra_commands = node.plugin_manager.execute_filter_hook('extra_commands_prefixes', extra_commands)
