@@ -14,6 +14,8 @@ FORK = Fork()  # No need to instanciate one for every call to difficulty()
 
 # See https://github.com/EggPool/bis-temp/blob/master/int/exp4.py
 
+LOG_DIFF_STEPS = False  # For debug
+
 
 def difficulty(node: "Node", db_handler: "DbHandler") -> tuple:
     ctime = ttime()  # So both methods use same time
@@ -37,23 +39,24 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
         # Beware, this is not thread safe! -
         node.last_block_timestamp = timestamp_last
         # node.last_block = block_height do not fetch this here, could interfere with block saving
-        print("n timestamp_last", timestamp_last)
 
         previous_block_ts = db_handler.last_block_timestamp(back=1)
         node.last_block_ago = int(ctime - timestamp_last)
 
         # Failsafe for regtest starting at block 1}
         timestamp_before_last = timestamp_last if previous_block_ts is None else previous_block_ts
-        print("n timestamp_before_last", timestamp_before_last)
 
         timestamp_1441 = db_handler.last_block_timestamp(back=1441-1)
         block_time_prev = (timestamp_before_last - timestamp_1441) / 1440
         temp = db_handler.last_block_timestamp(back=1440-1)
         timestamp_1440 = timestamp_1441 if temp is None else temp
         block_time = (timestamp_last - timestamp_1440) / 1440
-        print("n timestamp_1441", timestamp_1441)
-        print("n timestamp_1440", timestamp_1440)
-        print("n block_time", block_time)
+        if LOG_DIFF_STEPS:
+            print("n timestamp_last", timestamp_last)
+            print("n timestamp_before_last", timestamp_before_last)
+            print("n timestamp_1441", timestamp_1441)
+            print("n timestamp_1440", timestamp_1440)
+            print("n block_time", block_time)
 
         db_handler._execute(db_handler.c, "SELECT difficulty FROM misc ORDER BY block_height DESC LIMIT 1")
         diff_block_previous = float(db_handler.c.fetchone()[0])
@@ -111,12 +114,13 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
             diff_dropped = 50
 
         # Egg: kept the float('%.10f' % ...) to avoid side effects on specific values.
-        # limiting to 2 decimals instead of 10 would likely be enough and avoid all decimals issues.
+        # limiting to 2 or 3 decimals instead of 10 would likely be enough and avoid all decimals issues.
         return (float('%.10f' % difficulty2), float('%.10f' % diff_dropped), time_to_generate, diff_block_previous,
                 block_time, hashrate, diff_adjustment, block_height)
         # need to keep float types here for database inserts support
     except:
         # new chain or regnet
+        # todo: stop if we are not in one of these 2 cases.
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
@@ -138,7 +142,6 @@ def deprecated_difficulty(node, db_handler, time: float=0):
         # Beware, this is not thread safe! -
         node.last_block_timestamp = timestamp_last
         # node.last_block = block_height do not fetch this here, could interfere with block saving
-        print("d timestamp_last", timestamp_last)
 
         previous = db_handler.c.fetchone()
 
@@ -146,7 +149,6 @@ def deprecated_difficulty(node, db_handler, time: float=0):
 
         # Failsafe for regtest starting at block 1}
         timestamp_before_last = timestamp_last if previous is None else Decimal(previous[1])
-        print("d timestamp_before_last", timestamp_before_last)
 
         db_handler._execute_param(db_handler.c, (
             "SELECT timestamp FROM transactions WHERE block_height > ? AND reward != 0 ORDER BY block_height ASC LIMIT 2"),
@@ -156,10 +158,12 @@ def deprecated_difficulty(node, db_handler, time: float=0):
         temp = db_handler.c.fetchone()
         timestamp_1440 = timestamp_1441 if temp is None else Decimal(temp[0])
         block_time = Decimal(timestamp_last - timestamp_1440) / 1440
-        print("d timestamp_1441", timestamp_1441)
-        print("d timestamp_1440", timestamp_1440)
-        print("d block_time", block_time)
-
+        if LOG_DIFF_STEPS:
+            print("d timestamp_last", timestamp_last)
+            print("d timestamp_before_last", timestamp_before_last)
+            print("d timestamp_1441", timestamp_1441)
+            print("d timestamp_1440", timestamp_1440)
+            print("d block_time", block_time)
 
         db_handler._execute(db_handler.c, "SELECT difficulty FROM misc ORDER BY block_height DESC LIMIT 1")
         diff_block_previous = Decimal(db_handler.c.fetchone()[0])

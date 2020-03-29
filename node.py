@@ -35,7 +35,7 @@ from libs.fork import Fork
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.10-evo"  # Experimental db-evolution branch
+VERSION = "5.0.11-evo"  # Experimental db-evolution branch
 
 fork = Fork()
 
@@ -281,7 +281,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             if client_block is None:
                                 node.logger.app_log.warning(f"Inbound: Block {data[:8]} of {peer_ip} not found")
                                 if node.config.full_ledger:
-                                    send(self.request, "_blocknf")  # announce block hash was not found
+                                    send(self.request, "blocknf")  # announce block hash was not found
                                 else:
                                     send(self.request, "blocknfhb")  # announce we are on hyperblocks
                                 send(self.request, data)
@@ -326,7 +326,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "nonewblk":
                     send(self.request, "sync")
 
-                elif data == "_blocknf":
+                elif data == "blocknf":
                     block_hash_delete = receive(self.request)
                     # TODO Egg: Same as above, some state to keep here, consensus_blockheight may be undefined or not up to date.
                     if consensus_blockheight == node.peers.consensus_max:

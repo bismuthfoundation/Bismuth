@@ -24,6 +24,7 @@ from libs.solodbhandler import SoloDbHandler
 from libs.apihandler import ApiHandler
 from libs.peershandler import Peers
 from libs.plugins import PluginManager
+from libs import mempool as mp
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:

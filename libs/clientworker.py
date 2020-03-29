@@ -158,7 +158,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                         if not client_block:
                             node.logger.app_log.warning(f"Outbound: Block {data[:8]} of {peer_ip} not found")
                             if node.config.full_ledger:
-                                send(s, "_blocknf")
+                                send(s, "blocknf")
                             else:
                                 send(s, "blocknfhb")
                             send(s, data)
@@ -227,7 +227,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                         raise ValueError(f"{peer_ip} is banned")
                 sendsync(s, peer_ip, "Block not found", node)
 
-            elif data == "_blocknf":  # one of the possible outcomes
+            elif data == "blocknf":  # one of the possible outcomes
                 block_hash_delete = receive(s)
                 # print peer_ip
                 # if max(consensus_blockheight_list) == int(received_block_height):
