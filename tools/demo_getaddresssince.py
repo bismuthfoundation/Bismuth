@@ -25,13 +25,14 @@ eg:
 No proper error checking.
 """
 
-from libs import connections
 import json
 import socks
 import sys
+sys.path.append('../')
+from libs import connections
 
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 
 def get_address_since(since, min_conf, address):

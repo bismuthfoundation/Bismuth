@@ -5,6 +5,7 @@
 
 # Now the minimal modules needed for a full install
 
+bismuthcore
 PySocks
 pycryptodomex
 requests

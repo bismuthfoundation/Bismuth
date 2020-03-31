@@ -12,6 +12,8 @@ arg5: wallet file
 arg6: request confirmation for every transaction
 
 args3,4,6 are not prompted if ran without args
+# TODO EGG: mostly old code to refresh with use of new modules
+# Low prio for me.
 """
 
 import base64
@@ -23,9 +25,11 @@ from Cryptodome.Hash import SHA
 from Cryptodome.Signature import PKCS1_v1_5
 
 from bismuthclient import rpcconnections
+from polysign.signerfactory import SignerFactory
+
+# TODO: dependency from bisbasic could be removed
 from bisbasic import essentials, options
 from bisbasic.essentials import fee_calculate
-from polysign.signerfactory import SignerFactory
 
 
 def connect():
@@ -38,8 +42,9 @@ def connect():
 
     return rpcconnections.Connection(("127.0.0.1", int(port)))
 
+
 if __name__ == "__main__":
-    config = options.Get()
+    config = options.Get("../config.txt")
     config.read()
 
     try:

@@ -62,7 +62,7 @@ The actual formula gives zero reward from **block 7100001** and above.
 
 The hn rewards are actually paid infinitely. Means, after 10.000.000 blocks, the miners rewards are set to 0 (and so are dev rewards), only fees are paid. With the changed formula, the reward for miners and dev is 0 way before the code sets it to 0. Actually this will happen on block 7100000. On every 10th block, the hn rewards are still paid to the actual hn payout address (8 BIS). This is not meant to be the final decision, in fact it was really never discussed, how we handle hypernode rewards after block 10.000.000. You can expect a change here in the future, but as the actual code has an infinite supply, here now some plots to show what it means:
 
-![Oups, where is the plot?](/graphics/rewards.png)
+![Oups, where is the plot?](/deprecated/graphics/rewards.png)
 
 The plot is created by this [script](supply_calc.py) and therefore shows the actual mining reward of the actual block (it gets it by asking [bismuth.online API](http://bismuth.online/api/stats/latestblock)). From this block and time mined, the script calculates the estimated time, when for example block 10.000.000 is mined.
 
@@ -75,7 +75,7 @@ Few lines above, we mentioned a total supply of approx 64 Mio BIS. This is the s
 
 Here another plot from the script with the BIS-supply and how it is spread over the different gainers (miners, hn, dev)
 
-![Oups, where is the plot?](/graphics/supply.png)
+![Oups, where is the plot?](/deprecated/graphics/supply.png)
 
 So, around summer 2112 (arr, another rough estimation), the BIS-supply will be at around **96 Mio BIS**.
 100 Mio BIS will eventually be produced in more than 100 years.
