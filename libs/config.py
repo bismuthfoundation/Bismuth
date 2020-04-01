@@ -55,7 +55,7 @@ DEFAULTS = {
     "trace_db_calls": False,
     "mempool_ram": True,
     "heavy3_path": "",
-    "mempool_path": "./mempool.db",
+    "mempool_path": "",
     "old_sqlite": False,
     "mandatory_message": {
         "Address": "Comment - Dict for addresses that require a message. tx to these addresses withjout a message will not be accepted by mempool.",
@@ -147,6 +147,11 @@ class Config:
         if self.heavy3_path == "":
             # Defaut path, use datadir/
             self.heavy3_path = path.join(self.datadir, "heavy3a.bin")
+        if self.mempool_path == "":
+            # Defaut path, use datadir/live
+            self.mempool_path = path.join(self.datadir, "live", "mempool.db")
+            if not self.mempool_ram:
+                print("Mempool path is {}".format(self.mempool_path))
         file_name = path.join(self.datadir, "config", "mandatory_message.json")
         if path.isfile(file_name):
             try:

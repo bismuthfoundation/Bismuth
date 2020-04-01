@@ -30,4 +30,6 @@ mempool_ram=False
 egress=True
 trace_db_calls=False
 
+; optional items with their default values are below
 ;heavy3_path=./datadir/heavy3a.bin
+;mempool_path=./datadir/live/mempool.db
