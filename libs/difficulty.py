@@ -16,6 +16,10 @@ FORK = Fork()  # No need to instanciate one for every call to difficulty()
 
 LOG_DIFF_STEPS = False  # For debug
 
+DECIMAL2 = Decimal(2.0)
+DECIMAL16 = Decimal(16.0)
+DECIMAL60 = Decimal(60.0)
+
 
 def difficulty(node: "Node", db_handler: "DbHandler") -> tuple:
     ctime = ttime()  # So both methods use same time
@@ -28,6 +32,24 @@ def difficulty(node: "Node", db_handler: "DbHandler") -> tuple:
             node.close("Diff check", force_exit=True)
             return diff
     return new
+    """
+    Arrgh
+    new (103.937617136, 103.937617136, 5.829999923706055, 103.9367689274, 61.19997222208315, 3272417028612.557, 0.0008482086500018779, 1629302)
+    deprec (103.9376171361, 103.9376171361, 5.829999923706055, 103.9367689274, 61.19997222208315, 3272417028612.562, 0.000848208650001907, 1629302)
+    
+    n timestamp_last 1585702107.8399999141693115234375
+    n timestamp_before_last 1585702102.0099999904632568359375
+    n timestamp_1441 1585613877.88000011444091796875
+    n timestamp_1440 1585613979.88000011444091796875
+    n block_time 61.19997222208314471774631076
+    
+    d timestamp_last 1585702107.8399999141693115234375
+    d timestamp_before_last 1585702102.0099999904632568359375
+    d timestamp_1441 1585613877.88000011444091796875
+    d timestamp_1440 1585613979.88000011444091796875
+    d block_time 61.19997222208314471774631076
+
+    """
 
 
 def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tuple:
@@ -35,21 +57,21 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
     try:
         ctime = ttime() if time == 0 else time
         last_block = db_handler.last_mining_transaction()
-        timestamp_last, block_height = last_block.timestamp, last_block.block_height
+        timestamp_last, block_height = Decimal(last_block.timestamp), last_block.block_height
         # Beware, this is not thread safe! -
         node.last_block_timestamp = timestamp_last
         # node.last_block = block_height do not fetch this here, could interfere with block saving
 
         previous_block_ts = db_handler.last_block_timestamp(back=1)
-        node.last_block_ago = int(ctime - timestamp_last)
+        node.last_block_ago = int(ctime - int(timestamp_last))
 
         # Failsafe for regtest starting at block 1}
-        timestamp_before_last = timestamp_last if previous_block_ts is None else previous_block_ts
+        timestamp_before_last = timestamp_last if previous_block_ts is None else Decimal(previous_block_ts)
 
-        timestamp_1441 = db_handler.last_block_timestamp(back=1441-1)
+        timestamp_1441 = Decimal(db_handler.last_block_timestamp(back=1441-1))
         block_time_prev = (timestamp_before_last - timestamp_1441) / 1440
         temp = db_handler.last_block_timestamp(back=1440-1)
-        timestamp_1440 = timestamp_1441 if temp is None else temp
+        timestamp_1440 = timestamp_1441 if temp is None else Decimal(temp)
         block_time = (timestamp_last - timestamp_1440) / 1440
         if LOG_DIFF_STEPS:
             print("n timestamp_last", timestamp_last)
@@ -59,7 +81,7 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
             print("n block_time", block_time)
 
         db_handler._execute(db_handler.c, "SELECT difficulty FROM misc ORDER BY block_height DESC LIMIT 1")
-        diff_block_previous = float(db_handler.c.fetchone()[0])
+        diff_block_previous = Decimal(db_handler.c.fetchone()[0])
 
         time_to_generate = timestamp_last - timestamp_before_last
 
@@ -67,13 +89,14 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
             return (float('%.10f' % regnet.REGNET_DIFF), float('%.10f' % (regnet.REGNET_DIFF - 8)), float(time_to_generate),
                     float(regnet.REGNET_DIFF), float(block_time), float(0), float(0), block_height)
 
-        hashrate = pow(2, diff_block_previous / 2.0) / (block_time * ceil(28 - diff_block_previous / 16.0))
+        hashrate = pow(2, diff_block_previous / DECIMAL2) / (block_time * ceil(28 - diff_block_previous / DECIMAL16))
         # Calculate new difficulty for desired blocktime of 60 seconds
-        target = 60.00
+        target = DECIMAL60
         # D0 = diff_block_previous
-        difficulty_new = (2 / log(2)) * log(hashrate * target * ceil(28 - diff_block_previous / 16.0))
+        difficulty_new = Decimal((2 / log(2)) * log(hashrate * target * ceil(28 - diff_block_previous / DECIMAL16)))
         # Feedback controller
         Kd = 10
+        # print(type(difficulty_new), type(block_time), type(block_time_prev))
         difficulty_new = difficulty_new - Kd * (block_time - block_time_prev)
         diff_adjustment = (difficulty_new - diff_block_previous) / 720  # reduce by factor of 720
 
