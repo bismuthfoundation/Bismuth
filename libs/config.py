@@ -1,8 +1,9 @@
 import json
 import os.path as path
+from os import makedirs
 from sys import exit
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 
 # "param_name":["type"] or "param_name"=["type","property_name"]
@@ -130,29 +131,33 @@ class Config:
                     setattr(self, left, right)
 
     def get_wallet_path(self) -> str:
-        return path.join(self.datadir, "wallet.der")
+        return self.get_file_path("", "wallet.der")
 
     def get_file_path(self, dir_name: str, file_name: str) -> str:
-        return path.join(self.datadir, dir_name, file_name)
+        temp_dir = self.datadir if dir_name == '' else path.join(self.datadir, dir_name)
+        if not path.isdir(temp_dir):
+            # Ensure dir exists
+            makedirs(temp_dir)
+        return path.join(temp_dir, file_name)
 
     def read(self) -> None:
         # first of all, set from default
         for key, default in DEFAULTS.items():
             setattr(self, key, default)
         # read from release config file
-        self.load_file(path.join(self.datadir, "config", "config.txt"))
+        self.load_file(self.get_file_path("config", "config.txt"))
         # then override with optional custom config
-        if path.exists(path.join(self.datadir, "config", "config_custom.txt")):
-            self.load_file(path.join(self.datadir, "config", "config_custom.txt"))
+        if path.exists(self.get_file_path("config", "config_custom.txt")):
+            self.load_file(self.get_file_path("config", "config_custom.txt"))
         if self.heavy3_path == "":
             # Defaut path, use datadir/
-            self.heavy3_path = path.join(self.datadir, "heavy3a.bin")
+            self.heavy3_path = self.get_file_path("", "heavy3a.bin")  # path.join(self.datadir, "heavy3a.bin")
         if self.mempool_path == "":
             # Defaut path, use datadir/live
-            self.mempool_path = path.join(self.datadir, "live", "mempool.db")
+            self.mempool_path = self.get_file_path("live", "mempool.db")  # path.join(self.datadir, "live", "mempool.db")
             if not self.mempool_ram:
                 print("Mempool path is {}".format(self.mempool_path))
-        file_name = path.join(self.datadir, "config", "mandatory_message.json")
+        file_name = self.get_file_path("config", "mandatory_message.json")
         if path.isfile(file_name):
             try:
                 with open(file_name) as fp:

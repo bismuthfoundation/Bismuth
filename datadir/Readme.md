@@ -19,6 +19,7 @@ Current state:
 
 - heavy3a.bin default location is now datadir.  
 config file can optionally specify anotehr path. With no path, datadir/ is assumed. 
+- ipresolv.json (500_hypernode) from datadir/live
 
 # More
 
