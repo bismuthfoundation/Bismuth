@@ -11,6 +11,11 @@ Are concerned :
 - 040_sendtx
 - 500_hypernode
 
+## Peers.txt
+
+Now in datadir/live.
+TODO: have a fixed github url to download from if they are missing or corrupt.
+
 
 ## HF
 

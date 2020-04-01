@@ -14,6 +14,7 @@ Current state:
 - wallet.der read from datadir
 - config.txt / config_custom.txt read from datadir/config
 - mandatory_message.json read from datadir/config
+- peers.txt and suggested_peers.txt in datadir/live
 
 - new "label" config param to give a name to the config set.
 

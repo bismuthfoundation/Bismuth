@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
 
 
-__version__ = "0.0.11"
+__version__ = "0.0.12"
 
 
 class Node:
@@ -70,11 +70,11 @@ class Node:
         self.checkpoint = 0
 
         # default mainnet config
-        self.peerfile = "peers.txt"
+        self.peerfile = self.config.get_file_path("live", "peers.txt")
         self.ledger_ram_file = "file:ledger?mode=memory&cache=shared"
         self.ram_db = None
         self.index_db = "static/index.db"
-        self.peerfile_suggested = "suggested_peers.txt"
+        self.peerfile_suggested = self.config.get_file_path("live", "suggested_peers.txt")
 
         # core objects and structures
         self.config = config
@@ -124,8 +124,8 @@ class Node:
             self.config.ledger_path = "static/ledger_test.db"
 
             self.ledger_ram_file = "file:ledger_testnet?mode=memory&cache=shared"
-            self.peerfile = "peers_test.txt"
-            self.peerfile_suggested = "suggested_peers_test.txt"
+            self.peerfile = self.config.get_file_path("live", "peers_test.txt")
+            self.peerfile_suggested = self.config.get_file_path("live", "suggested_peers_test.txt")
 
             self.index_db = "static/index_test.db"
 
