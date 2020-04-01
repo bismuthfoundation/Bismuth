@@ -1013,9 +1013,11 @@ if __name__ == "__main__":
     logger.app_log.warning("Configuration settings loaded")
     # Pre-node tweaks
     # upgrade wallet location after nuitka-required "files" folder introduction
-    if os.path.exists("../wallet.der") and not os.path.exists("wallet.der") and "Windows" in platform.system():
+    wallet_file_name = config.get_wallet_path()
+    # EGG: Is this still needed with datadir?
+    if os.path.exists("../wallet.der") and not os.path.exists(wallet_file_name) and "Windows" in platform.system():
         print("Upgrading wallet location")
-        os.rename("../wallet.der", "wallet.der")
+        os.rename("../wallet.der", wallet_file_name)
     # upgrade wallet location after nuitka-required "files" folder introduction
 
     # Will start node init sequence

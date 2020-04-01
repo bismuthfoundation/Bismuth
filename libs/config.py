@@ -129,6 +129,12 @@ class Config:
                         left = params[1]
                     setattr(self, left, right)
 
+    def get_wallet_path(self) -> str:
+        return path.join(self.datadir, "wallet.der")
+
+    def get_file_path(self, dir_name: str, file_name: str) -> str:
+        return path.join(self.datadir, dir_name, file_name)
+
     def read(self) -> None:
         # first of all, set from default
         for key, default in DEFAULTS.items():

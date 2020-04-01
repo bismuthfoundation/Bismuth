@@ -119,15 +119,16 @@ def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, p
 
 
 def keys_check(app_log, keyfile_name: str) -> None:
-    # TODO: move, make use of polysign module
-    # key maintenance
+    # TODO: move, make use of polysign module and allow for newgen keys?
+    # key maintenance - tagging as deprecated, rather use convert tools and lighten the code here.
+    """
     if os.path.isfile("privkey.der") is True:
         app_log.warning("privkey.der found")
     elif os.path.isfile("privkey_encrypted.der") is True:
         app_log.warning("privkey_encrypted.der found")
         os.rename("privkey_encrypted.der", "privkey.der")
-
-    elif os.path.isfile(keyfile_name) is True:
+    """
+    if os.path.isfile(keyfile_name) is True:
         app_log.warning("{} found".format(keyfile_name))
     else:
         # generate key pair and an address

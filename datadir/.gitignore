@@ -1,0 +1,8 @@
+heavy3a.bin
+wallet.der
+*.der
+config_custom.txt
+*.db
+*.db-shm
+*.db-wal
+*.tar.gz

@@ -16,7 +16,7 @@ from math import floor
 
 from libs import mining_heavy3, regnet
 from bismuthcore.helpers import just_int_from, download_file
-from libs.essentials import keys_check, keys_load  # To be handled by polysign
+from libs.essentials import keys_check, keys_load_new  # To be handled by polysign
 from libs.difficulty import difficulty  # where does this belongs? check usages
 
 from libs.config import Config
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
 
 
-__version__ = "0.0.10"
+__version__ = "0.0.11"
 
 
 class Node:
@@ -197,10 +197,15 @@ class Node:
 
     def load_keys(self):
         """Initial loading of crypto keys"""
-        keys_check(self.logger.app_log, "wallet.der")
+        keys_check(self.logger.app_log, self.config.get_wallet_path())  # will create a wallet if none exist.
+        """
         self.keys.key, self.keys.public_key_readable, self.keys.private_key_readable, _, _, \
             self.keys.public_key_b64encoded, self.keys.address, self.keys.keyfile \
             = keys_load("privkey.der", "pubkey.der")
+        """
+        self.keys.key, self.keys.public_key_readable, self.keys.private_key_readable, _, _, \
+            self.keys.public_key_b64encoded, self.keys.address, self.keys.keyfile = \
+            keys_load_new(self.config.get_wallet_path())
         if self.is_regnet:
             regnet.PRIVATE_KEY_READABLE = self.keys.private_key_readable
             regnet.PUBLIC_KEY_B64ENCODED = self.keys.public_key_b64encoded
