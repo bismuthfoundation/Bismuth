@@ -1,5 +1,24 @@
 # Scaffold for data dir reorg
 
+Node is now to be run with a single command line param, the datadir.  
+If nothing is given, it assumes ./datadir
+
+wallet, config as well as chains are taken from the subdirs of datadir.
+
+So, you can have a single codebase and run it from different contexts/stats just by specifying the right datadir.
+
+
+Current state:
+
+- datadir command line param
+- wallet.der read from datadir
+- config.txt / config_custom.txt read from datadir/config
+- mandatory_message.json read from datadir/config
+
+- new "label" config param to give a name to the config set.
+
+# More
+
 See readme from subdirs.
 
 
