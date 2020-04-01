@@ -70,11 +70,11 @@ class Node:
         self.checkpoint = 0
 
         # default mainnet config
-        self.peerfile = self.config.get_file_path("live", "peers.txt")
+        self.peerfile = config.get_file_path("live", "peers.txt")
         self.ledger_ram_file = "file:ledger?mode=memory&cache=shared"
         self.ram_db = None
         self.index_db = "static/index.db"
-        self.peerfile_suggested = self.config.get_file_path("live", "suggested_peers.txt")
+        self.peerfile_suggested = config.get_file_path("live", "suggested_peers.txt")
 
         # core objects and structures
         self.config = config

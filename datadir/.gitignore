@@ -6,3 +6,4 @@ config_custom.txt
 *.db-shm
 *.db-wal
 *.tar.gz
+ipresolv.conf
