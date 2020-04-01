@@ -17,6 +17,9 @@ Current state:
 
 - new "label" config param to give a name to the config set.
 
+- heavy3a.bin default location is now datadir.  
+config file can optionally specify anotehr path. With no path, datadir/ is assumed. 
+
 # More
 
 See readme from subdirs.

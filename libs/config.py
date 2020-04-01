@@ -54,7 +54,7 @@ DEFAULTS = {
     "regnet": False,
     "trace_db_calls": False,
     "mempool_ram": True,
-    "heavy3_path": "./heavy3a.bin",
+    "heavy3_path": "",
     "mempool_path": "./mempool.db",
     "old_sqlite": False,
     "mandatory_message": {
@@ -144,6 +144,9 @@ class Config:
         # then override with optional custom config
         if path.exists(path.join(self.datadir, "config", "config_custom.txt")):
             self.load_file(path.join(self.datadir, "config", "config_custom.txt"))
+        if self.heavy3_path == "":
+            # Defaut path, use datadir/
+            self.heavy3_path = path.join(self.datadir, "heavy3a.bin")
         file_name = path.join(self.datadir, "config", "mandatory_message.json")
         if path.isfile(file_name):
             try:

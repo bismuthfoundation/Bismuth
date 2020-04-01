@@ -143,7 +143,10 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
             raise
 
 
-def create_heavy3a(file_name="heavy3a.bin"):
+def create_heavy3a(file_name: str=""):
+    if file_name == '':
+        print("create_heavy3a now needs a full path")
+        exit()
     print("Creating Junction Noise file, this usually takes a few minutes...")
     gen = DRBG(b"Bismuth is a chemical element with symbol Bi and atomic number 83. It is a pentavalent post-transition metal and one of the pnictogens with chemical properties resembling its lighter homologs arsenic and antimony.")
     # Size in Gb - No more than 4Gb from a single seed
@@ -156,10 +159,13 @@ def create_heavy3a(file_name="heavy3a.bin"):
             f.write(gen.generate(CHUNK_SIZE))
 
 
-def mining_open(file_name="heavy3a.bin"):
+def mining_open(file_name=""):
     """
     Opens the Junction MMapped file
     """
+    if file_name == '':
+        print("mining_open now needs a full path to heavy3 bin file")
+        exit()
     global F
     global MMAP
     global RND_LEN
