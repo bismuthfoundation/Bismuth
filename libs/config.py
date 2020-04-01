@@ -2,7 +2,7 @@ import json
 import os.path as path
 from sys import exit
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 
 # "param_name":["type"] or "param_name"=["type","property_name"]
@@ -44,6 +44,7 @@ VARS = {
     "mempool_path": ["str"],
     "old_sqlite": ["bool"],
     "mandatory_message": ["list"],
+    "label": ["str"]
 }
 
 # Optional default values so we don't bug if they are not in the config.
@@ -65,6 +66,7 @@ DEFAULTS = {
         "49ca873779b36c4a503562ebf5697fca331685d79fd3deef64a46888": "Tradesatoshi is no more listing bis but needed a message to route the deposit to your account",
         "edf2d63cdf0b6275ead22c9e6d66aa8ea31dc0ccb367fad2e7c08a25": "Old Cryptopia address, memo",
     },  # setup here by safety, but will use the json if present for easier updates.
+    "label": "Default config label"
 }
 
 
@@ -76,13 +78,18 @@ class Config:
                  "ban_threshold", "tor", "debug_level", "allowed", "ram", "node_ip", "light_ip", "reveal_address",
                  "accept_peers", "banlist", "whitelist", "nodes_ban_reset", "mempool_allowed", "terminal_output",
                  "gui_scaling", "mempool_ram", "egress", "trace_db_calls", "heavy3_path", "mempool_path",
-                 "old_sqlite", "mandatory_message", "genesis")
+                 "old_sqlite", "mandatory_message", "genesis", "datadir", "label")
 
-    def __init__(self):
+    def __init__(self, datadir: str=''):
         # Default genesis to keep compatibility
         self.genesis = "4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed"
         self.mandatory_message = {}
+        if datadir == '':
+            print("Config now needs to be fed with datadir param")
+            exit()
+        self.datadir = datadir
         self.read()
+        print("Config Label: {}".format(self.label))
 
     def load_file(self, filename: str) -> None:
         # print("Loading",filename)
@@ -127,11 +134,11 @@ class Config:
         for key, default in DEFAULTS.items():
             setattr(self, key, default)
         # read from release config file
-        self.load_file("config.txt")
+        self.load_file(path.join(self.datadir, "config", "config.txt"))
         # then override with optional custom config
-        if path.exists("config_custom.txt"):
-            self.load_file("config_custom.txt")
-        file_name = "./mandatory_message.json"
+        if path.exists(path.join(self.datadir, "config", "config_custom.txt")):
+            self.load_file(path.join(self.datadir, "config", "config_custom.txt"))
+        file_name = path.join(self.datadir, "config", "mandatory_message.json")
         if path.isfile(file_name):
             try:
                 with open(file_name) as fp:

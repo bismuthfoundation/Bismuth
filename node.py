@@ -14,7 +14,7 @@
 import platform
 import socketserver
 import threading
-from sys import version_info
+from sys import version_info, argv
 import os
 from time import time as ttime, sleep
 from decimal import Decimal
@@ -35,7 +35,7 @@ from libs.fork import Fork
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.11-evo"  # Experimental db-evolution branch
+VERSION = "5.0.12-evo"  # Experimental db-evolution branch
 
 fork = Fork()
 
@@ -1000,7 +1000,14 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 
 if __name__ == "__main__":
-    config = Config()  # config.read() is now implicit at instanciation
+    datadir = "./datadir"  # Default datadir if empty
+    if len(argv) > 1:
+        _, datadir = argv
+        if not os.path.isdir(datadir):
+            print("No such '{}' dir. Using default".format(datadir))
+            datadir = "./datadir"  # Default datadir if empty
+    print("Using", datadir, "data dir")
+    config = Config(datadir=datadir)  # config.read() is now implicit at instanciation
     logger = Logger()  # is that class really useful?
     logger.app_log = log.log("node.log", config.debug_level, config.terminal_output)
     logger.app_log.warning("Configuration settings loaded")
