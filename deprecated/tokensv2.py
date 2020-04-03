@@ -210,7 +210,8 @@ if __name__ == "__main__":
 
     # EGG: kept this constructor for testing purposes, out of a Node instance.
 
-    db_handler = DbHandler("static/index_local_test.db","static/ledger.db","static/hyper.db", ram=False, ledger_ram_file='', logger=node.logger)
+    db_handler = DbHandler("static/index_local_test.db", config.get_ledger_db_path(), config.get_hyper_db_path(),
+                           ram=False, ledger_ram_file='', logger=node.logger)
     db_handler.tokens_update()
     # _tokens_update(node, db_handler)
     # _tokens_update("tokens.db","reindex")

@@ -32,7 +32,7 @@ class PluginManager:
             logging.basicConfig(level=logging.DEBUG)
             self.app_log = logging
         self.config = config
-        self.base_folder = config.ledger_path.replace("static/ledger.db", "")
+        self.base_folder = config.get_live_path()
         # path of mempool, colored.json and related files.
         self.plugin_folder = plugin_folder
         self.main_module = main_module

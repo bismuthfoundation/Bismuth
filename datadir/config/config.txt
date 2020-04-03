@@ -8,10 +8,8 @@ debug=True
 debug_level=WARNING
 purge=True
 pause=6
-hyper_path=static/hyper.db
 hyper_recompress=True
 full_ledger=True
-ledger_path=static/ledger.db
 ban_threshold=30
 tor=False
 allowed=127.0.0.1,192.168.0.1
@@ -33,3 +31,5 @@ trace_db_calls=False
 ; optional items with their default values are below
 ;heavy3_path=./datadir/heavy3a.bin
 ;mempool_path=./datadir/live/mempool.db
+;ledger_path=static/ledger.db
+;hyper_path=static/hyper.db

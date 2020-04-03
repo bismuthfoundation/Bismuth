@@ -70,19 +70,19 @@ class SoloDbHandler:
         CREATE_TXID4_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS TXID4_Index ON transactions(substr(signature,1,4))"
         CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS 'Misc Block Height Index' on misc(block_height)"
         self.logger.app_log.warning("Checking and creating indices")
-        # ledger.db
+        # ledger db
         if not self.config.old_sqlite:
             self._ledger_cursor.execute(CREATE_TXID4_INDEX_IF_NOT_EXISTS)
         else:
             self.logger.app_log.warning("Setting old_sqlite is True, lookups will be slower.")
             self._ledger_cursor.execute(CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
         self._ledger_db.commit()
-        # hyper.db
+        # hyper db
         if not self.config.old_sqlite:
             self._hyper_cursor.execute(CREATE_TXID4_INDEX_IF_NOT_EXISTS)
             self._hyper_cursor.execute(CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
         self._hyper_db.commit()
-        # RAM or hyper.db is not created yet at this point.
+        # RAM or hyper db is not created yet at this point.
         self.logger.app_log.warning("Finished creating indices")
 
     def transactions_schema(self) -> list:
@@ -261,9 +261,10 @@ class SoloDbHandler:
         return y
 
     def sequencing_check(self):
-        """Quick check of block sequence. Does **not** check sigs nor hash, just that there is no gap nor dup blocks heights"""
+        """Quick check of block sequence.
+        Does **not** check sigs nor hash, just that there is no gap nor dup blocks heights"""
         try:
-            with open("sequencing_last", 'r') as filename:
+            with open(self.config.get_db_path("sequencing_last"), 'r') as filename:
                 sequencing_last = int(filename.read())
         except:
             self.logger.app_log.warning("Sequencing anchor not found, going through the whole chain")
@@ -293,7 +294,7 @@ class SoloDbHandler:
         y = min(y1, y2, y3)
         if y > 2000:
             self.logger.app_log.warning(f"Status: Set new sequencing anchor to {y}")
-            with open("sequencing_last", 'w') as filename:
+            with open(self.config.get_db_path("sequencing_last"), 'w') as filename:
                 filename.write(str(y - 1000))  # room for rollbacks
 
     def verify(self):

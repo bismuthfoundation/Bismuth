@@ -172,7 +172,7 @@ class DbHandler:
             alias_last_block = 0
         # Egg note: this is not the real last anchor. We use the last alias index as anchor.
         # If many blocks passed by since, every call to update will have to parse large data (with like% query).
-        # We could have an anchor table in index.db , with real anchor from last check.
+        # We could have an anchor table in index .db , with real anchor from last check.
         # to be dropped in case of rollback ofc.
         self.logger.app_log.warning("Alias anchor block: {}".format(alias_last_block))
         self.h.execute(
@@ -728,13 +728,13 @@ class DbHandler:
     def db_to_drive(self, node: "Node") -> None:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
         def transactions_to_h(data):
-            for x in data:  # we want to save to ledger.db
+            for x in data:  # we want to save to ledger db
                 self._execute_param(self.h, SQL_TO_TRANSACTIONS,
                                     (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
             self.commit(self.hdd)
 
         def misc_to_h(data):
-            for x in data:  # we want to save to ledger.db from RAM/hyper.db depending on ram conf
+            for x in data:  # we want to save to ledger db from RAM/hyper db depending on ram conf
                 self._execute_param(self.h, SQL_TO_MISC, (x[0], x[1]))
             self.commit(self.hdd)
 
@@ -759,7 +759,7 @@ class DbHandler:
             result1 = self.c.fetchall()
 
             transactions_to_h(result1)
-            if node.config.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
+            if node.config.ram:  # we want to save to hyper db from RAM/hyper db depending on ram conf
                 transactions_to_h2(result1)
 
             self._execute_param(self.c, "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
@@ -767,7 +767,7 @@ class DbHandler:
             result2 = self.c.fetchall()
 
             misc_to_h(result2)
-            if node.config.ram:  # we want to save to hyper.db from RAM
+            if node.config.ram:  # we want to save to hyper db from RAM
                 misc_to_h2(result2)
 
             node.hdd_block = node.last_block

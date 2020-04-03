@@ -6,8 +6,10 @@ import sys
 # Specific path, non standard.
 chain = "../../Bismuth-temp/static/ledger.db"
 
+# TODO: broken, needs config and datadir
+
 try:
-    with open("../sequencing_last", 'r') as filename:
+    with open(config.get_db_path("sequencing_last"), 'r') as filename:
         sequencing_last = int(filename.read())
     print("Sequencing from", sequencing_last)
 except:

@@ -29,6 +29,7 @@ REGNET_DIFF = 16
 
 REGNET_PORT = 3030
 
+# EGG: Beware, not compatible with datadir
 REGNET_DB = "static/regmode.db"
 
 REGNET_INDEX = "static/index_reg.db"

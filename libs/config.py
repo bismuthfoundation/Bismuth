@@ -2,8 +2,10 @@ import json
 import os.path as path
 from os import makedirs
 from sys import exit
+from time import sleep
+from typing import Union
 
-__version__ = "0.0.4"
+__version__ = "0.0.7"
 
 
 # "param_name":["type"] or "param_name"=["type","property_name"]
@@ -45,7 +47,8 @@ VARS = {
     "mempool_path": ["str"],
     "old_sqlite": ["bool"],
     "mandatory_message": ["list"],
-    "label": ["str"]
+    "label": ["str"],
+    "legacy_db": ["bool"]
 }
 
 # Optional default values so we don't bug if they are not in the config.
@@ -58,6 +61,9 @@ DEFAULTS = {
     "heavy3_path": "",
     "mempool_path": "",
     "old_sqlite": False,
+    "ledger_path": "",
+    "hyper_path": "",
+    "legacy_db": True,
     "mandatory_message": {
         "Address": "Comment - Dict for addresses that require a message. tx to these addresses withjout a message will not be accepted by mempool.",
         "f6c0363ca1c5aa28cc584252e65a63998493ff0a5ec1bb16beda9bac": "qTrade Exchange needs a message to route the deposit to your account",
@@ -79,7 +85,7 @@ class Config:
                  "ban_threshold", "tor", "debug_level", "allowed", "ram", "node_ip", "light_ip", "reveal_address",
                  "accept_peers", "banlist", "whitelist", "nodes_ban_reset", "mempool_allowed", "terminal_output",
                  "gui_scaling", "mempool_ram", "egress", "trace_db_calls", "heavy3_path", "mempool_path",
-                 "old_sqlite", "mandatory_message", "genesis", "datadir", "label")
+                 "old_sqlite", "mandatory_message", "genesis", "datadir", "label", "legacy_db")
 
     def __init__(self, datadir: str=''):
         # Default genesis to keep compatibility
@@ -91,6 +97,11 @@ class Config:
         self.datadir = datadir
         self.read()
         print("Config Label: {}".format(self.label))
+        print("Ledger: {}".format(self.ledger_path))
+        print("Hyper: {}".format(self.hyper_path))
+        print("Index: {}".format(self.get_index_db_path()))
+        sleep(10)  # Allows for ctrl-c before any action in case it's wrong at dev or setup time
+        # exit()
 
     def load_file(self, filename: str) -> None:
         # print("Loading",filename)
@@ -133,12 +144,41 @@ class Config:
     def get_wallet_path(self) -> str:
         return self.get_file_path("", "wallet.der")
 
+    def get_db_path(self, db_name: str, legacy: Union[bool, None]=None) -> str:
+        legacy = self.legacy_db if legacy is None else legacy
+        db_dir = "chain-legacy" if legacy else "chain-v2"
+        return self.get_file_path(db_dir, db_name)
+
+    def get_index_db_path(self, legacy: Union[bool, None]=None) -> str:
+        if self.regnet:
+            return self.get_file_path("regnet", "index_reg.db")
+        legacy = self.legacy_db if legacy is None else legacy
+        file_name = "index_test.db" if self.testnet else "index.db"
+        return self.get_db_path(file_name, legacy)
+
+    def get_ledger_db_path(self, legacy:  Union[bool, None]=None) -> str:
+        if self.regnet:
+            return self.get_file_path("regnet", "regmod.db")
+        legacy = self.legacy_db if legacy is None else legacy
+        file_name = "ledger_test.db" if self.testnet else "ledger.db"
+        return self.get_db_path(file_name, legacy)
+
+    def get_hyper_db_path(self, legacy:  Union[bool, None]=None) -> str:
+        if self.regnet:
+            return self.get_file_path("regnet", "regmod.db")
+        legacy = self.legacy_db if legacy is None else legacy
+        file_name = "hyper_test.db" if self.testnet else "hyper.db"
+        return self.get_db_path(file_name, legacy)
+
     def get_file_path(self, dir_name: str, file_name: str) -> str:
         temp_dir = self.datadir if dir_name == '' else path.join(self.datadir, dir_name)
         if not path.isdir(temp_dir):
             # Ensure dir exists
             makedirs(temp_dir)
         return path.join(temp_dir, file_name)
+
+    def get_live_path(self) -> str:
+        return path.join(self.datadir, "live")
 
     def read(self) -> None:
         # first of all, set from default
@@ -157,6 +197,16 @@ class Config:
             self.mempool_path = self.get_file_path("live", "mempool.db")  # path.join(self.datadir, "live", "mempool.db")
             if not self.mempool_ram:
                 print("Mempool path is {}".format(self.mempool_path))
+        if self.ledger_path != "":
+            self.ledger_path = self.get_ledger_db_path()
+            print("ledger_path is no more used. Using '{}' as ledger".format(self.ledger_path))
+        else:
+            self.ledger_path = self.get_ledger_db_path()
+        if self.hyper_path != "":
+            self.hyper_path = self.get_hyper_db_path()
+            print("hyper_path is no more used. Using '{}' as ledger".format(self.hyper_path))
+        else:
+            self.hyper_path = self.get_hyper_db_path()
         file_name = self.get_file_path("config", "mandatory_message.json")
         if path.isfile(file_name):
             try:

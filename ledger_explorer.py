@@ -8,12 +8,13 @@ from libs.config import Config
 
 config = Config()
 hyper_path = config.hyper_path
-#hyper_path = "backup.db"
 version = config.version
+
 
 if "testnet" in version:
     port = 2829
-    hyper_path = "static/ledger_test.db"
+    # Taken care of by config
+    # hyper_path = "static/ledger_test .db"
 
 
 def execute(cursor, query):

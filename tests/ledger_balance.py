@@ -11,8 +11,9 @@ from decimal import Decimal
 sys.path.append('../')
 from libs.quantizer import quantize_eight
 
-LEDGER_PATH = '../static/ledger.db'
-HYPER_PATH = '../static/hyper.db'
+# Using fixed path. New way would be to make use of the Config object.
+LEDGER_PATH = '../datadir/chain-legacy/ledger.db'
+HYPER_PATH = '../datadir/chain-legacy/hyper.db'
 
 ADDRESSES = ["edf2d63cdf0b6275ead22c9e6d66aa8ea31dc0ccb367fad2e7c08a25",
              "da8a39cc9d880cd55c324afc2f9596c64fac05b8d41b3c9b6c481b4e",

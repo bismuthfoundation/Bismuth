@@ -1,3 +1,4 @@
+# EGG: not converted to datadir format.
 import sqlite3
 import time
 

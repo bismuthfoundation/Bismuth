@@ -23,7 +23,7 @@ from libs.config import Config
 from libs.solodbhandler import SoloDbHandler
 from libs.apihandler import ApiHandler
 from libs.peershandler import Peers
-from libs.plugins import PluginManager
+from libs.pluginmanager import PluginManager
 from libs import mempool as mp
 
 from typing import TYPE_CHECKING
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
 
 
-__version__ = "0.0.12"
+__version__ = "0.0.13"
 
 
 class Node:
@@ -73,7 +73,7 @@ class Node:
         self.peerfile = config.get_file_path("live", "peers.txt")
         self.ledger_ram_file = "file:ledger?mode=memory&cache=shared"
         self.ram_db = None
-        self.index_db = "static/index.db"
+        self.index_db = config.get_index_db_path(config.legacy_db)
         self.peerfile_suggested = config.get_file_path("live", "suggested_peers.txt")
 
         # core objects and structures
@@ -120,15 +120,17 @@ class Node:
             self.config.version_allow = "testnet"
             self.logger.app_log.warning("Testnet Mode")
             self.config.port = 2829
-            self.config.hyper_path = "static/hyper_test.db"
-            self.config.ledger_path = "static/ledger_test.db"
+            # config helpers now take care of that
+            # self.config.hyper_path = "static/hyper_test .db"
+            # self.config.ledger_path = "static/ledger_test .db"
 
             self.ledger_ram_file = "file:ledger_testnet?mode=memory&cache=shared"
             self.peerfile = self.config.get_file_path("live", "peers_test.txt")
             self.peerfile_suggested = self.config.get_file_path("live", "suggested_peers_test.txt")
 
-            self.index_db = "static/index_test.db"
+            self.index_db = self.config.get_index_db_path()
 
+            # TODO: EGG: NO more valid with datadir, to be reworked.
             redownload_test = input("Status: Welcome to the testnet. Redownload test ledger? y/n")
             if redownload_test == "y":
                 types = ['static/ledger_test.db-wal', 'static/ledger_test.db-shm', 'static/index_test.db',
@@ -150,14 +152,15 @@ class Node:
             self.logger.app_log.warning("Regnet Mode")
 
             self.config.port = regnet.REGNET_PORT
-            self.config.hyper_path = regnet.REGNET_DB
-            self.config.ledger_path = regnet.REGNET_DB
+            # Now taken care of by config
+            # self.config.hyper_path = regnet.REGNET_DB
+            # self.config.ledger_path = regnet.REGNET_DB
             self.ledger_ram_file = "file:ledger_regnet?mode=memory&cache=shared"
             self.peerfile = "peers_reg.txt"
             self.peerfile_suggested = "peers_reg.txt"
 
             self.config.hyper_recompress = False
-            self.index_db = regnet.REGNET_INDEX
+            # self.index_db = regnet.REGNET_INDEX
             self.logger.app_log.warning("Regnet init...")
             regnet.init(self, self.logger.app_log)
             mining_heavy3.is_regnet = True
@@ -221,7 +224,7 @@ class Node:
 
         self.logger.app_log.warning("Something went wrong during bootstrapping, aborted")
         try:
-            # EGG_EVO: take care of these hardcoded paths
+            # EGG_EVO: take care of these hardcoded paths and use datadir
             types = ['static/*.db-wal', 'static/*.db-shm']
             for t in types:
                 for f in glob.glob(t):

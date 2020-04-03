@@ -6,7 +6,7 @@ A Demo script that takes a transaction id as input, and sends back a json with i
 - in mempool (shows timestamp, from, to, amount, first 50 chars of openfield)
 - in ledger (shows timestamp, from, to, amount, first 50 chars of openfield as well as number of confirmations)
 
-This script is supposed to be run in a subdir of the node directory, it needs access to both ../static/ledger.db and ../mempool.db
+This script is supposed to be run in a subdir of the node directory, it needs access to both ledger .db and ../mempool .db
 
 CONVERTED to use the new datadir default dir.
 """
@@ -17,7 +17,7 @@ import sqlite3, sys, json
 ledger_path = "../datadir/chain-legacy/ledger.db"
 
 # Default mempool path
-mempool_path = "../datadir/mempool.db"
+mempool_path = "../datadir/live/mempool.db"
 
 
 # EGG: Note: this tool could take a datadir as command line param and use that for proper locations.

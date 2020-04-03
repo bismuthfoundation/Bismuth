@@ -1,3 +1,5 @@
+# EGG: not converted to datadir format.
+
 import sqlite3
 
 conn = sqlite3.connect('static/ledger.db')
