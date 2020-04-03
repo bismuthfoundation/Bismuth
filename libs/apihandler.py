@@ -386,9 +386,8 @@ class ApiHandler:
         # print('api_getblocksince', since_height)
         try:
             try:
-                db_handler._execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
                 # what is the min block height to consider ?
-                block_height = max(db_handler.h.fetchone()[0]-11, since_height)
+                block_height = max(db_handler.block_height_max()-11, since_height)
                 db_handler._execute_param(db_handler.h,
                                           ('SELECT * FROM transactions WHERE block_height > ?;'),
                                           (block_height, ))
@@ -421,9 +420,8 @@ class ApiHandler:
         #print('api_getblockswhereoflike', since_height, where_openfield_like)
         try:
             try:
-                db_handler._execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
                 # what is the max block height to consider ?
-                block_height = min(db_handler.h.fetchone()[0], since_height+1440)
+                block_height = min(db_handler.block_height_max(), since_height+1440)
                 #print("block_height", since_height, block_height)
                 db_handler._execute_param(db_handler.h,
                                         'SELECT * FROM transactions WHERE block_height > ? and block_height <= ? and openfield like ?',
@@ -478,9 +476,8 @@ class ApiHandler:
         conditions_assembled = ()
         try:
             try:
-                db_handler._execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
                 # what is the max block height to consider ?
-                block_height = min(db_handler.h.fetchone()[0], since_height+720)
+                block_height = min(db_handler.block_height_max(), since_height+720)
                 # print("block_height",block_height)
                 db_handler._execute_param(db_handler.h,
                                           ('SELECT * FROM transactions WHERE block_height > ? and block_height <= ? and ( '+where_assembled+')'),
@@ -516,9 +513,8 @@ class ApiHandler:
         print('api_getaddresssince', since_height, min_confirmations, address)
         try:
             try:
-                db_handler._execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
                 # what is the max block height to consider ?
-                block_height = min(db_handler.h.fetchone()[0] - min_confirmations, since_height+720)
+                block_height = min(db_handler.block_height_max() - min_confirmations, since_height+720)
                 db_handler._execute_param(db_handler.h,
                                           ('SELECT * FROM transactions WHERE block_height > ? AND block_height <= ? '
                                          'AND ((address = ?) OR (recipient = ?)) ORDER BY block_height ASC'),
@@ -540,9 +536,8 @@ class ApiHandler:
         :return:
         """
         try:
-            db_handler._execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
             # what is the max block height to consider ?
-            max_block_height = db_handler.h.fetchone()[0] - minconf
+            max_block_height = db_handler.block_height_max() - minconf
             # calc balance up to this block_height
             db_handler._execute_param(db_handler.h, "SELECT sum(amount)+sum(reward) FROM transactions WHERE recipient = ? and block_height <= ?;", (address, max_block_height))
             credit = db_handler.h.fetchone()[0]
@@ -594,9 +589,8 @@ class ApiHandler:
         """
         try:
             # TODO : for this one and _get_balance, request max block height out of the loop and pass it as a param to alleviate db load
-            db_handler._execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
             # what is the max block height to consider ?
-            max_block_height = db_handler.h.fetchone()[0] - minconf
+            max_block_height = db_handler.block_height_max() - minconf
             # calc received up to this block_height
             db_handler._execute_param(db_handler.h, "SELECT sum(amount) FROM transactions WHERE recipient = ? and block_height <= ?;", (address, max_block_height))
             credit = db_handler.h.fetchone()[0]
@@ -779,8 +773,7 @@ class ApiHandler:
                 return
 
             # current block height, needed for confirmations
-            db_handler._execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
-            block_height = db_handler.h.fetchone()[0]
+            block_height = db_handler.block_height_max()
             transaction['signature'] = signature
             transaction['time'] = raw[1]
             transaction['hash'] = raw[5]
@@ -865,8 +858,8 @@ class ApiHandler:
                     return
 
                 # current block height, needed for confirmations #
-                db_handler._execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
-                block_height = db_handler.h.fetchone()[0]
+                block_height = db_handler.block_height_max()
+
                 transaction['txid'] = transaction_id
                 transaction['time'] = raw[1]
                 transaction['hash'] = raw[5]
