@@ -26,6 +26,12 @@ Current state:
 config file can optionally specify anotehr path. With no path, datadir/ is assumed. 
 - ipresolv.json (500_hypernode) from datadir/live
 
+# Missing
+
+powstatus.json
+search for datadir comments
+update hns to deal with new paths as well
+
 # More
 
 See readme from subdirs.

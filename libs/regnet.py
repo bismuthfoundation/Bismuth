@@ -29,10 +29,8 @@ REGNET_DIFF = 16
 
 REGNET_PORT = 3030
 
-# EGG: Beware, not compatible with datadir
-REGNET_DB = "static/regmode.db"
-
-REGNET_INDEX = "static/index_reg.db"
+REGNET_DB = ""
+REGNET_INDEX = ""
 
 SQL_INDEX = [ "CREATE TABLE aliases (block_height INTEGER, address, alias)",
               "CREATE TABLE tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)" ]
@@ -52,8 +50,6 @@ SQL_LEDGER = [ "CREATE TABLE misc (block_height INTEGER, difficulty TEXT)",
 
                "INSERT INTO misc (difficulty, block_height) VALUES ({},1)".format(REGNET_DIFF)]
 
-
-FILES_TO_REMOVE = [REGNET_DB, REGNET_INDEX]
 
 HASHCOUNT = 10
 
@@ -165,13 +161,16 @@ def command(sdef, data: str, blockhash: "str", node: "Node", db_handler: "DbHand
 
 
 def init(node: "Node", app_log, trace_db_calls: bool=False) -> None:
+    global REGNET_DB, REGNET_INDEX
+    REGNET_DB = node.config.get_ledger_db_path()
+    REGNET_INDEX = node.config.get_index_db_path()
     # Empty peers
     with open(node.peerfile, 'w') as f:
         f.write("{}")
     with open(node.peerfile_suggested, 'w') as f:
         f.write("{}")
     # empty files
-    for remove_me in FILES_TO_REMOVE:
+    for remove_me in [REGNET_DB, REGNET_INDEX]:
         if os.path.exists(remove_me):
             os.remove(remove_me)
     # create empty index db
