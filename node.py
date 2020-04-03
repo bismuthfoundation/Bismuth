@@ -35,7 +35,7 @@ from libs.fork import Fork
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.12-evo"  # Experimental db-evolution branch
+VERSION = "5.0.13-evo"  # Experimental db-evolution branch
 
 fork = Fork()
 

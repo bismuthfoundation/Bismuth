@@ -15,8 +15,12 @@ Current state:
 - config.txt / config_custom.txt read from datadir/config
 - mandatory_message.json read from datadir/config
 - peers.txt and suggested_peers.txt in datadir/live
+- sequencing_last, index.db, ledger and hyper now live in datadir/chain-legacy
+(have to be moved or copied from previous location to there)
+- config takes care of adjusting paths and filenames for test and reg modes
 
 - new "label" config param to give a name to the config set.
+- prints label and paths at start, then waits 10 sec
 
 - heavy3a.bin default location is now datadir.  
 config file can optionally specify anotehr path. With no path, datadir/ is assumed. 

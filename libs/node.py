@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
 
 
-__version__ = "0.0.13"
+__version__ = "0.0.14"
 
 
 class Node:
