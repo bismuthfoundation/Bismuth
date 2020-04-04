@@ -102,6 +102,7 @@ class ApiHandler:
         normal_transactions = []
 
         old = None
+
         for transaction in list_of_txs:
             # EGG_EVO: Is decode_pubkey needed? Where is that used?
             transaction_formatted = Transaction.from_legacy(transaction).to_dict(legacy=True, decode_pubkey=True)
@@ -115,7 +116,7 @@ class ApiHandler:
                 block_dict.clear()
                 del normal_transactions[:]
 
-            if transaction_formatted["reward"] == 0:  # if normal tx
+            if transaction_formatted["reward"] == "0.00000000":  # if normal tx
                 del transaction_formatted["block_hash"]
                 del transaction_formatted["reward"]
                 normal_transactions.append(transaction_formatted)
@@ -123,6 +124,7 @@ class ApiHandler:
             else:
                 del transaction_formatted["address"]
                 del transaction_formatted["amount"]
+
                 transaction_formatted['difficulty'] = list_of_diffs[i][0]
                 block_dict['mining_tx'] = transaction_formatted
 
@@ -130,6 +132,7 @@ class ApiHandler:
 
                 blocks_dict[height] = dict(block_dict)
                 i += 1
+
             old = height
 
         return blocks_dict
@@ -356,11 +359,15 @@ class ApiHandler:
                                       (start_block, start_block+limit,))
             raw_diffs = db_handler.h.fetchall()
 
+            #print(len(raw_txs),len(raw_diffs))
+            #print(raw_txs,raw_diffs)
+
             reply = json.dumps(self.blocktojsondiffs(raw_txs, raw_diffs))
 
         except Exception as e:
             self.app_log.warning(e)
             raise
+
         connections.send(socket_handler, reply)
 
     def api_getblocksince(self, socket_handler, db_handler: "DbHandler", peers):
