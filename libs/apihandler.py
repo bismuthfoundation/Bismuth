@@ -718,8 +718,7 @@ class ApiHandler:
                 return
 
             # current block height, needed for confirmations #
-            db_handler._execute(db_handler.h, "SELECT MAX(block_height) FROM transactions")
-            block_height = db_handler.h.fetchone()[0]
+            block_height = db_handler.block_height_max()
             transaction['txid'] = transaction_id
             transaction['time'] = raw[1]
             transaction['hash'] = raw[5]
