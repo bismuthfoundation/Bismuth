@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from libs.node import Node
     from libs.dbhandler import DbHandler
 
-__version__ = "0.0.10"
+__version__ = "0.0.11"
 
 
 class ApiHandler:
@@ -63,8 +63,9 @@ class ApiHandler:
             self.app_log.warning(f"API Method <{method}> does not exist.")
             return False
 
+    """ # Converted, see bismuthcore/Block/to_blocks_dict
     def blockstojson(self, raw_blocks: list) -> dict:
-        """Beware, returns a dict, not a json encoded payload"""
+        # Beware, returns a dict, not a json encoded payload
         tx_list = []
         block = {}
         blocks = {}
@@ -93,6 +94,7 @@ class ApiHandler:
             old = height  # update
 
         return blocks
+    """
 
     def blocktojsondiffs(self, list_of_txs: list, list_of_diffs: list) -> dict:
         """Beware, returns a dict, not a json encoded payload"""
@@ -227,15 +229,9 @@ class ApiHandler:
         :return:
         """
 
-        block_hash = connections.receive(socket_handler)
-
-        db_handler._execute_param(db_handler.h,
-                                 "SELECT * FROM transactions "
-                                 "WHERE block_hash = ?",
-                                  (block_hash,))
-
-        result = db_handler.h.fetchall()
-        blocks = self.blockstojson(result)
+        block_hash = connections.receive(socket_handler)  # hex string
+        block = db_handler.get_block_from_hash(block_hash)
+        blocks = block.to_blocks_dict()
         connections.send(socket_handler, blocks)
 
     def api_getblockfromhashextra(self, socket_handler, db_handler: "DbHandler", peers):
@@ -252,23 +248,16 @@ class ApiHandler:
         """
         try:
             block_hash = connections.receive(socket_handler)
-
-            result = db_handler.fetchall(db_handler.h,
-                                         "SELECT * FROM transactions "
-                                         "WHERE block_hash = ? ",
-                                         (block_hash,))
-            blocks = self.blockstojson(result)
+            block_object = db_handler.get_block_from_hash(block_hash)
+            blocks = block_object.to_blocks_dict()
             block = list(blocks.values())[0]
+            block_height = block['block_height']
 
-            block["previous_block_hash"] = db_handler.fetchone(db_handler.h,
-                                                               "SELECT block_hash FROM transactions WHERE block_height = ?",
-                                                               (block['block_height'] - 1,))
-            block["next_block_hash"] = db_handler.fetchone(db_handler.h,
-                                                           "SELECT block_hash FROM transactions WHERE block_height = ?",
-                                                           (block['block_height'] + 1,))
-            block["difficulty"] = int(float(db_handler.fetchone(db_handler.h,
-                                                                "SELECT difficulty FROM misc WHERE block_height = ?",
-                                                                (block['block_height'],))))
+            block["previous_block_hash"] = db_handler.get_block_hash_for_height(block_height - 1)
+            block["next_block_hash"] = db_handler.get_block_hash_for_height(block_height + 1)
+            block["difficulty"] = int(db_handler.get_difficulty_for_height(block_height))
+            # This was not db format dependent, but for consistency sake and allow for other dbs to be use in the future, processed as well.
+            # int(float(db_handler.fetchone(db_handler.h, "SELECT difficulty FROM misc WHERE block_height = ?", (block['block_height'],))))
             # print(block)
             connections.send(socket_handler, block)
         except Exception as e:
@@ -289,13 +278,8 @@ class ApiHandler:
         """
 
         height = connections.receive(socket_handler)
-
-        db_handler._execute_param(db_handler.h, ("SELECT * FROM transactions "
-                                                "WHERE block_height = ? "),
-                                  (height,))
-
-        result = db_handler.h.fetchall()
-        blocks = self.blockstojson(result)
+        block = db_handler.get_block(height)
+        blocks = block.to_blocks_dict()
         connections.send(socket_handler, blocks)
 
     def api_getaddressrange(self, socket_handler, db_handler: "DbHandler", peers):
@@ -317,15 +301,8 @@ class ApiHandler:
         if limit > 500:
             limit = 500
 
-        db_handler._execute_param(db_handler.h, ("SELECT * FROM transactions "
-                                                "WHERE ? IN (address, recipient) "
-                                                "AND block_height >= ? "
-                                                "ORDER BY block_height "
-                                                "ASC LIMIT ?"),
-                                  (address, starting_block, limit,))
-
-        result = db_handler.h.fetchall()
-        blocks = self.blockstojson(result)
+        transactions = db_handler.get_address_range(address, starting_block, limit)
+        blocks = transactions.to_blocks_dict()
         connections.send(socket_handler, blocks)
 
     def api_getblockrange(self, socket_handler, db_handler: "DbHandler", peers):

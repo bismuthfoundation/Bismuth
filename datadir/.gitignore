@@ -8,3 +8,4 @@ config_custom.txt
 *.tar.gz
 ipresolv.conf
 sequencing_last
+live/hnrounds

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from libs.logger import Logger
 
 
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 
 ALIAS_REGEXP = r'^alias='
 SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
@@ -576,7 +576,7 @@ class DbHandler:
         # EGG_EVO: hash is currently supposed to be into hex format.
         # To be tweaked to allow either bin or hex and convert or not depending on the underlying db.
         try:
-            self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?;", (hex_hash,))
+            self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?", (hex_hash,))
             result = self.h.fetchone()[0]
         except:
             result = None
@@ -643,6 +643,57 @@ class DbHandler:
         # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
         # Transaction objects - themselves - are db agnostic.
         transaction_list = [Transaction.from_legacy(entry) for entry in block_desired_result]
+        return Block(transaction_list)
+
+    def get_block_hash_for_height(self, block_height: int) -> str:
+        """
+        Returns a Block hash - hex string - for the requested height. hash will be empty if height is unknown but will throw no exception
+        :param block_height:
+        :return:
+        """
+        # EGG_EVO: Thi+s sql request is the same in both cases (int/float) but
+        try:
+            self._execute_param(self.h, "SELECT block_hash FROM transactions WHERE block_height = ?", (block_height, ))
+            # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
+            # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
+            hash_hex = self.h.fetchone()[0]
+            return hash_hex
+        except:
+            return ''
+
+    def get_difficulty_for_height(self, block_height: int) -> float:
+        return float(self._fetchone(self.h, "SELECT difficulty FROM misc WHERE block_height = ?", (block_height)))
+
+    def get_block_from_hash(self, hex_hash: str) -> Block:
+        """
+        Returns a Block instance matching the requested height. Block will be empty if hash is unknown but will throw no exception
+        :param hex_hash:
+        :return:
+        """
+        # EGG_EVO: hash is currently supposed to be into hex format.
+        # To be tweaked to allow either bin or hex and convert or not depending on the underlying db.
+
+        # EGG_EVO: This sql request is the same in both cases (int/float), but...
+        self._execute_param(self.h, "SELECT * FROM transactions WHERE block_hash = ?", (hex_hash, ))
+        block_desired_result = self.h.fetchall()
+        # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
+        # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
+        # Transaction objects - themselves - are db agnostic.
+        transaction_list = [Transaction.from_legacy(entry) for entry in block_desired_result]
+        return Block(transaction_list)
+
+    def get_address_range(self, address: str, starting_block: int, limit: int) -> Block:
+        """Very specific, but needed for bitcoin like api and json rpc server"""
+        self._execute_param(self.h, "SELECT * FROM transactions "
+                                    "WHERE ? IN (address, recipient) "
+                                    "AND block_height >= ? "
+                                    "ORDER BY block_height "
+                                    "ASC LIMIT ?", (address, starting_block, limit))
+        transactions = self.h.fetchall()
+        # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
+        # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
+        # Transaction objects - themselves - are db agnostic.
+        transaction_list = [Transaction.from_legacy(entry) for entry in transactions]
         return Block(transaction_list)
 
     def transaction_signature_exists(self, encoded_signature: str) -> bool:
@@ -874,6 +925,11 @@ class DbHandler:
         return cursor.fetchall()
 
     def fetchone(self, cursor, query: str, param: list=None) -> Union[None, str, int, float, bool]:
+        print("DbHandler.fetchone() has to be converted")
+        # Do NOT auto convert, risk of confusion with sqlite core fetchone.
+        return self._fetchone(cursor, query, param)
+
+    def _fetchone(self, cursor, query: str, param: list=None) -> Union[None, str, int, float, bool]:
         """Helper to simplify calling code, _execute and fetch in a single line instead of 2"""
         # EGG_EVO: convert to a private method as well.
         if param is None:
