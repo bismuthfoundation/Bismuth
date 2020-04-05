@@ -4,8 +4,9 @@ import socks, time, sys, json
 from libs import connections
 from libs.config import Config
 
-config = Config()
-version = config.version
+#config = Config()
+#version = config.version
+version = "mainnet"
 
 # print ('Number of arguments:', len(sys.argv), 'arguments.')
 # print ('Argument List:', str(sys.argv))
@@ -368,6 +369,11 @@ def peersget(socket):
     print (peers_received)
 
 def statusget(socket):
+    connections.send(s, "statusget")
+    response = connections.receive(s)
+    print(json.dumps(response))
+
+def statusjson(socket):
     connections.send(s, "statusjson")
     response = connections.receive(s)
     print(json.dumps(response))
@@ -469,8 +475,8 @@ elif command == "mpget":
 elif command == "mpgetjson":
     mpgetjson(s)
 
-elif command == "statusget":
-    statusget(s)
+elif command == "statusjson":
+    statusjson(s)
 
 elif command == "portget":
     portget(s)
