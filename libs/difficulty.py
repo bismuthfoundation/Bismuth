@@ -138,8 +138,8 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
 
         # Egg: kept the float('%.10f' % ...) to avoid side effects on specific values.
         # limiting to 2 or 3 decimals instead of 10 would likely be enough and avoid all decimals issues.
-        return (float('%.10f' % difficulty2), float('%.10f' % diff_dropped), time_to_generate, diff_block_previous,
-                block_time, hashrate, diff_adjustment, block_height)
+        return (float('%.10f' % difficulty2), float('%.10f' % diff_dropped), float(time_to_generate), float(diff_block_previous),
+                float(block_time), float(hashrate), float(diff_adjustment), block_height)
         # need to keep float types here for database inserts support
     except:
         # new chain or regnet
