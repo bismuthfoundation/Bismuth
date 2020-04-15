@@ -35,7 +35,7 @@ from libs.fork import Fork
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.14-evo"  # Experimental db-evolution branch
+VERSION = "5.0.15-evo"  # Experimental db-evolution branch
 
 fork = Fork()
 
@@ -832,6 +832,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         threads_count = threading.active_count()
                         uptime = int(ttime() - node.startup_time)
                         diff = node.difficulty
+                        print(diff)
                         server_timestamp = '%.2f' % ttime()
                         if node.config.reveal_address:
                             revealed_address = node.keys.address

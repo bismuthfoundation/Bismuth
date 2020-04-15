@@ -50,6 +50,23 @@ def difficulty(node: "Node", db_handler: "DbHandler") -> tuple:
     d block_time 61.19997222208314471774631076
 
     """
+    """
+    n timestamp_last 1586916198.28999996185302734375
+    n timestamp_before_last 1586916182.440000057220458984375
+    n timestamp_1441 1586830209.1600000858306884765625
+    n timestamp_1440 1586830288.88000011444091796875
+    n block_time 59.65931249989403618706597222
+    
+    d timestamp_last 1586916198.28999996185302734375
+    d timestamp_before_last 1586916182.440000057220458984375
+    d timestamp_1441 1586830209.1600000858306884765625
+    d timestamp_1440 1586830288.88000011444091796875
+    d block_time 59.65931249989403618706597222
+    new (103.0069350375, 50.0, 15.849999904632568, 103.0062961875, 59.659312499894035, 2431596570425.9653, 0.0006388499499991907, 1649322)
+    deprec (103.0069350374, 50.0, 15.849999904632568, 103.0062961875, 59.659312499894035, 2431596570425.9653, 0.0006388499499991907, 1649322)
+    2020-04-15 09:14:36,108 close(191) Diff check
+
+    """
 
 
 def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tuple:
@@ -103,9 +120,13 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
         if diff_adjustment > 1.0:
             diff_adjustment = 1.0
 
-        # difficulty_new_adjusted = quantize_ten(diff_block_previous + diff_adjustment)
-        difficulty_new_adjusted = diff_block_previous + diff_adjustment
+        difficulty_new_adjusted = quantize_ten(diff_block_previous + diff_adjustment)
+        # difficulty_new_adjusted = diff_block_previous + diff_adjustment
         difficulty2 = difficulty_new_adjusted
+        if LOG_DIFF_STEPS:
+            print("n difficulty_new", difficulty_new)
+            print("n diff_adjustment", diff_adjustment)
+            print("n difficulty2", difficulty2)
 
         # fork handling
         if node.is_mainnet:
@@ -214,6 +235,10 @@ def deprecated_difficulty(node, db_handler, time: float=0):
 
         difficulty_new_adjusted = quantize_ten(diff_block_previous + diff_adjustment)
         difficulty2 = difficulty_new_adjusted
+        if LOG_DIFF_STEPS:
+            print("d difficulty_new", difficulty_new)
+            print("d diff_adjustment", diff_adjustment)
+            print("d difficulty2", difficulty2)
 
         # fork handling
         if node.is_mainnet:
