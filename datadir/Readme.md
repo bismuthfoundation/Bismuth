@@ -23,8 +23,16 @@ Current state:
 - prints label and paths at start, then waits 10 sec
 
 - heavy3a.bin default location is now datadir.  
-config file can optionally specify anotehr path. With no path, datadir/ is assumed. 
+config file can optionally specify another path. With no path, datadir/ is assumed. 
 - ipresolv.json (500_hypernode) from datadir/live
+- powstatus.json (500_hypernode) from datadir/live
+
+powstatus.json could need a symlink to the base dir, until the hypernode code also can make use of datadir.  
+
+# Plugins
+
+Most common plugins - including the hypernodes plugin - are included in the evo branch.  
+Not sure they will stick because code dup, but while reorg this makes things easier.
 
 # Missing
 

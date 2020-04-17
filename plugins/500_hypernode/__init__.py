@@ -1,0 +1,1 @@
+/home/toto/git/pos_poc/node_plugin/__init__.py
