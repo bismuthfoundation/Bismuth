@@ -1,7 +1,7 @@
 """
 Sqlite3 Database handler module for Bismuth nodes
 It's very alike DbHandler object, but
-This class is to be used for single user mode, when node bootsup and checks/compress/fixes the db.
+This class is to be used for single user mode, when node boots up and checks/compress/fixes the db.
 Splitting means some slight dup code, but since the operations in solo mode are so different than from later ones,
 it's better for clarity and maintenance to have them in a dedicated class.
 """
@@ -16,6 +16,7 @@ from bismuthcore.helpers import fee_calculate
 import functools
 from time import time as ttime
 from libs.fork import Fork
+from os import path
 
 from Cryptodome.Hash import SHA  # This should not belong there in the end, will be moved to Transaction object
 from polysign.signerfactory import SignerFactory
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
   # from libs.config import Config
 
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 
 
 def sql_trace_callback(log, sql_id, statement: str):
@@ -44,26 +45,74 @@ class SoloDbHandler:
         self.config = node.config
         self.trace_db_calls = trace_db_calls
 
-        self._index_db = sqlite3.connect(node.index_db, timeout=1)
-        if self.trace_db_calls:
-            self._index_db.set_trace_callback(functools.partial(sql_trace_callback, self.logger.app_log, "INDEX"))
-        self._index_db.text_factory = str
-        self._index_db.execute('PRAGMA case_sensitive_like = 1;')
-        self._index_cursor = self._index_db.cursor()  # Cursor to the index db
+        if path.isfile(node.index_db):
+            self._index_db = sqlite3.connect(node.index_db, timeout=1)
+            if self.trace_db_calls:
+                self._index_db.set_trace_callback(functools.partial(sql_trace_callback, self.logger.app_log, "INDEX"))
+            self._index_db.text_factory = str
+            self._index_db.execute('PRAGMA case_sensitive_like = 1;')
+            self._index_cursor = self._index_db.cursor()  # Cursor to the index db
+        else:
+            print("No Index")
+            self._index_db = None
+            self._index_cursor = None
 
-        self._ledger_db = sqlite3.connect(node.config.ledger_path, timeout=1)
-        if self.trace_db_calls:
-            self._ledger_db.set_trace_callback(functools.partial(sql_trace_callback, self.logger.app_log, "HDD"))
-        self._ledger_db.text_factory = str
-        self._ledger_db.execute('PRAGMA case_sensitive_like = 1;')
-        self._ledger_cursor = self._ledger_db.cursor()
+        if path.isfile(node.config.ledger_path):
+            self._ledger_db = sqlite3.connect(node.config.ledger_path, timeout=1)
+            if self.trace_db_calls:
+                self._ledger_db.set_trace_callback(functools.partial(sql_trace_callback, self.logger.app_log, "HDD"))
+            self._ledger_db.text_factory = str
+            self._ledger_db.execute('PRAGMA case_sensitive_like = 1;')
+            self._ledger_cursor = self._ledger_db.cursor()
+        else:
+            print("No Ledger")
+            self._ledger_db = None
+            self._ledger_cursor = None
 
-        self._hyper_db = sqlite3.connect(node.config.hyper_path, timeout=1)
-        if self.trace_db_calls:
-            self._hyper_db.set_trace_callback(functools.partial(sql_trace_callback, self.logger.app_log, "HDD2"))
-        self._hyper_db.text_factory = str
-        self._hyper_db.execute('PRAGMA case_sensitive_like = 1;')
-        self._hyper_cursor = self._hyper_db.cursor()
+        if path.isfile(node.config.hyper_path):
+            self._hyper_db = sqlite3.connect(node.config.hyper_path, timeout=1)
+            if self.trace_db_calls:
+                self._hyper_db.set_trace_callback(functools.partial(sql_trace_callback, self.logger.app_log, "HDD2"))
+            self._hyper_db.text_factory = str
+            self._hyper_db.execute('PRAGMA case_sensitive_like = 1;')
+            self._hyper_cursor = self._hyper_db.cursor()
+        else:
+            print("No Hyper")
+            self._ledger_db = None
+            self._ledger_cursor = None
+
+    def tables_exist(self):
+        """Tells whether the various required tables exist in the DB"""
+        try:
+            if not path.isfile(self.config.ledger_path):
+                print("No ledger")
+                return False
+            ledger_schema = self.table_schema('transactions')
+            print(ledger_schema)
+            if len(ledger_schema) < 10:
+                print("No or broken ledger")
+                return False
+            if ledger_schema[4][2] == 'NUMERIC':
+                print("Legacy ledger")
+                if len(ledger_schema) != 12:
+                    return False
+            elif ledger_schema[4][2] == 'INTEGER':
+                print("V2 ledger")
+            else:
+                print("Unknown ledger")
+            misc_schema = self.table_schema('misc')
+            print(misc_schema)
+            # hyper
+            hyper_schema = self.table_schema('transactions', db_name="hyper")
+            print(hyper_schema)
+            # index
+            index_schema = self.table_schema('tokens', db_name="index")
+            print(index_schema)
+            index_schema = self.table_schema('aliases', db_name="index")
+            print(index_schema)
+            # EGG_EVO: TODO
+        except Exception as e:
+            print(e)
 
     def add_indices(self):
         """Add potential missing indices. - it's more of an automated upgrade path"""
@@ -87,7 +136,18 @@ class SoloDbHandler:
 
     def transactions_schema(self) -> list:
         """Returns the structure of the "transactions" table from the ledger db"""
-        res = self._ledger_cursor.execute("PRAGMA table_info('transactions')")
+        return self.table_schema('transactions')
+
+    def table_schema(self, table_name: str="transactions", db_name: str="ledger") -> list:
+        """Returns the structure of the "transactions" table from the ledger db"""
+        if db_name == "ledger":
+            res = self._ledger_cursor.execute("PRAGMA table_info('{}')".format(table_name))
+        elif db_name == "hyper":
+            res = self._hyper_cursor.execute("PRAGMA table_info('{}')".format(table_name))
+        elif db_name == "index":
+            res = self._index_cursor.execute("PRAGMA table_info('{}')".format(table_name))
+        else:
+            raise RuntimeError("Unknown db_name in SoloDbHandle.table_schema: {}".format(db_name))
         return res.fetchall()
 
     def block_height_max(self) -> int:

@@ -36,7 +36,6 @@ Not sure they will stick because code dup, but while reorg this makes things eas
 
 # Missing
 
-powstatus.json
 search for datadir comments
 update hns to deal with new paths as well
 

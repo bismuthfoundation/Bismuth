@@ -47,8 +47,8 @@ VARS = {
     "mempool_path": ["str"],
     "old_sqlite": ["bool"],
     "mandatory_message": ["list"],
-    "label": ["str"],
-    "legacy_db": ["bool"]
+    "label": ["str"]
+    #, "legacy_db": ["bool"]
 }
 
 # Optional default values so we don't bug if they are not in the config.
@@ -63,7 +63,7 @@ DEFAULTS = {
     "old_sqlite": False,
     "ledger_path": "",
     "hyper_path": "",
-    "legacy_db": True,
+    # "legacy_db": True,
     "mandatory_message": {
         "Address": "Comment - Dict for addresses that require a message. tx to these addresses withjout a message will not be accepted by mempool.",
         "f6c0363ca1c5aa28cc584252e65a63998493ff0a5ec1bb16beda9bac": "qTrade Exchange needs a message to route the deposit to your account",
@@ -87,7 +87,7 @@ class Config:
                  "gui_scaling", "mempool_ram", "egress", "trace_db_calls", "heavy3_path", "mempool_path",
                  "old_sqlite", "mandatory_message", "genesis", "datadir", "label", "legacy_db")
 
-    def __init__(self, datadir: str=''):
+    def __init__(self, datadir: str='', force_legacy=False, force_v2=False, wait: int=0):
         # Default genesis to keep compatibility
         self.genesis = "4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed"
         self.mandatory_message = {}
@@ -95,12 +95,22 @@ class Config:
             print("Config now needs to be fed with datadir param")
             exit()
         self.datadir = datadir
+        if path.isfile(path.join(datadir,"chain-v2", "ledger.db")):
+            print("Found v2 ledger")
+            self.legacy_db = False
+        if force_legacy:
+            self.legacy_db = True
+        if force_v2:
+            self.legacy_db = False
         self.read()
         print("Config Label: {}".format(self.label))
+        print("Legacy DB: {}".format(self.legacy_db))
         print("Ledger: {}".format(self.ledger_path))
         print("Hyper: {}".format(self.hyper_path))
         print("Index: {}".format(self.get_index_db_path()))
-        sleep(10)  # Allows for ctrl-c before any action in case it's wrong at dev or setup time
+        if wait > 0:
+            print("Sleeping {} sec... ctrl-c if bad config".format(wait))
+            sleep(wait)  # Allows for ctrl-c before any action in case it's wrong at dev or setup time
         # exit()
 
     def load_file(self, filename: str) -> None:

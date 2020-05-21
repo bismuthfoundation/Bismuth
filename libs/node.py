@@ -93,7 +93,6 @@ class Node:
         self.is_regnet = False
         self.is_mainnet = True
         self._setup_net_type()
-
         self.load_keys()
 
         # Migrated all "single mode" methods from top level node.py in there
@@ -244,8 +243,8 @@ class Node:
         # Was named "check_integrity". It was rather a crude db schema check,
         # will need adjustments to handle the various possible dbs.
         # some parts below also where in "initial_db_check()" but also are schema checks. merged into here
-        if not os.path.exists("static"):
-            os.mkdir("static")
+        #if not os.path.exists("static"):
+        #    os.mkdir("static")
         redownload = False
         # force bootstrap via adding an empty "fresh_sync" file in the dir.
         if os.path.exists("fresh_sync") and self.is_mainnet:
@@ -254,6 +253,7 @@ class Node:
             redownload = True
         try:
             ledger_schema = solo_handler.transactions_schema()
+            # print(ledger_schema, len(ledger_schema))
             if len(ledger_schema) != 12:
                 # EGG_EVO: Kept this test for the time being, but will need more complete and distinctive test
                 # depending on the db type
@@ -263,7 +263,7 @@ class Node:
             command_field_type = ledger_schema[10][2]
             if command_field_type != "TEXT":
                 redownload = True
-                self.logger.app_log.warning("Database column type outdated for Command field")
+                self.logger.app_log.error("Database column type outdated for Command field")
         except:
             redownload = True
         if redownload and self.is_mainnet:
@@ -368,10 +368,13 @@ class Node:
         """Called at instanciation time, when db is not shared yet.
         Exclusive checks, rollbacks aso are to be gathered here"""
         self.logger.app_log.warning("Status: Starting Single user checks...")
+        # print("Initial files check")
         self._initial_files_checks()
         solo_handler = SoloDbHandler(self)  # This instance will only live for the scope of single_user_checks(),
         # why it's not a property of the Node instance and it passed to individual checks.
+        print("single_user_checks - Checking schema")
         self._check_db_schema(solo_handler)
+        # print("Checking Heights")
         self._ledger_check_heights(solo_handler)
         if self.recompress:
             # todo: do not close database and move files, swap tables instead
