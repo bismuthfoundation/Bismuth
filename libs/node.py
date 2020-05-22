@@ -370,7 +370,7 @@ class Node:
         self.logger.app_log.warning("Status: Starting Single user checks...")
         # print("Initial files check")
         self._initial_files_checks()
-        solo_handler = SoloDbHandler(self)  # This instance will only live for the scope of single_user_checks(),
+        solo_handler = SoloDbHandler(config=self.config, logger=self.logger)  # This instance will only live for the scope of single_user_checks(),
         # why it's not a property of the Node instance and it passed to individual checks.
         print("single_user_checks - Checking schema")
         self._check_db_schema(solo_handler)
@@ -380,9 +380,9 @@ class Node:
             # todo: do not close database and move files, swap tables instead
             solo_handler.close()
             self._recompress_ledger_prepare()  # This will touch the files themselve.
-            solo_handler = SoloDbHandler(self)
+            solo_handler = SoloDbHandler(config=self.config, logger=self.logger)
             self._recompress_ledger(solo_handler)  # Warning: this will close the solo instance!
-            solo_handler = SoloDbHandler(self)
+            solo_handler = SoloDbHandler(config=self.config, logger=self.logger)
 
         solo_handler.add_indices()
         if not self.is_regnet:

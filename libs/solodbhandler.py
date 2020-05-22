@@ -4,6 +4,10 @@ It's very alike DbHandler object, but
 This class is to be used for single user mode, when node boots up and checks/compress/fixes the db.
 Splitting means some slight dup code, but since the operations in solo mode are so different than from later ones,
 it's better for clarity and maintenance to have them in a dedicated class.
+
+ALL DB and table, index creation should take place here and here alone.
+DB migration, upgrades, conversion as well
+TODO: Lookup for "CREATE" in non deprecated files and remove them.
 """
 
 import sqlite3
@@ -12,10 +16,8 @@ from decimal import Decimal
 from bismuthcore.compat import quantize_two, quantize_eight
 from bismuthcore.transaction import Transaction
 from bismuthcore.block import Block
-from bismuthcore.helpers import fee_calculate
 import functools
 from time import time as ttime
-from libs.fork import Fork
 from os import path
 
 from Cryptodome.Hash import SHA  # This should not belong there in the end, will be moved to Transaction object
@@ -24,12 +26,12 @@ from polysign.signerfactory import SignerFactory
 from typing import Union, List, Tuple, Iterator
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-  from libs.node import Node
+  # from libs.node import Node
   from libs.logger import Logger
-  # from libs.config import Config
+  from libs.config import Config
 
 
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 
 
 def sql_trace_callback(log, sql_id, statement: str):
@@ -39,14 +41,15 @@ def sql_trace_callback(log, sql_id, statement: str):
 
 class SoloDbHandler:
 
-    def __init__(self, node: "Node", trace_db_calls: bool=False):
+    def __init__(self, config: "Config", logger: "Logger", trace_db_calls: bool=False):
         self.py_version = int(str(sys.version_info.major) + str(sys.version_info.minor) + str(sys.version_info.micro))
-        self.logger = node.logger
-        self.config = node.config
+        self.logger = logger
+        self.config = config
         self.trace_db_calls = trace_db_calls
+        self.legacy_db = self.config.legacy_db
 
-        if path.isfile(node.index_db):
-            self._index_db = sqlite3.connect(node.index_db, timeout=1)
+        if path.isfile(config.get_index_db_path()):
+            self._index_db = sqlite3.connect(config.get_index_db_path(), timeout=1)
             if self.trace_db_calls:
                 self._index_db.set_trace_callback(functools.partial(sql_trace_callback, self.logger.app_log, "INDEX"))
             self._index_db.text_factory = str
@@ -57,8 +60,8 @@ class SoloDbHandler:
             self._index_db = None
             self._index_cursor = None
 
-        if path.isfile(node.config.ledger_path):
-            self._ledger_db = sqlite3.connect(node.config.ledger_path, timeout=1)
+        if path.isfile(config.ledger_path):
+            self._ledger_db = sqlite3.connect(config.ledger_path, timeout=1)
             if self.trace_db_calls:
                 self._ledger_db.set_trace_callback(functools.partial(sql_trace_callback, self.logger.app_log, "HDD"))
             self._ledger_db.text_factory = str
@@ -69,8 +72,8 @@ class SoloDbHandler:
             self._ledger_db = None
             self._ledger_cursor = None
 
-        if path.isfile(node.config.hyper_path):
-            self._hyper_db = sqlite3.connect(node.config.hyper_path, timeout=1)
+        if path.isfile(config.hyper_path):
+            self._hyper_db = sqlite3.connect(config.hyper_path, timeout=1)
             if self.trace_db_calls:
                 self._hyper_db.set_trace_callback(functools.partial(sql_trace_callback, self.logger.app_log, "HDD2"))
             self._hyper_db.text_factory = str
