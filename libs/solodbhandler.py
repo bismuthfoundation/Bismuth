@@ -33,6 +33,71 @@ if TYPE_CHECKING:
 
 __version__ = "1.0.5"
 
+V2_LEDGER_CREATE = ('CREATE TABLE "transactions" (`block_height` INTEGER, '
+                    '`timestamp` NUMERIC, `address` TEXT, `recipient` TEXT, '
+                    '`amount` INTEGER, `signature` BINARY, `public_key` BINARY, '
+                    '`block_hash` BINARY, `fee` INTEGER, `reward` INTEGER,'
+                    '`operation` TEXT, `openfield` TEXT)',
+
+                    'CREATE INDEX `Block Height Index` '
+                    'ON `transactions` (`block_height`)'
+                    )
+"""
+ 1 704 000 blocks (inc mirror), 
+ 
+ Legacy (full sig, not vacuumed)
+ all indices   = 8 985 419 776
+ vacuumed      = 8 849 080 320
+ 
+ V2:                 
+ default index = 3 267 529 728
+ + timestamp   = 3 317 149 696
+ + reward      = 3 350 320 128
+ + recipient   = 3 547 339 776
+ + openfield   = 3 683 634 176
+ + fees        = 3 712 750 592
+ + blockhash   = 3 820 225 536
+ + amount      = 3 851 741 184
+ + address     = 4 037 898 240
+ + operation   = 4 067 203 072
+ 
+ + full sign   = 6 662 548 480
+  
+ Vacuumed      = 6 655 652 864
+ 
+ (but misc table missing atm)
+"""
+
+V2_INDICES_CREATE = ("CREATE INDEX `Timestamp Index` ON `transactions` (`timestamp`)",
+                     "CREATE INDEX `Reward Index` ON `transactions` (`reward`)",
+                     "CREATE INDEX `Recipient Index` ON `transactions` (`recipient`)",
+                     "CREATE INDEX `Openfield Index` ON `transactions` (`openfield`)",
+                     "CREATE INDEX `Fee Index` ON `transactions` (`fee`)",
+                     "CREATE INDEX `Block Hash Index` ON `transactions` (`block_hash`)",
+                     "CREATE INDEX `Amount Index` ON `transactions` (`amount`)",
+                     "CREATE INDEX `Address Index` ON `transactions` (`address`)",
+                     "CREATE INDEX `Operation Index` ON `transactions` (`operation`)",
+                     "CREATE INDEX `Signature Index` ON `transactions` (`signature`)",  # or partial
+                     )
+
+SQL_TO_TRANSACTIONS_LEGACY = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+SQL_TO_TRANSACTIONS_V2 = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+
+
+# TODO: factorize
+def timeit(method):
+    def timed(*args, **kw):
+        ts = ttime()
+        result = method(*args, **kw)
+        te = ttime()
+        if 'log_time' in kw:
+            name = kw.get('log_name', method.__name__.upper())
+            kw['log_time'][name] = int((te - ts) * 1000)
+        else:
+            print('%r  %2.2f ms' %  (method.__name__, (te - ts) * 1000))
+        return result
+    return timed
+
 
 def sql_trace_callback(log, sql_id, statement: str):
     line = f"SQL[{sql_id}] {statement}"
@@ -84,6 +149,26 @@ class SoloDbHandler:
             self._ledger_db = None
             self._ledger_cursor = None
 
+    def create_db(self):
+        """Will create db structure from scratch, not bootstrap.
+        Only implemented for v2 db"""
+        if self.legacy_db:
+            print("create_db only is meant for V2 db")
+            sys.exit()
+        # Ledger
+        if self._ledger_db is None:
+            # first create the db file
+            self._ledger_db = sqlite3.connect(self.config.ledger_path, timeout=1)
+            if self.trace_db_calls:
+                self._ledger_db.set_trace_callback(functools.partial(sql_trace_callback, self.logger.app_log, "HDD"))
+            self._ledger_db.text_factory = str
+            self._ledger_db.execute('PRAGMA case_sensitive_like = 1;')
+            self._ledger_cursor = self._ledger_db.cursor()
+            # Now create the minimal structure, no extra indices yet.
+            for sql in V2_LEDGER_CREATE:
+                self._ledger_cursor.execute(sql)
+                self._ledger_db.commit()
+
     def tables_exist(self):
         """Tells whether the various required tables exist in the DB"""
         try:
@@ -98,7 +183,10 @@ class SoloDbHandler:
             if ledger_schema[4][2] == 'NUMERIC':
                 print("Legacy ledger")
                 if len(ledger_schema) != 12:
+                    # TODO: better test
                     return False
+                else:
+                    return True
             elif ledger_schema[4][2] == 'INTEGER':
                 print("V2 ledger")
             else:
@@ -152,6 +240,36 @@ class SoloDbHandler:
         else:
             raise RuntimeError("Unknown db_name in SoloDbHandle.table_schema: {}".format(db_name))
         return res.fetchall()
+
+    @timeit
+    def get_blocks(self, block_height: int=0, limit: int=10) -> Block:
+        """
+        Returns a List of blocks, from block_height included and up to limit blocks max.
+        :param block_height:
+        :param limit:
+        :return: Block, that is, a list of Transactions.
+        """
+        # EGG_EVO: This sql request is the same in both cases (int/float), but...
+        # Also send mirror blocks.
+        self._ledger_cursor.execute("SELECT * FROM transactions WHERE abs(block_height) >= ? AND abs(block_height) <= ? ORDER BY block_height, reward, timestamp", (block_height, block_height + limit))
+        blocks = self._ledger_cursor.fetchall()
+        # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
+        # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
+        # Transaction objects - themselves - are db agnostic.
+        if self.legacy_db:
+            transaction_list = [Transaction.from_legacy(entry) for entry in blocks]
+        else:
+            # from_v2 is TODO EGG_EVO - to add to BismuthCore. Not needed for legacy -> V2 conversion.
+            print("Transaction.from_v2 not supported yet")
+            sys.exit()
+            #transaction_list = [Transaction.from_v2(entry) for entry in blocks]
+        return Block(transaction_list)
+
+    @timeit
+    def blocks_to_ledger(self, test: Block):
+        for tx in test.transactions:  # we want to save to ledger db
+            self._ledger_cursor.execute(SQL_TO_TRANSACTIONS_V2, tx.to_bin_tuple(sqlite_encode=True))
+        self._ledger_db.commit()
 
     def block_height_max(self) -> int:
         self._ledger_cursor.execute("SELECT max(block_height) FROM transactions")

@@ -1008,7 +1008,7 @@ if __name__ == "__main__":
             print("No such '{}' dir. Using default".format(datadir))
             datadir = "./datadir"  # Default datadir if empty
     print("Using", datadir, "data dir")
-    config = Config(datadir=datadir)  # config.read() is now implicit at instanciation
+    config = Config(datadir=datadir, wait=10, force_legacy=True)  # config.read() is now implicit at instanciation
     logger = Logger()  # is that class really useful?
     logger.app_log = log.log("node.log", config.debug_level, config.terminal_output)
     logger.app_log.warning("Configuration settings loaded")

@@ -58,6 +58,17 @@ if __name__ == "__main__":
         if solo_db_handler2.tables_exist():
             logger.app_log.error("V2 DB already exists")
             sys.exit()
+        solo_db_handler2.create_db()
+        start = 0
+        step = 1000
+        while True:
+            print(start)
+            # EGG: This is not optimized for speed, but only needed once (and users can bootstrap instead).
+            test = solo_db_handler.get_blocks(start, step)
+            if len(test.transactions) == 0:
+                break
+            solo_db_handler2.blocks_to_ledger(test)
+            start += step
     except Exception as e:
         logger.app_log.info(e)
         raise
