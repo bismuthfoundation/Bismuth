@@ -7,7 +7,7 @@ import hashlib
 import os
 import sys
 from time import time as ttime, sleep
-from libs import mempool as mp, mining_heavy3
+from libs import mempool as mp, mining_heavy3, regnet
 from libs.difficulty import difficulty
 from libs.essentials import address_validate, address_is_rsa
 from polysign.signerfactory import SignerFactory

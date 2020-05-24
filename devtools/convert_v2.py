@@ -57,9 +57,15 @@ if __name__ == "__main__":
         solo_db_handler2 = SoloDbHandler(config=config_v2, logger=logger)
         if solo_db_handler2.tables_exist():
             logger.app_log.error("V2 DB already exists")
-            sys.exit()
-        solo_db_handler2.create_db()
+            # sys.exit()
+        else:
+            logger.app_log.error("Creating V2 DB")
+            solo_db_handler2.create_db()
         start = 0
+        # Get latest tx from target (can be null)
+        start = solo_db_handler2.block_height_max()
+        print("Ledger last block is ", start)
+        # sys.exit()
         step = 1000
         while True:
             print(start)
@@ -67,7 +73,29 @@ if __name__ == "__main__":
             test = solo_db_handler.get_blocks(start, step)
             if len(test.transactions) == 0:
                 break
+            # insert is way longer if indices are there. so better add indices in a second step
             solo_db_handler2.blocks_to_ledger(test)
+            start += step
+        # TODO: fill up misc
+        # Get latest height from target (can be null)
+        start = solo_db_handler2.block_height_max_diff()
+        if start < 231551:
+            start = 231551
+        print("Misc last block is ", start)
+        # sys.exit()
+        step = 1000
+        end = solo_db_handler2.block_height_max()
+
+        while True:
+            print(start)
+            # EGG: This is not optimized for speed, but only needed once (and users can bootstrap instead).
+            test = solo_db_handler.get_miscs(start, step)
+            #print(test)
+            if len(test) != 0:
+                solo_db_handler2.miscs_to_ledger(test)
+            if start > end:
+                break
+            # insert is way longer if indices are there. so better add indices in a second step
             start += step
     except Exception as e:
         logger.app_log.info(e)

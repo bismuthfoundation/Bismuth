@@ -761,7 +761,7 @@ class DbHandler:
 
     def to_db(self, block_array, diff_save, block_transactions) -> None:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
-        self._execute_param(self.c, "INSERT INTO misc VALUES (?, ?)",
+        self._execute_param(self.c, SQL_TO_MISC,
                             (block_array.block_height_new, diff_save))
         self.commit(self.conn)
 

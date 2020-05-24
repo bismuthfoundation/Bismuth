@@ -117,7 +117,7 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
             # Emergency diff drop
             if Decimal(received_timestamp) > q_db_timestamp_last + Decimal(2 * diff_drop_time):
                 factor = 10
-                diff_dropped = quantize_ten(diff0) - quantize_ten(1) - quantize_ten(factor * (time_difference-2*diff_drop_time) / diff_drop_time)
+                diff_dropped = quantize_ten(diff0) - quantize_ten(1) - quantize_ten(factor * (time_difference-2 * diff_drop_time) / diff_drop_time)
 
             if diff_dropped < 50:
                 diff_dropped = 50

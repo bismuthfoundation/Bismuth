@@ -31,17 +31,25 @@ if TYPE_CHECKING:
   from libs.config import Config
 
 
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 
-V2_LEDGER_CREATE = ('CREATE TABLE "transactions" (`block_height` INTEGER, '
+V2_LEDGER_CREATE = ('CREATE TABLE "transactions" IF NOT EXISTS (`block_height` INTEGER, '
                     '`timestamp` NUMERIC, `address` TEXT, `recipient` TEXT, '
                     '`amount` INTEGER, `signature` BINARY, `public_key` BINARY, '
                     '`block_hash` BINARY, `fee` INTEGER, `reward` INTEGER,'
                     '`operation` TEXT, `openfield` TEXT)',
 
-                    'CREATE INDEX `Block Height Index` '
+                    'CREATE INDEX  IF NOT EXISTS `Block Height Index` '
                     'ON `transactions` (`block_height`)'
                     )
+
+# EGG_EVO: why text? move as int as well?
+V2_MISC_CREATE = ('CREATE TABLE IF NOT EXISTS "misc" ('
+                  '`block_height` INTEGER, `difficulty` TEXT)',
+
+                  'CREATE INDEX IF NOT EXISTS "Misc Block Height Index" on misc(block_height)'
+                 )
+
 """
  1 704 000 blocks (inc mirror), 
  
@@ -65,6 +73,8 @@ V2_LEDGER_CREATE = ('CREATE TABLE "transactions" (`block_height` INTEGER, '
   
  Vacuumed      = 6 655 652 864
  
+ + misc        = 6 722 979 840
+ 
  (but misc table missing atm)
 """
 
@@ -82,6 +92,7 @@ V2_INDICES_CREATE = ("CREATE INDEX `Timestamp Index` ON `transactions` (`timesta
 
 SQL_TO_TRANSACTIONS_LEGACY = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
 SQL_TO_TRANSACTIONS_V2 = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+SQL_TO_MISC_V2 = "INSERT INTO misc VALUES (?,?)"
 
 
 # TODO: factorize
@@ -132,6 +143,7 @@ class SoloDbHandler:
             self._ledger_db.text_factory = str
             self._ledger_db.execute('PRAGMA case_sensitive_like = 1;')
             self._ledger_cursor = self._ledger_db.cursor()
+
         else:
             print("No Ledger")
             self._ledger_db = None
@@ -146,8 +158,8 @@ class SoloDbHandler:
             self._hyper_cursor = self._hyper_db.cursor()
         else:
             print("No Hyper")
-            self._ledger_db = None
-            self._ledger_cursor = None
+            self._hyper_db = None
+            self._hyper_cursor = None
 
     def create_db(self):
         """Will create db structure from scratch, not bootstrap.
@@ -168,6 +180,12 @@ class SoloDbHandler:
             for sql in V2_LEDGER_CREATE:
                 self._ledger_cursor.execute(sql)
                 self._ledger_db.commit()
+            # Now create the minimal structure, no extra indices yet.
+            for sql in V2_MISC_CREATE:
+                self._ledger_cursor.execute(sql)
+                self._ledger_db.commit()
+        else:
+            print("Existing ledger")
 
     def tables_exist(self):
         """Tells whether the various required tables exist in the DB"""
@@ -175,8 +193,10 @@ class SoloDbHandler:
             if not path.isfile(self.config.ledger_path):
                 print("No ledger")
                 return False
+            # print("ledger cursor1", self._ledger_cursor)
+
             ledger_schema = self.table_schema('transactions')
-            print(ledger_schema)
+            print("ledger schema", ledger_schema)
             if len(ledger_schema) < 10:
                 print("No or broken ledger")
                 return False
@@ -231,7 +251,9 @@ class SoloDbHandler:
 
     def table_schema(self, table_name: str="transactions", db_name: str="ledger") -> list:
         """Returns the structure of the "transactions" table from the ledger db"""
+        print("table_schema", table_name, db_name)
         if db_name == "ledger":
+            print("ledger cursor", self._ledger_cursor)
             res = self._ledger_cursor.execute("PRAGMA table_info('{}')".format(table_name))
         elif db_name == "hyper":
             res = self._hyper_cursor.execute("PRAGMA table_info('{}')".format(table_name))
@@ -271,17 +293,42 @@ class SoloDbHandler:
             self._ledger_cursor.execute(SQL_TO_TRANSACTIONS_V2, tx.to_bin_tuple(sqlite_encode=True))
         self._ledger_db.commit()
 
+    @timeit
+    def miscs_to_ledger(self, test: List):
+        for diff in test:  # we want to save to ledger db
+            self._ledger_cursor.execute(SQL_TO_MISC_V2, diff)
+        self._ledger_db.commit()
+
+    @timeit
+    def get_miscs(self, block_height: int=0, limit: int=10) -> List:
+        """
+        Returns a List of tuple
+        :param block_height:
+        :param limit:
+        :return: a list of records.
+        """
+        # EGG_EVO: This sql request is the same in both cases (int/float), but...
+        # print("get_miscs", block_height, limit)
+        self._ledger_cursor.execute("SELECT * FROM misc WHERE block_height >= ? AND block_height <= ? ORDER BY block_height", (block_height, block_height + limit))
+        miscs = self._ledger_cursor.fetchall()
+        return miscs
+
     def block_height_max(self) -> int:
         self._ledger_cursor.execute("SELECT max(block_height) FROM transactions")
-        return int(self._ledger_cursor.fetchone()[0])
+        res = self._ledger_cursor.fetchone()[0]
+        res = int(res) if res else 0
+        return res
 
     def block_height_max_diff(self) -> int:
         self._ledger_cursor.execute("SELECT max(block_height) FROM misc")
-        return int(self._ledger_cursor.fetchone()[0])
+        res = self._ledger_cursor.fetchone()[0]
+        res = int(res) if res else 0
+        return res
 
     def block_height_max_hyper(self) -> int:
         self._hyper_cursor.execute("SELECT max(block_height) FROM transactions")
         return int(self._hyper_cursor.fetchone()[0])
+
 
     def block_height_max_diff_hyper(self) -> int:
         self._hyper_cursor.execute("SELECT max(block_height) FROM misc")
