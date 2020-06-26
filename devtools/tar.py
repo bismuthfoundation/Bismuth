@@ -13,14 +13,16 @@ from libs.quantizer import quantize_eight
 from devtools import process_search
 from libs.essentials import address_validate
 
+check = True
+datadir_path = "../datadir/chain-legacy/"
 
 class Tar():
     def __init__(self):
-        self.hdd = sqlite3.connect("ledger.db", timeout=1)
+        self.hdd = sqlite3.connect(f"{datadir_path}ledger.db", timeout=1)
         self.hdd.text_factory = str
         self.h = self.hdd.cursor()
 
-        self.hdd2 = sqlite3.connect("hyper.db", timeout=1)
+        self.hdd2 = sqlite3.connect(f"{datadir_path}hyper.db", timeout=1)
         self.hdd2.text_factory = str
         self.h2 = self.hdd2.cursor()
 
@@ -124,13 +126,14 @@ def balance_differences():
 
     print(f"Done, {tar_obj.errors} errors.")
 
-balance_differences()
-dupes_check_rows_transactions(tar_obj.h, tar_obj.h_name)
-dupes_check_rows_transactions(tar_obj.h2, tar_obj.h2_name)
-dupes_check_rows_misc(tar_obj.h, tar_obj.h_name)
-dupes_check_rows_misc(tar_obj.h2, tar_obj.h2_name)
-dupes_check_sigs(tar_obj.h, tar_obj.h_name)
-dupes_check_sigs(tar_obj.h2, tar_obj.h2_name)
+if check:
+    balance_differences()
+    dupes_check_rows_transactions(tar_obj.h, tar_obj.h_name)
+    dupes_check_rows_transactions(tar_obj.h2, tar_obj.h2_name)
+    dupes_check_rows_misc(tar_obj.h, tar_obj.h_name)
+    dupes_check_rows_misc(tar_obj.h2, tar_obj.h2_name)
+    dupes_check_sigs(tar_obj.h, tar_obj.h_name)
+    dupes_check_sigs(tar_obj.h2, tar_obj.h2_name)
 
 
 if tar_obj.errors > 0:
@@ -139,8 +142,9 @@ if tar_obj.errors > 0:
     tar_obj.hdd2.close()
 
 else:
-    vacuum(tar_obj.h, tar_obj.h_name)
-    vacuum(tar_obj.h2, tar_obj.h2_name)
+    if check:
+        vacuum(tar_obj.h, tar_obj.h_name)
+        vacuum(tar_obj.h2, tar_obj.h2_name)
     tar_obj.hdd.close()
     tar_obj.hdd2.close()
 
@@ -151,8 +155,8 @@ else:
 
         for file in files:
             try:
-                print ("Compressing", file)
-                tar.add(file, arcname=file)
+                print ("Compressing", f"{datadir_path}{file}")
+                tar.add(f"{datadir_path}{file}", arcname=file)
             except:
                 "Error compressing {}".format(file)
 
