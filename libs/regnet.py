@@ -32,23 +32,24 @@ REGNET_PORT = 3030
 REGNET_DB = ""
 REGNET_INDEX = ""
 
-SQL_INDEX = [ "CREATE TABLE aliases (block_height INTEGER, address, alias)",
-              "CREATE TABLE tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)" ]
+SQL_INDEX = ["CREATE TABLE aliases (block_height INTEGER, address, alias)",
+             "CREATE TABLE tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)" ]
 
-SQL_LEDGER = [ "CREATE TABLE misc (block_height INTEGER, difficulty TEXT)",
+# TODO EGG_EVO: legacy structure is hardcoded here
+SQL_LEDGER = ["CREATE TABLE misc (block_height INTEGER, difficulty TEXT)",
 
-               "CREATE TABLE transactions (block_height INTEGER, timestamp NUMERIC, address TEXT, recipient TEXT, \
-               amount NUMERIC, signature TEXT, public_key TEXT, block_hash TEXT, fee NUMERIC, reward NUMERIC, \
-               operation TEXT, openfield TEXT)",
+              "CREATE TABLE transactions (block_height INTEGER, timestamp NUMERIC, address TEXT, recipient TEXT, \
+              amount NUMERIC, signature TEXT, public_key TEXT, block_hash TEXT, fee NUMERIC, reward NUMERIC, \
+              operation TEXT, openfield TEXT)",
 
-               "INSERT INTO transactions (openfield, operation, reward, fee, block_hash, public_key, signature, \
-               amount, recipient, address, timestamp, block_height) \
-               VALUES ('genesis', 1, 1, 0, '7a0f384876aca3871adbde8622a87f8b971ede0ed8ee10425e3958a1', \
-               '-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDKvLTbDx85a1ugb/6xMMhVOq6U\n2GeYT8+Iq2z9FwIMR40l2ttGqNK7varNccFLIu8Kn4ogDQs3WSWQCxNkhZh/FqzF\nYYa3/ItPPfzrXqgajwD8q4Zt4Ymjt8+2BkImPjjFNkuTQIz2Iu3yFqOIxLdjMw7n\nUVu9tFPiUkD0VnDPLQIDAQAB\n-----END PUBLIC KEY-----', \
-               'DKiWVr+GQHrsEUlu3qEQnsB5rznU4Is7RFLnPmHM1grobiUFHup0kSWiN83gBkNS9LgE57RXUEJvxMKc+9hIAzYE8EwGtO3RsXxkqPTT1v19CguN0iqE4nIM8Bur53/Djs5a1bH/R8EMersemZY1bDJ4jTeeba6yqFxmevGk/gw=', \
-               0, '4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed', 'genesis', 1493640955.47, 1);",
+              "INSERT INTO transactions (openfield, operation, reward, fee, block_hash, public_key, signature, \
+              amount, recipient, address, timestamp, block_height) \
+              VALUES ('genesis', 1, 1, 0, '7a0f384876aca3871adbde8622a87f8b971ede0ed8ee10425e3958a1', \
+              '-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDKvLTbDx85a1ugb/6xMMhVOq6U\n2GeYT8+Iq2z9FwIMR40l2ttGqNK7varNccFLIu8Kn4ogDQs3WSWQCxNkhZh/FqzF\nYYa3/ItPPfzrXqgajwD8q4Zt4Ymjt8+2BkImPjjFNkuTQIz2Iu3yFqOIxLdjMw7n\nUVu9tFPiUkD0VnDPLQIDAQAB\n-----END PUBLIC KEY-----', \
+              'DKiWVr+GQHrsEUlu3qEQnsB5rznU4Is7RFLnPmHM1grobiUFHup0kSWiN83gBkNS9LgE57RXUEJvxMKc+9hIAzYE8EwGtO3RsXxkqPTT1v19CguN0iqE4nIM8Bur53/Djs5a1bH/R8EMersemZY1bDJ4jTeeba6yqFxmevGk/gw=', \
+              0, '4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed', 'genesis', 1493640955.47, 1);",
 
-               "INSERT INTO misc (difficulty, block_height) VALUES ({},1)".format(REGNET_DIFF)]
+              "INSERT INTO misc (difficulty, block_height) VALUES ({},1)".format(REGNET_DIFF)]
 
 
 HASHCOUNT = 10

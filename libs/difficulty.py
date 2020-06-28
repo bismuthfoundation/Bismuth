@@ -85,7 +85,8 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
         # Failsafe for regtest starting at block 1}
         timestamp_before_last = timestamp_last if previous_block_ts is None else Decimal(previous_block_ts)
 
-        timestamp_1441 = Decimal(db_handler.last_block_timestamp(back=1441-1))
+        last1441 = db_handler.last_block_timestamp(back=1441 - 1)
+        timestamp_1441 = Decimal(last1441) if last1441 else Decimal(0)  # Handle regnet case
         block_time_prev = (timestamp_before_last - timestamp_1441) / 1440
         temp = db_handler.last_block_timestamp(back=1440-1)
         timestamp_1440 = timestamp_1441 if temp is None else Decimal(temp)

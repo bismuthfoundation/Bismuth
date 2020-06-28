@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
 
 
-__version__ = "0.0.14"
+__version__ = "0.0.15"
 
 
 class Node:
@@ -161,6 +161,8 @@ class Node:
             self.config.hyper_recompress = False
             # self.index_db = regnet.REGNET_INDEX
             self.logger.app_log.warning("Regnet init...")
+            regnet.REGNET_DB = self.config.ledger_path
+            regnet.REGNET_INDEX = self.config.get_index_db_path()
             regnet.init(self, self.logger.app_log)
             mining_heavy3.is_regnet = True
         else:
@@ -253,7 +255,7 @@ class Node:
             redownload = True
         try:
             ledger_schema = solo_handler.transactions_schema()
-            # print(ledger_schema, len(ledger_schema))
+            print(ledger_schema, len(ledger_schema))
             if len(ledger_schema) != 12:
                 # EGG_EVO: Kept this test for the time being, but will need more complete and distinctive test
                 # depending on the db type
@@ -270,6 +272,8 @@ class Node:
             self.bootstrap()
 
     def _ledger_check_heights(self, solo_handler: SoloDbHandler) -> None:
+        if self.is_regnet:
+            return
         """Defines whether ledger needs to be compressed to hyper"""
         if os.path.exists(self.config.hyper_path):
             # cross-integrity check
@@ -398,7 +402,7 @@ class Node:
         if not self.config.full_ledger and os.path.exists(self.config.ledger_path) and self.is_mainnet:
             os.remove(self.config.ledger_path)
             self.logger.app_log.warning("Removed full ledger for hyperblock mode")
-        if not self.config.full_ledger:
+        if not self.config.full_ledger and not self.is_regnet:
             self.logger.app_log.warning("Cloning hyperblocks to ledger file")
             copy(self.config.hyper_path, self.config.ledger_path)  # hacked to remove all the endless checks
         # needed for docker logs

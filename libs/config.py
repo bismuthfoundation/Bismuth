@@ -5,7 +5,7 @@ from sys import exit
 from time import sleep
 from typing import Union
 
-__version__ = "0.0.7"
+__version__ = "0.0.8"
 
 
 # "param_name":["type"] or "param_name"=["type","property_name"]
@@ -108,6 +108,12 @@ class Config:
         print("Ledger: {}".format(self.ledger_path))
         print("Hyper: {}".format(self.hyper_path))
         print("Index: {}".format(self.get_index_db_path()))
+        if self.regnet and "regnet" not in self.version:
+            print("regnet is set, but version is not regnet")
+            exit()
+        if "regnet" in self.version and not self.regnet:
+            print("Version is regnet but regnet is not set")
+            exit()
         if wait > 0:
             print("Sleeping {} sec... ctrl-c if bad config".format(wait))
             sleep(wait)  # Allows for ctrl-c before any action in case it's wrong at dev or setup time

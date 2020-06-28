@@ -126,6 +126,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         block_hash = db_handler.last_mining_transaction().to_dict(legacy=True)["block_hash"]
                         # regnet needs a blockhash to generate new chains. only supported regnet_ command for now is regnet_generate.
                         regnet.command(self.request, data, block_hash, node, db_handler)
+                        continue
 
                 if data == 'version':
                     data = receive(self.request)
