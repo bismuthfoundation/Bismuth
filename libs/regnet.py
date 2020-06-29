@@ -72,7 +72,8 @@ def sql_trace_callback(log, id, statement):
     log.warning(line)
 
 
-def generate_one_block(blockhash: str, mempool_txs: List[Transaction], node: "Node", db_handler: "DbHandler") -> str:
+def generate_one_block(blockhash: str, mempool_txs: List[tuple], node: "Node", db_handler: "DbHandler") -> str:
+    """BEWARE: mempool_txs is a list of tuple, not Transaction objects"""
     try:
         if not blockhash:
             node.logger.app_log.warning("Bad blockhash")
@@ -98,8 +99,9 @@ def generate_one_block(blockhash: str, mempool_txs: List[Transaction], node: "No
                     for i in range(TX_PER_BLOCK):
                         if not len(mempool_txs):
                             break
-                        txs.append(mempool_txs.pop(0).to_tuple())
-                        # TODO: EGG_EVO BEWARE ! Converted to Use transaction object, but still relies on legacy format afterward.
+                        txs.append(mempool_txs.pop(0))  # .to_tuple()) - mempool tx are tuple already
+                        # TODO: EGG_EVO BEWARE ! Should be converted to use transaction object, but still relies on legacy format afterward.
+                        # Sticking with legacy tuple
                         # Will need rework, regnet maybe could only use the new db format (it's volatile anyway)
                     block_send = []
                     removal_signature = []
@@ -150,7 +152,7 @@ def command(sdef, data: str, blockhash: "str", node: "Node", db_handler: "DbHand
             how_many = int(connections.receive(sdef))
             node.logger.app_log.warning("regtest_generate {} {}".format(how_many, blockhash))
             # mempool_txs = mp.mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
-            mempool_txs = mp.MEMPOOL.transactions_to_send()
+            mempool_txs = mp.MEMPOOL.transactions_to_send()  # This is a list of tuples, legacy format, 9 items
             for i in range(how_many):
                 blockhash = generate_one_block(blockhash, mempool_txs, node, db_handler)
             connections.send(sdef, 'OK')

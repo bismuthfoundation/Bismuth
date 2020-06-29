@@ -405,6 +405,10 @@ class Node:
         if not self.config.full_ledger and not self.is_regnet:
             self.logger.app_log.warning("Cloning hyperblocks to ledger file")
             copy(self.config.hyper_path, self.config.ledger_path)  # hacked to remove all the endless checks
+        if self.is_regnet:
+            # Delete mempool
+            if os.path.isfile(self.config.mempool_path):
+                os.remove(self.config.mempool_path)
         # needed for docker logs
         self.logger.app_log.warning(f"Checking Heavy3 file, can take up to 5 minutes... {self.config.heavy3_path}")
         mining_heavy3.mining_open(self.config.heavy3_path)

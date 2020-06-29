@@ -211,6 +211,10 @@ class Config:
         if self.mempool_path == "":
             # Defaut path, use datadir/live
             self.mempool_path = self.get_file_path("live", "mempool.db")  # path.join(self.datadir, "live", "mempool.db")
+            if self.regnet:
+                self.mempool_path = self.get_file_path("regnet", "mempool.db")
+            if self.testnet:
+                self.mempool_path = self.get_file_path("testnet", "mempool.db")
             if not self.mempool_ram:
                 print("Mempool path is {}".format(self.mempool_path))
         if self.ledger_path != "":

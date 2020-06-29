@@ -72,6 +72,7 @@ Common Sql requests
 # B/ have it new format - more converts, easy balances
 # C/ hybrid. only convert amounts for fast balances, do not touch/encode/decode pubkey, sig...
 # C looks like the best option.
+# Current state: kept legacy
 
 # Create mempool table
 SQL_CREATE = "CREATE TABLE IF NOT EXISTS transactions (" \
@@ -318,8 +319,13 @@ class Mempool:
     def transactions_to_send(self) -> list:
         """Returns the list of mempool Transactions as legacy tuples"""
         mempool_txs = self._fetchall(SQL_SELECT_TX_TO_SEND)
+        print(mempool_txs)
         # no need to sanitize again, was done at insert.
-        return [Transaction.from_legacy(raw_tx, sanitize=False).to_tuple() for raw_tx in mempool_txs]
+        # return [Transaction.from_legacy(raw_tx, sanitize=False).to_tuple() for raw_tx in mempool_txs]
+
+        # mempool txs are shorter (9 items) than regular (12 items)
+        # TODO EGG_EVO: see Transaction.from_legacymempool for further conversion to generic Transaction Object
+        return mempool_txs
 
     def alias_exists(self, alias: str) -> bool:
         """
