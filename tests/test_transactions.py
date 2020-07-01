@@ -1,9 +1,12 @@
 # Basic transaction tests on regnet
 # These tests require a running node on testnet, port 3030
 # Run with: python3 -m pytest
+# config_custom.txt in datadir/config:
+# version=regnet0021
+# regnet=True
+
 import time
 import json
-import math
 from bismuthclient.bismuthclient import BismuthClient
 
 def test_function_1(): #Amount and recipient
