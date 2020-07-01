@@ -27,7 +27,10 @@ if __name__ == "__main__":
     balance = client.balance(for_display=True)
     print(f"My Balance is {balance}")
     if True:
-        txid = client.send(recipient=client.address, amount=1.0)  # Tries to send 1.0 to self
+        test_address = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        txid = client.send(recipient=test_address, amount=1.0)  # Tries to send 1.0 to self
         print(f"Txid is {txid}")
-
         generate_block(s)
+    client.clear_cache()
+    balance = client.balance(for_display=True)
+    print(f"My Balance is {balance}")

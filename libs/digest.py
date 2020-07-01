@@ -483,6 +483,7 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
                                                      'transactions': block_transactions})
 
             db_handler.to_db(block_instance, diff_save, block_transactions)
+            # In regtest mode, at least, this saves the generated block to the regmod.db.
 
             # new mirror sha_hash
             db_handler._execute(db_handler.c, "SELECT * FROM transactions "
@@ -491,6 +492,9 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
             # not the latest block, nor the mirror of the latest block.
             # c._execute("SELECT * FROM transactions WHERE block_height = ?", (block_instance.block_height_new -1,))
             tx_list_to_hash = db_handler.c.fetchall()
+            # TODO EGG_EVO: This is a mistake. Uses a specific low level and proprietary encoding format (str of a tuple from a db with non specified numeric format)
+            # To Simplify. Like, only hash the - bin - tx signatures, ensures untamper just the same, faster and no question on the format.
+            # Since mirror hash are not part of consensus, no incidence.
             block_instance.mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).hexdigest()
             # /new mirror sha_hash
 
@@ -566,6 +570,7 @@ def digest_block(node: "Node", data, sdef, peer_ip: str, db_handler: "DbHandler"
 
             process_blocks(blocks=block_data, node=node, db_handler=db_handler, block_instance=block_instance,
                            miner_tx=miner_tx, peer_ip=peer_ip, tx=tx, block_transactions=block_transactions)
+            # This saves the block to the regnet db. what in other modes?
 
             node.checkpoint_set()
             return node.last_block_hash
@@ -588,6 +593,7 @@ def digest_block(node: "Node", data, sdef, peer_ip: str, db_handler: "DbHandler"
             raise ValueError("Chain: digestion aborted")
 
         finally:
+            # in regnet, this copies again the last block...
             db_handler.db_to_drive(node)
 
             node.db_lock.release()

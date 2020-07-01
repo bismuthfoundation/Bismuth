@@ -761,6 +761,7 @@ class DbHandler:
 
     def to_db(self, block_array, diff_save, block_transactions) -> None:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
+        # print("** to_db")
         self._execute_param(self.c, SQL_TO_MISC,
                             (block_array.block_height_new, diff_save))
         self.commit(self.conn)
@@ -768,11 +769,12 @@ class DbHandler:
         # db_handler.execute_many(db_handler.c, SQL_TO_TRANSACTIONS, block_transactions)
 
         for transaction2 in block_transactions:
+            # print(transaction2[0])
             self._execute_param(self.c, SQL_TO_TRANSACTIONS,
                                 (str(transaction2[0]), str(transaction2[1]), str(transaction2[2]),
-                                      str(transaction2[3]), str(transaction2[4]), str(transaction2[5]),
-                                      str(transaction2[6]), str(transaction2[7]), str(transaction2[8]),
-                                      str(transaction2[9]), str(transaction2[10]), str(transaction2[11])))
+                                 str(transaction2[3]), str(transaction2[4]), str(transaction2[5]),
+                                 str(transaction2[6]), str(transaction2[7]), str(transaction2[8]),
+                                 str(transaction2[9]), str(transaction2[10]), str(transaction2[11])))
             # secure commit for slow nodes
             self.commit(self.conn)
 
@@ -801,6 +803,11 @@ class DbHandler:
             self.commit(self.hdd2)
 
         try:
+            if node.is_regnet:
+                node.hdd_block = node.last_block
+                node.hdd_hash = node.last_block_hash
+                self.logger.app_log.warning(f"Chain: Regnet simulated move to HDD")
+                return
             self.logger.app_log.warning(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
 
             self._execute_param(self.c, "SELECT * FROM transactions WHERE block_height > ? "
