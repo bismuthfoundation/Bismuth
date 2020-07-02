@@ -1,5 +1,6 @@
 *.pyc
 .pydevproject
+.pytest_cache
 .idea/
 *.project
 build/

@@ -1,9 +1,0 @@
-[
-  "test_transactions.py::test_function_1",
-  "test_transactions.py::test_function_2",
-  "test_transactions.py::test_function3",
-  "test_transactions.py::test_function4",
-  "test_transactions.py::test_function5",
-  "test_transactions.py::test_function6",
-  "test_transactions.py::test_function7"
-]
