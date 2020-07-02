@@ -88,3 +88,17 @@ def test_function6(): #Send more than owned
     client.clear_cache()
     balance = float(client.balance())
     assert (balance>1.0)
+
+def test_function7(): #Send more than owned in two transactions
+    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    client.command(command="regtest_generate",options=[1]) #Mine a block so we have some funds
+    client.clear_cache()
+    balance = float(client.balance())
+    recipient = "8342c1610de5d7aa026ca7ae6d21bd99b1b3a4654701751891f08742"
+    txid = client.send(recipient=recipient, amount=1.0)
+    txid = client.send(recipient=recipient, amount=balance-1.0)
+    client.command(command="regtest_generate",options=[1]) #Mine the next block
+    time.sleep(1)
+    client.clear_cache()
+    balance = float(client.balance())
+    assert (balance>1.0)
