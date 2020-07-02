@@ -60,11 +60,11 @@ class Block:
 
         self.mining_reward = None
         self.mirror_hash = None
-        self.start_time_block = quantize_two(ttime())
+        self.start_time_block = ttime()
         self.tokens_operation_present = False
 
 
-def fork_reward_check(node, db_handler):
+def fork_reward_check(node: "Node", db_handler: "DbHandler"):
     """Checks whether fork conditions apply"""
     if node.is_testnet:
         if node.last_block > fork.POW_FORK_TESTNET:
@@ -79,14 +79,14 @@ def fork_reward_check(node, db_handler):
                 raise ValueError("Rolling back chain due to old fork data")
 
 
-def rewards(node: "Node", block_instance, db_handler, miner_tx):
+def rewards(node: "Node", block_instance: Block, db_handler: "DbHandler", miner_tx: MinerTransactionLegacy):
     """Checks whether reward conditions apply, development rewards and hn contract rewards"""
     if int(block_instance.block_height_new) % 10 == 0:  # every 10 blocks
         db_handler.dev_reward(node, block_instance, miner_tx, block_instance.mining_reward, block_instance.mirror_hash)
         db_handler.hn_reward(node, block_instance, miner_tx, block_instance.mirror_hash)
 
 
-def transaction_validate(node: "Node", tx):
+def transaction_validate(node: "Node", tx: TransactionLegacy):
     """Validates all transaction elements. Raise a ValueError exception on error."""
 
     # Begin with costless checks first, so we can early exit. Time of tx
@@ -114,7 +114,7 @@ def transaction_validate(node: "Node", tx):
                              f"to {tx.received_recipient} amount {tx.received_amount}")
 
 
-def sort_transactions(block, tx, block_instance, miner_tx, node: "Node"):
+def sort_transactions(block: list, tx: TransactionLegacy, block_instance: Block, miner_tx: MinerTransactionLegacy, node: "Node"):
     """
     Sanitizes transactions inside a block,
     checks whether coinbase transaction sends 0,
@@ -163,7 +163,7 @@ def sort_transactions(block, tx, block_instance, miner_tx, node: "Node"):
         transaction_validate(node=node, tx=tx)
 
 
-def process_transactions(node: "Node", db_handler: "DbHandler", block, block_instance, miner_tx, block_transactions):
+def process_transactions(node: "Node", db_handler: "DbHandler", block: list, block_instance: Block, miner_tx: MinerTransactionLegacy, block_transactions: list):
     """
     Checks transaction age and rejects it if it's too old,
     sanitizes transaction (again, needlessly, it was done in sort_transactions()),
@@ -321,8 +321,7 @@ def check_signature_on_block(block, node: "Node", db_handler: "DbHandler", peer_
         raise ValueError("There are duplicate transactions in this block, rejected")
 
 
-def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance, miner_tx, peer_ip: str, tx,
-                   block_transactions):
+def process_blocks(blocks: list, node: "Node", db_handler: "DbHandler", block_instance: Block, peer_ip: str):
     # here, functions in functions use both local vars or parent variables, it's a call for nasty bugs.
     # take care of pycharms hints, do not define func in funcs.
 
@@ -338,6 +337,9 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
     Updates tokens if update var triggered
     Updates node.difficulty and returns it
     """
+    tx = TransactionLegacy()
+    miner_tx = MinerTransactionLegacy()
+    block_transactions = []
     try:
         block_instance.block_count = len(blocks)
 
@@ -367,7 +369,7 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
             # HCL:wip converting to new format
 
             block_instance.block_height_new = node.last_block + 1
-            block_instance.start_time_block = quantize_two(ttime())
+            block_instance.start_time_block = ttime()
 
             fork_reward_check(node=node, db_handler=db_handler)
 
@@ -505,7 +507,7 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
             node.logger.app_log.warning(f"Valid block: {block_instance.block_height_new}: "
                                         f"{block_instance.block_hash[:10]} with {len(block)} txs, "
                                         f"digestion from {peer_ip} completed in "
-                                        f"{str(ttime() - float(block_instance.start_time_block))[:5]}s.")
+                                        f"{(ttime() - block_instance.start_time_block):0.2f}s.")
 
             if block_instance.tokens_operation_present:
                 db_handler.tokens_update()
@@ -533,17 +535,14 @@ def process_blocks(blocks, node: "Node", db_handler: "DbHandler", block_instance
         raise
 
 
-def digest_block(node: "Node", data, sdef, peer_ip: str, db_handler: "DbHandler"):
+def digest_block(node: "Node", block_data: list, sdef, peer_ip: str, db_handler: "DbHandler"):
     """node param for imports"""
-    # TODO: no def in def, unreadable. we are 10 screens down the prototype of that function.
     # digestion begins here
     if node.peers.is_banned(peer_ip):
         # no need to loose any time with banned peers
         raise ValueError("Cannot accept blocks from a banned peer")
         # since we raise, it will also drop the connection, it's fine since he's banned.
 
-    tx = TransactionLegacy()
-    miner_tx = MinerTransactionLegacy()
     block_instance = Block()
     block_instance.block_height_new = node.last_block + 1
 
@@ -557,19 +556,13 @@ def digest_block(node: "Node", data, sdef, peer_ip: str, db_handler: "DbHandler"
             node.logger.app_log.info(f"Chain: Waiting for mempool to unlock {peer_ip}")
 
         node.logger.app_log.warning(f"Chain: Digesting started from {peer_ip}")
-        # variables that have been quantized are prefixed by q_ So we can avoid any unnecessary quantize again later.
-        # Takes time. Variables that are only used as quantized decimal are quantized once and for all.
 
-        block_size = Decimal(sys.getsizeof(str(data))) / Decimal(1000000)
+        block_size = len(str(block_data)) / 1000000
         node.logger.app_log.warning(f"Chain: Block size: {block_size} MB")
 
         try:
-            block_data = data
-            # reject block with duplicate transactions
-            block_transactions = []
-
             process_blocks(blocks=block_data, node=node, db_handler=db_handler, block_instance=block_instance,
-                           miner_tx=miner_tx, peer_ip=peer_ip, tx=tx, block_transactions=block_transactions)
+                          peer_ip=peer_ip)
             # This saves the block to the regnet db. what in other modes?
 
             node.checkpoint_set()
@@ -599,7 +592,7 @@ def digest_block(node: "Node", data, sdef, peer_ip: str, db_handler: "DbHandler"
             node.db_lock.release()
             node.logger.app_log.warning(f"Database lock released")
 
-            delta_t = ttime() - float(block_instance.start_time_block)
+            delta_t = ttime() - block_instance.start_time_block
             # node.logger.app_log.warning("Block: {}: {} digestion completed in {}s."
             # .format(block_instance.block_height_new,  block_hash[:10], delta_t))
             node.plugin_manager.execute_action_hook('digestblock',
