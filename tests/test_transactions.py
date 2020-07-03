@@ -1,9 +1,7 @@
 # Basic transaction tests on regnet
 # These tests require a running node on testnet, port 3030
-# Run with: python3 -m pytest or pytest -v
-# config_custom.txt in datadir/config:
-# version=regnet0021
-# regnet=True
+# Start node with: python3 node.py regnet
+# Followed by: python3 -m pytest or pytest -v
 
 from time import sleep
 from bismuthclient.bismuthclient import BismuthClient
@@ -108,3 +106,13 @@ def test_send_more_than_owned_in_two_transactions():
     client.clear_cache()
     balance = float(client.balance())
     assert (balance > 1.0)
+
+def test_fee():
+    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    client.command(command="regtest_generate",options=[1]) #Mine a block so we have some funds
+    data = '12345678901234567890123456789012345678901234567890'
+    client.send(recipient=client.address, amount=0, data=data)
+    client.command(command="regtest_generate",options=[1]) #Mine the next block
+    sleep(1)
+    tx = client.latest_transactions(num=1)
+    assert float(tx[0]["fee"]) == 0.01 + 1e-5*len(data)
