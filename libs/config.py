@@ -5,7 +5,7 @@ from sys import exit
 from time import sleep
 from typing import Union
 
-__version__ = "0.0.8"
+__version__ = "0.0.9"
 
 
 # "param_name":["type"] or "param_name"=["type","property_name"]
@@ -87,7 +87,9 @@ class Config:
                  "gui_scaling", "mempool_ram", "egress", "trace_db_calls", "heavy3_path", "mempool_path",
                  "old_sqlite", "mandatory_message", "genesis", "datadir", "label", "legacy_db")
 
-    def __init__(self, datadir: str='', force_legacy=False, force_v2=False, wait: int=0):
+    def __init__(self, datadir: str='',
+                 force_legacy: bool=False, force_v2: bool=False, force_regnet: bool=False,
+                 wait: int=0):
         # Default genesis to keep compatibility
         self.genesis = "4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed"
         self.mandatory_message = {}
@@ -102,7 +104,7 @@ class Config:
             self.legacy_db = True
         if force_v2:
             self.legacy_db = False
-        self.read()
+        self.read(force_regnet=force_regnet)
         print("Config Label: {}".format(self.label))
         print("Legacy DB: {}".format(self.legacy_db))
         print("Ledger: {}".format(self.ledger_path))
@@ -196,7 +198,7 @@ class Config:
     def get_live_path(self) -> str:
         return path.join(self.datadir, "live")
 
-    def read(self) -> None:
+    def read(self, force_regnet: bool=False) -> None:
         # first of all, set from default
         for key, default in DEFAULTS.items():
             setattr(self, key, default)
@@ -205,6 +207,9 @@ class Config:
         # then override with optional custom config
         if path.exists(self.get_file_path("config", "config_custom.txt")):
             self.load_file(self.get_file_path("config", "config_custom.txt"))
+        if force_regnet:
+            self.regnet = True
+            self.version = self.version.replace('mainnet', 'regnet')
         if self.heavy3_path == "":
             # Defaut path, use datadir/
             self.heavy3_path = self.get_file_path("", "heavy3a.bin")  # path.join(self.datadir, "heavy3a.bin")
@@ -238,7 +243,7 @@ class Config:
                     print("mandatory_message file loaded")
             except Exception as e:
                 print("Error loading mandatory_message.json {}".format(e))
-
+        print(f"Using version '{self.version}'")
         """
         if "regnet" in self.version:
             print("Regnet, forcing ram = False")

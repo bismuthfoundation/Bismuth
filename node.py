@@ -35,7 +35,7 @@ from libs.fork import Fork
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.15-evo"  # Experimental db-evolution branch
+VERSION = "5.0.16-evo"  # Experimental db-evolution branch
 
 fork = Fork()
 
@@ -1003,13 +1003,17 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 if __name__ == "__main__":
     datadir = "./datadir"  # Default datadir if empty
+    force_regnet = False
     if len(argv) > 1:
         _, datadir = argv
-        if not os.path.isdir(datadir):
+        if "regnet" == datadir:
+            force_regnet = True
+            datadir = "./datadir"
+        elif not os.path.isdir(datadir):
             print("No such '{}' dir. Using default".format(datadir))
             datadir = "./datadir"  # Default datadir if empty
     print("Using", datadir, "data dir")
-    config = Config(datadir=datadir, wait=10, force_legacy=True)  # config.read() is now implicit at instanciation
+    config = Config(datadir=datadir, wait=10, force_legacy=True, force_regnet=force_regnet)  # config.read() is now implicit at instanciation
     logger = Logger()  # is that class really useful?
     logger.app_log = log.log("node.log", config.debug_level, config.terminal_output)
     logger.app_log.warning("Configuration settings loaded")
@@ -1033,7 +1037,7 @@ if __name__ == "__main__":
         extra_commands = node.plugin_manager.execute_filter_hook('extra_commands_prefixes', extra_commands)
         node.logger.app_log.warning("Extra prefixes: " + ",".join(extra_commands.keys()))
 
-        node.logger.app_log.warning(f"Status: Starting node version {VERSION}")
+        node.logger.app_log.warning(f"Status: Starting node version {VERSION} on port {node.config.port}")
         node.startup_time = ttime()
         try:
             mp.MEMPOOL = mp.Mempool(node)
