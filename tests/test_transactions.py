@@ -1,13 +1,12 @@
 # Basic transaction tests on regnet
-# These tests require a running node on testnet, port 3030
-# Start node with: python3 node.py regnet
-# Followed by: python3 -m pytest or pytest -v
+# Run with: python3 -m pytest -v or pytest -v
+# The regnet server is started by conftest.py
 
 from time import sleep
 from bismuthclient.bismuthclient import BismuthClient
 
 
-def test_amount_and_recipient():
+def test_amount_and_recipient(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
     client.send(recipient=client.address, amount=1.0)  # Tries to send 1.0 to self
@@ -17,7 +16,7 @@ def test_amount_and_recipient():
     assert (float(tx[0]["amount"]) == 1.0) and (tx[0]["recipient"] == client.address)
 
 
-def test_sender_and_recipient_balances():
+def test_sender_and_recipient_balances(myserver):
     recipient = "8342c1610de5d7aa026ca7ae6d21bd99b1b3a4654701751891f08742"
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
@@ -41,7 +40,7 @@ def test_sender_and_recipient_balances():
     assert abs(diff1 + 1.0) < 1e-6 and (diff2 == 1.0)
 
 
-def test_tx_id():
+def test_tx_id(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
     txid = client.send(recipient=client.address, amount=1.0)  # Tries to send 1.0 to self
@@ -51,7 +50,7 @@ def test_tx_id():
     assert tx[0]["signature"][:56] == txid
 
 
-def test_operation_and_openfield():
+def test_operation_and_openfield(myserver):
     operation = "test:1"
     data = "Bismuth"
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
@@ -63,7 +62,7 @@ def test_operation_and_openfield():
     assert (tx[0]["operation"] == operation) and (tx[0]["openfield"] == data)
 
 
-def test_spend_entire_balance():
+def test_spend_entire_balance(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
     client.clear_cache()
@@ -79,7 +78,7 @@ def test_spend_entire_balance():
     assert abs(balance - float(tx[1]["reward"])) < 1e-6
 
 
-def test_send_more_than_owned():
+def test_send_more_than_owned(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
     client.clear_cache()
@@ -93,7 +92,7 @@ def test_send_more_than_owned():
     assert (balance > 1.0)
 
 
-def test_send_more_than_owned_in_two_transactions():
+def test_send_more_than_owned_in_two_transactions(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
     client.clear_cache()
@@ -107,7 +106,7 @@ def test_send_more_than_owned_in_two_transactions():
     balance = float(client.balance())
     assert (balance > 1.0)
 
-def test_fee():
+def test_fee(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
     client.command(command="regtest_generate",options=[1]) #Mine a block so we have some funds
     data = '12345678901234567890123456789012345678901234567890'
@@ -117,7 +116,7 @@ def test_fee():
     tx = client.latest_transactions(num=1)
     assert float(tx[0]["fee"]) == 0.01 + 1e-5*len(data)
 
-def test_operation_length():
+def test_operation_length(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
     client.command(command="regtest_generate",options=[1]) #Mine a block so we have some funds
     operation = '123456789012345678901234567890'
