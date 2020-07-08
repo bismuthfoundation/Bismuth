@@ -165,6 +165,8 @@ class Config:
     def get_db_path(self, db_name: str, legacy: Union[bool, None]=None) -> str:
         legacy = self.legacy_db if legacy is None else legacy
         db_dir = "chain-legacy" if legacy else "chain-v2"
+        if self.testnet:
+            db_dir = "testnet"
         return self.get_file_path(db_dir, db_name)
 
     def get_index_db_path(self, legacy: Union[bool, None]=None) -> str:

@@ -495,15 +495,15 @@ class SoloDbHandler:
             with open(self.config.get_db_path("sequencing_last"), 'r') as filename:
                 sequencing_last = int(filename.read())
         except:
-            self.logger.app_log.warning("Sequencing anchor not found, going through the whole chain")
+            self.logger.app_log.warning("Sequencing anchor not found, Checking whole chain")
             sequencing_last = 0
         self.logger.app_log.warning(f"Status: Testing chain sequencing, starting with block {sequencing_last}")
         y1 = self._sequencing_check(sequencing_last, self._ledger_cursor, "Ledger")
         y2 = self._sequencing_check(sequencing_last, self._hyper_cursor, "Hyper")
 
-        # perform test on misc table
+        # perform test on misc table - start at 1000000 min
         y = 0
-        start = min(300000, sequencing_last)
+        start = min(1000000, sequencing_last)
         for row in self._ledger_cursor.execute("SELECT block_height FROM misc WHERE block_height > ? ORDER BY block_height ASC",
                              (start,)):
             y_init = row[0]

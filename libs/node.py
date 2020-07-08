@@ -129,18 +129,20 @@ class Node:
 
             self.index_db = self.config.get_index_db_path()
 
-            # TODO: EGG: NO more valid with datadir, to be reworked.
             redownload_test = input("Status: Welcome to the testnet. Redownload test ledger? y/n")
             if redownload_test == "y":
-                types = ['static/ledger_test.db-wal', 'static/ledger_test.db-shm', 'static/index_test.db',
-                         'static/hyper_test.db-wal', 'static/hyper_test.db-shm']
+                types = [self.config.get_file_path("testnet", 'ledger_test.db-wal'),
+                         self.config.get_file_path("testnet", 'ledger_test.db-shm'),
+                         self.config.get_file_path("testnet", 'index_test.db'),
+                         self.config.get_file_path("testnet", 'hyper_test.db-wal'),
+                         self.config.get_file_path("testnet", 'hyper_test.db-shm')]
                 for dbtype in types:
                     for file in glob.glob(dbtype):
                         os.remove(file)
                         print(file, "deleted")
-                download_file("https://bismuth.cz/test.tar.gz", "static/test.tar.gz")
-                with tarfile.open("static/test.tar.gz") as tar:
-                    tar.extractall("static/")  # NOT COMPATIBLE WITH CUSTOM PATH CONFS
+                download_file("https://bismuth.cz/test.tar.gz", self.config.get_file_path("testnet", "test.tar.gz"))
+                with tarfile.open(self.config.get_file_path("testnet", "test.tar.gz")) as tar:
+                    tar.extractall(self.config.get_file_path("testnet", ""))
             else:
                 print("Not redownloading test db")
 
