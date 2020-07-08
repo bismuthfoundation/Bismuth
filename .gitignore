@@ -17,6 +17,7 @@ privkey.der
 pubkey.der
 wallet.der
 mempool.db
+mempool_regnet.db
 ledger.db
 index.db
 static/regmode.
