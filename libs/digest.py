@@ -269,7 +269,7 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: list, blo
                 pass
 
     except Exception as e:
-        print(e)
+        print("process_transactions: {}".format(e))
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
@@ -528,7 +528,7 @@ def process_blocks(blocks: list, node: "Node", db_handler: "DbHandler", block_in
             # NEW: returns new block sha_hash
     except Exception as e:
         # Left for edge cases debug
-        print(e)
+        print("process_blocks: {}".format(e))
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)

@@ -163,9 +163,10 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
         return (float('%.10f' % difficulty2), float('%.10f' % diff_dropped), float(time_to_generate), float(diff_block_previous),
                 float(block_time), float(hashrate), float(diff_adjustment), block_height)
         # need to keep float types here for database inserts support
-    except:
+    except Exception as e:
         # new chain or regnet
         # todo: stop if we are not in one of these 2 cases.
+        print("New difficulty: {}".format(e))
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)

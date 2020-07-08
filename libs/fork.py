@@ -59,7 +59,7 @@ class Fork:
             db_handler._execute_param(db_handler.h, "SELECT reward FROM transactions WHERE block_height = ? AND reward != 0", (self.POW_FORK_TESTNET + 1,))
             self.FORK_REWARD_TESTNET = db_handler.h.fetchone()[0]
 
-        print(type(self.FORK_REWARD_TESTNET))
+        # print(type(self.FORK_REWARD_TESTNET)) # said <class 'float'>
 
         if self.FORK_REWARD_TESTNET < self.REWARD_MAX:
             self.PASSED_TESTNET = True
