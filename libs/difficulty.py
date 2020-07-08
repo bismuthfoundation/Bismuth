@@ -16,6 +16,7 @@ FORK = Fork()  # No need to instanciate one for every call to difficulty()
 
 LOG_DIFF_STEPS = False  # For debug
 
+DECIMAL1 = Decimal(1.0)
 DECIMAL2 = Decimal(2.0)
 DECIMAL16 = Decimal(16.0)
 DECIMAL60 = Decimal(60.0)
@@ -119,7 +120,7 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
         diff_adjustment = (difficulty_new - diff_block_previous) / 720  # reduce by factor of 720
 
         if diff_adjustment > 1.0:
-            diff_adjustment = 1.0
+            diff_adjustment = DECIMAL1
 
         difficulty_new_adjusted = quantize_ten(diff_block_previous + diff_adjustment)
         # difficulty_new_adjusted = diff_block_previous + diff_adjustment
