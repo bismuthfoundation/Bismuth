@@ -99,6 +99,7 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
             print("n timestamp_1440", timestamp_1440)
             print("n block_time", block_time)
 
+        # EGG_EVO: Not concerned by evo_db since it's misc table, but SQL noes not belong there. should be a high level call to a dedicated db_handler method.
         db_handler._execute(db_handler.c, "SELECT difficulty FROM misc ORDER BY block_height DESC LIMIT 1")
         diff_block_previous = Decimal(db_handler.c.fetchone()[0])
 

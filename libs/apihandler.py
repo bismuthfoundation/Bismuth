@@ -156,8 +156,9 @@ class ApiHandler:
             self.app_log.error(f"MEMPOOL is None")
             response_tuples = []
         else:
-            mempool_txs = mp.MEMPOOL.transactions_to_send()
-            response_tuples = [transaction.to_tuple() for transaction in mempool_txs]
+            # EGG_EVO: mempool still returns old style unstructured tuples with partial info atm.
+            response_tuples = mp.MEMPOOL.transactions_to_send()
+            # response_tuples = [transaction.to_tuple() for transaction in mempool_txs]
         connections.send(socket_handler, response_tuples)
 
     def api_getconfig(self, socket_handler, db_handler: "DbHandler", peers):
