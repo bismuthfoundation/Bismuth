@@ -4,7 +4,7 @@ import socks, time, sys, json
 from libs import connections
 from libs.config import Config
 
-config = Config(datadir="./datadir", wait=0, silent=True)
+config = Config(datadir="./datadir", force_legacy=True, wait=0, silent=True)
 version = config.version
 # version = "mainnet"
 
