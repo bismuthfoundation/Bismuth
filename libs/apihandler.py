@@ -14,7 +14,7 @@ import threading
 # modular handlers will need access to the database methods under some form, so it needs to be modular too.
 # Here, I just duplicated the minimum needed code from node, further refactoring with classes will follow.
 from libs import connections
-from libs.mempool import MEMPOOL
+import libs.mempool as mp
 from polysign.signerfactory import SignerFactory
 from bismuthcore.transaction import Transaction
 
@@ -56,11 +56,15 @@ class ApiHandler:
             This is not pretty, this will evolve with more modular code.
             Primary goal is to limit the changes in node.py code and allow more flexibility in this class, like plugin.
             """
-            result = getattr(self, method)(socket_handler, db_handler, peers)
+            call = getattr(self, method)
+            if call is None:
+                self.app_log.warning(f"API Method <{method}> does not exist.")
+                return False
+            result = call(socket_handler, db_handler, peers)
             return result
-        except AttributeError:
+        except Exception as e:
             # raise
-            self.app_log.warning(f"API Method <{method}> does not exist.")
+            self.app_log.warning(f"Exception calling method {method}: {e}")
             return False
 
     """ # Converted, see bismuthcore/Block/to_blocks_dict
@@ -148,8 +152,12 @@ class ApiHandler:
         :return: list of mempool tx
         """
         # txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
-        mempool_txs = MEMPOOL.transactions_to_send()
-        response_tuples = [transaction.to_tuple() for transaction in mempool_txs]
+        if mp.MEMPOOL is None:
+            self.app_log.error(f"MEMPOOL is None")
+            response_tuples = []
+        else:
+            mempool_txs = mp.MEMPOOL.transactions_to_send()
+            response_tuples = [transaction.to_tuple() for transaction in mempool_txs]
         connections.send(socket_handler, response_tuples)
 
     def api_getconfig(self, socket_handler, db_handler: "DbHandler", peers):
@@ -170,7 +178,7 @@ class ApiHandler:
         :param peers:
         :return: 'ok'
         """
-        MEMPOOL.clear()
+        mp.MEMPOOL.clear()
         connections.send(socket_handler, 'ok')
 
     def api_ping(self, socket_handler, db_handler: "DbHandler", peers) -> None:

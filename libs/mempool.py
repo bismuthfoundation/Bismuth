@@ -319,7 +319,7 @@ class Mempool:
     def transactions_to_send(self) -> list:
         """Returns the list of mempool Transactions as legacy tuples"""
         mempool_txs = self._fetchall(SQL_SELECT_TX_TO_SEND)
-        print(mempool_txs)
+        # print(mempool_txs)
         # no need to sanitize again, was done at insert.
         # return [Transaction.from_legacy(raw_tx, sanitize=False).to_tuple() for raw_tx in mempool_txs]
 

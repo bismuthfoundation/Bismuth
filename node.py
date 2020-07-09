@@ -35,7 +35,7 @@ from libs.fork import Fork
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.16-evo"  # Experimental db-evolution branch
+VERSION = "5.0.17-evo"  # Experimental db-evolution branch
 
 fork = Fork()
 
@@ -1041,6 +1041,7 @@ if __name__ == "__main__":
         node.startup_time = ttime()
         try:
             mp.MEMPOOL = mp.Mempool(node)
+            # print("MEMPOOL initialized")
             # Until here, we were in single user mode.
 
             # EGG_EVO: Is this just used once for initial sync?

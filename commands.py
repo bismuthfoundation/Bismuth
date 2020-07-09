@@ -536,6 +536,11 @@ elif command == "stop":
     connections.send(s, "stop")
     print("Asked to Stop")
 
+elif command == "api_mempool":
+    connections.send(s, "api_mempool")
+    print(connections.receive(s))
+
+
 elif command == "addfromalias":
     addfromalias(s, arg1)
 
