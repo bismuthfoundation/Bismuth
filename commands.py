@@ -4,9 +4,9 @@ import socks, time, sys, json
 from libs import connections
 from libs.config import Config
 
-#config = Config()
-#version = config.version
-version = "mainnet"
+config = Config(datadir="./datadir", wait=0, silent=True)
+version = config.version
+# version = "mainnet"
 
 # print ('Number of arguments:', len(sys.argv), 'arguments.')
 # print ('Argument List:', str(sys.argv))

@@ -89,7 +89,7 @@ class Config:
 
     def __init__(self, datadir: str='',
                  force_legacy: bool=False, force_v2: bool=False, force_regnet: bool=False,
-                 wait: int=0):
+                 wait: int=0, silent: bool=False):
         # Default genesis to keep compatibility
         self.genesis = "4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed"
         self.mandatory_message = {}
@@ -98,18 +98,20 @@ class Config:
             exit()
         self.datadir = datadir
         if path.isfile(path.join(datadir,"chain-v2", "ledger.db")):
-            print("Found v2 ledger")
+            if not silent:
+                print("Found v2 ledger")
             self.legacy_db = False
         if force_legacy:
             self.legacy_db = True
         if force_v2:
             self.legacy_db = False
-        self.read(force_regnet=force_regnet)
-        print("Config Label: {}".format(self.label))
-        print("Legacy DB: {}".format(self.legacy_db))
-        print("Ledger: {}".format(self.ledger_path))
-        print("Hyper: {}".format(self.hyper_path))
-        print("Index: {}".format(self.get_index_db_path()))
+        self.read(force_regnet=force_regnet, silent=silent)
+        if not silent:
+            print("Config Label: {}".format(self.label))
+            print("Legacy DB: {}".format(self.legacy_db))
+            print("Ledger: {}".format(self.ledger_path))
+            print("Hyper: {}".format(self.hyper_path))
+            print("Index: {}".format(self.get_index_db_path()))
         if self.regnet and "regnet" not in self.version:
             print("regnet is set, but version is not regnet")
             exit()
@@ -200,7 +202,7 @@ class Config:
     def get_live_path(self) -> str:
         return path.join(self.datadir, "live")
 
-    def read(self, force_regnet: bool=False) -> None:
+    def read(self, force_regnet: bool=False, silent: bool=False) -> None:
         # first of all, set from default
         for key, default in DEFAULTS.items():
             setattr(self, key, default)
@@ -223,7 +225,8 @@ class Config:
             if self.testnet:
                 self.mempool_path = self.get_file_path("testnet", "mempool.db")
             if not self.mempool_ram:
-                print("Mempool path is {}".format(self.mempool_path))
+                if not silent:
+                    print("Mempool path is {}".format(self.mempool_path))
         if self.ledger_path != "":
             self.ledger_path = self.get_ledger_db_path()
             print("ledger_path is no more used. Using '{}' as ledger".format(self.ledger_path))
@@ -242,10 +245,12 @@ class Config:
                     if type(data) != dict:
                         raise RuntimeWarning("Bad file format")
                     self.mandatory_message = data
-                    print("mandatory_message file loaded")
+                    if not silent:
+                        print("mandatory_message file loaded")
             except Exception as e:
                 print("Error loading mandatory_message.json {}".format(e))
-        print(f"Using version '{self.version}'")
+        if not silent:
+            print(f"Using version '{self.version}'")
         """
         if "regnet" in self.version:
             print("Regnet, forcing ram = False")
