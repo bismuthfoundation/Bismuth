@@ -3,7 +3,6 @@
 # The regnet server is started by conftest.py
 
 from time import sleep
-import json
 from bismuthclient.bismuthclient import BismuthClient
 
 
@@ -128,28 +127,3 @@ def test_operation_length(myserver):
     sleep(1)
     tx = client.latest_transactions(num=2)
     assert (len(tx[0]["operation"]) == 30) and (len(tx[1]["operation"]) == 1)
-
-def test_mempool(myserver):
-    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
-    client.command(command="regtest_generate",options=[1]) #Mine a block so we have some funds
-    data = '123456789012345678901234567890'
-    client.send(recipient=client.address, amount=1.0, data=data)
-    tx = client.command(command="api_mempool") #Fetch the mempool
-    client.command(command="regtest_generate",options=[1]) #Mine next block
-    sleep(1)
-    assert (float(tx[0][3]) == 1.0) and (tx[0][7] == data)
-
-def test_diff_json(myserver):
-    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
-    data1 = client.command(command="difflast")
-    data2 = client.command(command="difflastjson")
-    block1 = data1[0]
-    diff1 = data1[1]
-    block2 = data2['block']
-    diff2 = data2['difficulty']
-    assert (block1 == block2) and (diff1 == diff2)
-
-def test_port_regnet(myserver):
-    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
-    data = client.command(command="portget")
-    assert int(data['port']) == 3030
