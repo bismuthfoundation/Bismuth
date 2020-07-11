@@ -3,6 +3,7 @@
 # The regnet server is started by conftest.py
 
 from time import sleep
+import json
 from bismuthclient.bismuthclient import BismuthClient
 
 
@@ -137,3 +138,14 @@ def test_mempool(myserver):
     client.command(command="regtest_generate",options=[1]) #Mine next block
     sleep(1)
     assert (float(tx[0][3]) == 1.0) and (tx[0][7] == data)
+
+def test_diff_json(myserver):
+    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    data1 = client.command(command="difflast")
+    data2 = client.command(command="difflastjson")
+    block1 = data1[0]
+    diff1 = data1[1]
+    block2 = data2['block']
+    diff2 = data2['difficulty']
+    assert (block1 == block2) and (diff1 == diff2)
+
