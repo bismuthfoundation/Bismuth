@@ -149,3 +149,7 @@ def test_diff_json(myserver):
     diff2 = data2['difficulty']
     assert (block1 == block2) and (diff1 == diff2)
 
+def test_port_regnet(myserver):
+    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    data = client.command(command="portget")
+    assert int(data['port']) == 3030
