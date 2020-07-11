@@ -570,7 +570,7 @@ def digest_block(node: "Node", block_data: list, sdef, peer_ip: str, db_handler:
 
         except Exception as e:
             node.logger.app_log.warning(f"Chain processing failed: {e}")
-            node.logger.app_log.info(f"Received data dump: {data}")
+            node.logger.app_log.info(f"Received data dump: {block_data}")
             block_instance.failed_cause = str(e)
             # get actual data from database on exception
             node.last_block = db_handler.last_mining_transaction().to_dict(legacy=True)['block_height']

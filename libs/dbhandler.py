@@ -514,7 +514,7 @@ class DbHandler:
         # self.logger.app_log.info("Mempool: Projected transaction address balance: " + str(balance))
         if as_dict:
             # To be factorized in a helper function if used elsewhere.
-            {"balance": str(balance),
+            return {"balance": str(balance),
              "credit": str(credit_ledger),
              "debit": str(debit),
              "fees":  str(fees),
