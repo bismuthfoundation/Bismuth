@@ -26,6 +26,7 @@ from decimal import Decimal
 from libs.connections import send, receive
 from libs.digest import digest_block
 from bismuthcore.helpers import sanitize_address
+from bismuthcore.transaction import Transaction
 from libs import keys, client, mempool as mp, regnet, log, essentials
 from libs.nodebackgroundthread import NodeBackgroundThread
 from libs.logger import Logger
@@ -35,7 +36,7 @@ from libs.fork import Fork
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.17-evo"  # Experimental db-evolution branch
+VERSION = "5.0.18-evo"  # Experimental db-evolution branch
 
 fork = Fork()
 
@@ -565,14 +566,16 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         response_list.append(response)
                     """
                     mempool_txs = mp.MEMPOOL.transactions_to_send()
-                    response_list = [transaction.to_dict(legacy=True) for transaction in mempool_txs]
+                    # EGG_EVO: Partial conversion. MP still uses legacy format so far.
+                    response_list = [Transaction.from_legacymempool(transaction).to_dict(legacy=True) for transaction in mempool_txs]
                     send(self.request, response_list)
 
                 elif data == "mpget" and node.peers.is_allowed(peer_ip, data):
                     # mempool_txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
                     mempool_txs = mp.MEMPOOL.transactions_to_send()
-                    response_tuples = [transaction.to_tuple() for transaction in mempool_txs]
-                    send(self.request, response_tuples)
+                    # EGG_EVO: Partial conversion. MP still uses legacy format so far.
+                    # response_tuples = [transaction.to_tuple() for transaction in mempool_txs]
+                    send(self.request, mempool_txs)
 
                 elif data == "mpclear" and peer_ip == "127.0.0.1":  # reserved for localhost
                     mp.MEMPOOL.clear()
