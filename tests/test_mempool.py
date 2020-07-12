@@ -23,7 +23,7 @@ def test_mpget_json(myserver):
     client.send(recipient=client.address, amount=1.0)  # Tries to send 1.0 to self
     data1 = client.command(command="mpget")
     data2 = client.command(command="mpgetjson")
-    client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
+    client.command(command="regtest_generate", options=[1])  # Mine next block
     sleep(1)
     pubkey = b64decode(data1[0][5]).decode('utf-8').replace("\n","")
     i = pubkey.find(data2[0]['public_key'])
