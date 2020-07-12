@@ -25,5 +25,6 @@ def test_keygen_json(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
     data1 = client.command(command="keygen")
     data2 = client.command(command="keygenjson")
-    assert len(data1[1]) == len(data2['public_key']) and \
+    assert len(data1[1]) > 0 and len(data1[2]) > 0 and \
+           len(data1[1]) == len(data2['public_key']) and \
            len(data1[2]) == len(data2['address'])
