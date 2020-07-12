@@ -19,7 +19,9 @@ wallet.der
 mempool.db
 mempool_regnet.db
 ledger.db
+ledger.db.temp
 index.db
+*.db.temp
 static/regmode.
 static/regmode.*
 static/index_reg.*

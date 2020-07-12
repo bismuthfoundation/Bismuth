@@ -3,6 +3,7 @@ wallet.der
 *.der
 config_custom.txt
 *.db
+*.db.temp
 *.db-shm
 *.db-wal
 *.tar.gz

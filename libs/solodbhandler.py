@@ -33,13 +33,13 @@ if TYPE_CHECKING:
 
 __version__ = "1.0.6"
 
-V2_LEDGER_CREATE = ('CREATE TABLE "transactions" IF NOT EXISTS (`block_height` INTEGER, '
+V2_LEDGER_CREATE = ('CREATE TABLE IF NOT EXISTS "transactions" (`block_height` INTEGER, '
                     '`timestamp` NUMERIC, `address` TEXT, `recipient` TEXT, '
                     '`amount` INTEGER, `signature` BINARY, `public_key` BINARY, '
                     '`block_hash` BINARY, `fee` INTEGER, `reward` INTEGER,'
                     '`operation` TEXT, `openfield` TEXT)',
 
-                    'CREATE INDEX  IF NOT EXISTS `Block Height Index` '
+                    'CREATE INDEX IF NOT EXISTS `Block Height Index` '
                     'ON `transactions` (`block_height`)'
                     )
 
@@ -78,16 +78,22 @@ V2_MISC_CREATE = ('CREATE TABLE IF NOT EXISTS "misc" ('
  (but misc table missing atm)
 """
 
-V2_INDICES_CREATE = ("CREATE INDEX `Timestamp Index` ON `transactions` (`timestamp`)",
-                     "CREATE INDEX `Reward Index` ON `transactions` (`reward`)",
-                     "CREATE INDEX `Recipient Index` ON `transactions` (`recipient`)",
-                     "CREATE INDEX `Openfield Index` ON `transactions` (`openfield`)",
-                     "CREATE INDEX `Fee Index` ON `transactions` (`fee`)",
-                     "CREATE INDEX `Block Hash Index` ON `transactions` (`block_hash`)",
-                     "CREATE INDEX `Amount Index` ON `transactions` (`amount`)",
-                     "CREATE INDEX `Address Index` ON `transactions` (`address`)",
-                     "CREATE INDEX `Operation Index` ON `transactions` (`operation`)",
-                     "CREATE INDEX `Signature Index` ON `transactions` (`signature`)",  # or partial
+# EGG_EVO: TODO, not applied atm?
+V2_INDICES_CREATE = ("CREATE INDEX IF NOT EXISTS `Timestamp Index` ON `transactions` (`timestamp`)",
+                     "CREATE INDEX IF NOT EXISTS `Reward Index` ON `transactions` (`reward`)",
+                     "CREATE INDEX IF NOT EXISTS `Recipient Index` ON `transactions` (`recipient`)",
+                     "CREATE INDEX IF NOT EXISTS `Openfield Index` ON `transactions` (`openfield`)",
+                     "CREATE INDEX IF NOT EXISTS `Fee Index` ON `transactions` (`fee`)",
+                     "CREATE INDEX IF NOT EXISTS `Block Hash Index` ON `transactions` (`block_hash`)",
+                     "CREATE INDEX IF NOT EXISTS `Amount Index` ON `transactions` (`amount`)",
+                     "CREATE INDEX IF NOT EXISTS `Address Index` ON `transactions` (`address`)",
+                     "CREATE INDEX IF NOT EXISTS `Operation Index` ON `transactions` (`operation`)",
+                     "CREATE INDEX IF NOT EXISTS `Signature Index` ON `transactions` (`signature`)",  # or partial
+                     )
+
+V2_MINIMAL_INDICES_CREATE = (
+                     "CREATE INDEX IF NOT EXISTS `Recipient Index` ON `transactions` (`recipient`)",
+                     "CREATE INDEX IF NOT EXISTS `Address Index` ON `transactions` (`address`)",
                      )
 
 SQL_TO_TRANSACTIONS_LEGACY = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
@@ -329,7 +335,6 @@ class SoloDbHandler:
         self._hyper_cursor.execute("SELECT max(block_height) FROM transactions")
         return int(self._hyper_cursor.fetchone()[0])
 
-
     def block_height_max_diff_hyper(self) -> int:
         self._hyper_cursor.execute("SELECT max(block_height) FROM misc")
         return int(self._hyper_cursor.fetchone()[0])
@@ -383,8 +388,27 @@ class SoloDbHandler:
 
     def prepare_hypo(self) -> None:
         """avoid double processing by renaming Hyperblock addresses to Hypoblock"""
+        if self._hyper_cursor is None:
+            # No hyper yet, nothing to do
+            self.logger.app_log.warning("Prepare_hypo was avoided")
+            return
         self._hyper_cursor.execute("UPDATE transactions SET address = 'Hypoblock' WHERE address = 'Hyperblock'")
         self._hyper_db.commit()
+
+    def open_temp_hyper(self) -> None:
+        temp_db_name = self.config.ledger_path+'.temp'
+        if not path.isfile(temp_db_name):
+            self.logger.app_log.error(f"Unable to find {temp_db_name} temp db")
+            sys.exit()
+        self._hyper_db = sqlite3.connect(temp_db_name, timeout=1)
+        if self.trace_db_calls:
+            self._hyper_db.set_trace_callback(functools.partial(sql_trace_callback, self.logger.app_log, "HDD2"))
+        self._hyper_db.text_factory = str
+        self._hyper_db.execute('PRAGMA case_sensitive_like = 1;')
+        self._hyper_cursor = self._hyper_db.cursor()
+        for sql in V2_MINIMAL_INDICES_CREATE:
+            self._hyper_cursor.execute(sql)
+            self._hyper_db.commit()
 
     def distinct_hyper_recipients(self, depth_specific: int) -> Iterator[str]:
         """Returns all recipients from hyper, at the given depth"""
@@ -394,7 +418,7 @@ class SoloDbHandler:
         res = self._hyper_cursor.fetchall()
         return (item[0] for item in res)
 
-    def update_hyper_balance_at_height(self, address: str, depth_specific: int) -> Decimal:
+    def update_hyper_balance_at_height_legacy(self, address: str, depth_specific: int) -> Decimal:
         """Used for hyper compression. Returns balance at given height and updates hyper."""
         # EGG_EVO: This method will have to be aware of the DB type, since balance calc will use different queries
         # solo handler will embed a dedicated flag and use a dynamic method here
@@ -426,6 +450,39 @@ class SoloDbHandler:
             # (can't be b64 decoded nor converted to bin like the regular fields)
             self._hyper_cursor.execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
                 depth_specific - 1, timestamp, "Hyperblock", address, str(end_balance), "0", "0", "0", "0",
+                "0", "0", "0"))
+
+        return end_balance
+
+    def update_hyper_balance_at_height(self, address: str, depth_specific: int) -> Decimal:
+        """Used for hyper compression. Returns balance at given height and updates hyper."""
+        # EGG_EVO: This method will have to be aware of the DB type, since balance calc will use different queries
+        # solo handler will embed a dedicated flag and use a dynamic method here
+        if self.legacy_db:
+            return self.update_hyper_balance_at_height_legacy(address, depth_specific)
+
+        self.logger.app_log.warning(f"Update Hyper Balance v2 for {address}")
+        res = self._hyper_cursor.execute(
+                "SELECT sum(amount + reward) FROM transactions WHERE recipient = ? AND (block_height < ? AND block_height > ?)",
+                (address, depth_specific, -depth_specific))
+        credit = res.fetchone()[0]
+        if credit is None:
+            credit = 0
+        res = self._hyper_cursor.execute(
+            "SELECT sum(amount + fee) FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?);",
+            (address, depth_specific, -depth_specific))
+        debit = res.fetchone()[0]
+        if debit is None:
+            debit = 0
+        end_balance = int(credit) - int(debit)
+        # print(credit, debit, end_balance)
+
+        if end_balance > 0:
+            timestamp = str(ttime())
+            # Kept for compatibility, but take note that "0" as signature and privkey is not homogeneous
+            # (can't be b64 decoded nor converted to bin like the regular fields)
+            self._hyper_cursor.execute("INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
+                depth_specific - 1, timestamp, "Hyperblock", address, end_balance, "0", "0", "0", "0",
                 "0", "0", "0"))
 
         return end_balance
@@ -662,8 +719,11 @@ class SoloDbHandler:
         self._hyper_db.commit()
 
     def close(self) -> None:
-        self._index_db.close()
-        self._ledger_db.close()
-        self._hyper_db.close()
+        if self._index_db:
+            self._index_db.close()
+        if self._ledger_db:
+            self._ledger_db.close()
+        if self._hyper_db:
+            self._hyper_db.close()
 
 

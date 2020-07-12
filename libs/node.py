@@ -315,17 +315,25 @@ class Node:
                 self.logger.app_log.warning(f"Removed old {file}")
 
         # We start from either ledger or current hyper as data base, then work on hyper only.
+        if not os.path.isfile(self.config.hyper_path):
+            # Force rebuild if there is no hyper.
+            rebuild = True
         if rebuild:
             self.logger.app_log.warning(f"Status: Hyperblocks will be rebuilt")
             copy(self.config.ledger_path, self.config.ledger_path + '.temp')
         else:
             copy(self.config.hyper_path, self.config.ledger_path + '.temp')
+        self.logger.app_log.warning(f"recompress_ledger_prepare done")
 
     def _recompress_ledger(self, solo_handler: SoloDbHandler, depth: int = 15000) -> None:
         solo_handler.prepare_hypo()  # avoid double processing by renaming Hyperblock addresses to Hypoblock
+        self.logger.app_log.warning(f"Recompress: Opening temp db and adding indices...")
+        solo_handler.open_temp_hyper()  # Use ledger.db.temp as temp. hyper, adding indices if needed
         db_block_height = solo_handler.block_height_max_hyper()
         depth_specific = db_block_height - depth
+        self.logger.app_log.warning(f"Recompress: Block height {db_block_height}, depth_specific {depth_specific}")
         # Now gather all active addresses
+        self.logger.app_log.warning(f"Gathering addresses...")
         unique_addressess = solo_handler.distinct_hyper_recipients(depth_specific)
         for address in unique_addressess:
             solo_handler.update_hyper_balance_at_height(address, depth_specific)
@@ -383,6 +391,7 @@ class Node:
         # print("Checking Heights")
         self._ledger_check_heights(solo_handler)
         if self.recompress:
+            # EGG_EVO: make sure we added indices on temp ledger before ledger recompress
             # todo: do not close database and move files, swap tables instead
             solo_handler.close()
             self._recompress_ledger_prepare()  # This will touch the files themselve.

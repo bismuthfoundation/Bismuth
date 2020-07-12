@@ -36,7 +36,7 @@ from libs.fork import Fork
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.18-evo"  # Experimental db-evolution branch
+VERSION = "5.0.19-evo"  # Experimental db-evolution branch
 
 fork = Fork()
 
@@ -1016,7 +1016,11 @@ if __name__ == "__main__":
             print("No such '{}' dir. Using default".format(datadir))
             datadir = "./datadir"  # Default datadir if empty
     print("Using", datadir, "data dir")
-    config = Config(datadir=datadir, wait=10, force_legacy=True, force_regnet=force_regnet)  # config.read() is now implicit at instanciation
+    wait = 10
+    if force_regnet:
+        wait = 0
+    config = Config(datadir=datadir, wait=0, force_legacy=True, force_regnet=force_regnet)
+    # config.read() is now implicit at instanciation
     logger = Logger()  # is that class really useful?
     logger.app_log = log.log("node.log", config.debug_level, config.terminal_output)
     logger.app_log.warning("Configuration settings loaded")

@@ -1,0 +1,2418 @@
+[33mcommit 8fca43e94e9965c418b401ca9df778d433b67400[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Sun Jul 12 18:31:54 2020 +0200
+
+    New test: addlistlim and addlistlimjson
+
+[33mcommit 28c0e2c111ca7dc52f0bdd4db58354a658196664[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Sun Jul 12 16:59:18 2020 +0200
+
+    New test: mpget and mpgetjson
+
+[33mcommit 6ed3c38f432a00d77680d9acc1568ffa836d526e[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Jul 12 12:30:06 2020 +0200
+
+    mpget & mpgetjson temp fix
+
+[33mcommit aec7e95c8e1b2161dc4c30cb4b3378e5d994330f[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Sat Jul 11 22:20:00 2020 +0200
+
+    More ledger and node tests
+
+[33mcommit 660493cca8d774e2cf9ad0e6a74b63014eca9664[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Jul 11 18:28:09 2020 +0200
+
+    fixed return dict
+    fixed undefined error in block digestion exception
+
+[33mcommit 866751fd1e8d8dbd15b1442bf7d0c45507c36e3c[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Sat Jul 11 17:20:41 2020 +0200
+
+    Reorganized tests in separate files
+
+[33mcommit 8c21f87d7c89a69b31515a0ed27112513fe87525[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Sat Jul 11 16:18:38 2020 +0200
+
+    New test: test_port_regnet
+
+[33mcommit 51c27d5a002500caf98005424fe16086772c36ee[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Sat Jul 11 11:09:00 2020 +0200
+
+    New test: diff_json
+
+[33mcommit 8d1b7c573ea1339f98469e0114b15e10393a0707[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Thu Jul 9 20:46:32 2020 +0200
+
+    New test: mempool
+
+[33mcommit b6c00fcc6680afa483563ec158726d02d647783a[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Jul 9 19:52:15 2020 +0200
+
+    fix api_mempool
+
+[33mcommit 634d306497401eec79eba70dec0dbaed0bb78d2a[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Jul 9 15:33:33 2020 +0200
+
+    Fix mempool commands in API Handler
+
+[33mcommit c5016643562d38ba57ed85f6951948ee73bc04b9[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Jul 9 13:54:46 2020 +0200
+
+    Temporarily force legacy for commands.py
+
+[33mcommit e98828136592b95150d487fe249e4d00c8fd1ff7[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Jul 9 12:12:59 2020 +0200
+
+    Make commands.py aware of default config
+
+[33mcommit 1b9c8465b409cbee8f328f987d06b57605a5f9d2[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Jul 8 19:52:02 2020 +0200
+
+    Fix edge case
+
+[33mcommit c1a5f8fde38c7fbbc13e424c4f4f86e91c30da6f[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Jul 8 19:35:18 2020 +0200
+
+    Testnet Trace adjustments
+
+[33mcommit 68154df6ece31394cc3397ed2618851be1cb1800[m
+Merge: 96a85f2 d687448
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Jul 8 18:06:13 2020 +0200
+
+    Merge branch 'dev-dbevolution' of https://github.com/bismuthfoundation/Bismuth into dev-dbevolution
+
+[33mcommit 96a85f21d9ed03dfd5702a28824c97310b47945c[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Jul 8 18:05:33 2020 +0200
+
+    Update .gitignore
+
+[33mcommit 1a53ffa66552fa65b528db0263afef5c18b138a7[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Jul 8 18:04:28 2020 +0200
+
+    Fix testnet paths
+
+[33mcommit d68744842df103604ba7f127a36e83c8053a108c[m
+Author: geho2 <26554545+geho2@users.noreply.github.com>
+Date:   Mon Jul 6 21:35:03 2020 +0200
+
+    Added ipwhois
+
+[33mcommit e8691aa4f3c9776a9aae00c181a450e61f92af73[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Sun Jul 5 19:31:01 2020 +0200
+
+    Added conftest.py and fixture
+
+[33mcommit fc9dcf6c22831ebbed4a407d75891a92b911037f[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Fri Jul 3 19:54:19 2020 +0200
+
+    New test: operation length
+
+[33mcommit 0f817d2dfad0d6b210110caed0f6a6f4763cd4af[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Fri Jul 3 18:35:31 2020 +0200
+
+    New test: fee
+
+[33mcommit 90b3a874199f2b4c1ba6fa718d40c0f5e86f3f76[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jul 3 15:11:57 2020 +0200
+
+    Can now force regmode by using 'regnet' command line argument
+
+[33mcommit dbc7d119305846b460234559fb1cd8031d4fe498[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Jul 2 21:39:53 2020 +0200
+
+    Rename tests plus PEP fixes
+
+[33mcommit db193cbafae3a005c4670a2411b1718857440a1e[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Jul 2 21:28:25 2020 +0200
+
+    fix gitignore
+
+[33mcommit f40cd5c24c981f7ee471ea09b39a62b23229f771[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Jul 2 21:27:09 2020 +0200
+
+    Digest clean up
+
+[33mcommit 06cd322deb777b7949e120be0e71e949ac3b9092[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Thu Jul 2 17:10:19 2020 +0200
+
+    New test: Spend more than owned in 2 txs
+
+[33mcommit 156cc1daf495d329317d09c09bd61916489e1506[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Thu Jul 2 16:05:23 2020 +0200
+
+    New test: spend more than owned
+
+[33mcommit fa522322804850a2f6eeab3a6b735398d25afaad[m
+Merge: 1a6787b f0adeba
+Author: geho2 <geho2@bismuth.live>
+Date:   Thu Jul 2 15:45:27 2020 +0200
+
+    Merge branch 'dev-dbevolution' of https://github.com/Bismuthfoundation/Bismuth into dev-dbevolution
+
+[33mcommit f0adeba4e5d953c1fe84a5b74ee1924306b16d43[m
+Author: geho2 <26554545+geho2@users.noreply.github.com>
+Date:   Thu Jul 2 08:36:41 2020 +0200
+
+    New test: spend entire balance
+
+[33mcommit 1a6787bad76c6eec76c68c964311685822b50ee7[m
+Author: geho2 <geho2@bismuth.live>
+Date:   Thu Jul 2 08:34:10 2020 +0200
+
+    New test: spend entire balance
+
+[33mcommit d82630e698bee0565fd98c5128ec35864b031067[m
+Author: geho2 <26554545+geho2@users.noreply.github.com>
+Date:   Wed Jul 1 16:51:41 2020 +0200
+
+    Added info about config_custom.txt
+
+[33mcommit 2941e7ebc9f58a06b77e9e03e4f46e8464e1699b[m
+Author: geho2 <26554545+geho2@users.noreply.github.com>
+Date:   Wed Jul 1 16:22:04 2020 +0200
+
+    Create test_transactions.py
+    
+    Regnet test script for pytest
+
+[33mcommit bb188c3ba8282b460055ed6046c352fdc264e829[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Jul 1 10:54:00 2020 +0200
+
+    Fix regmode duplicating blocks
+
+[33mcommit fc54ac846ba832403ee7fa85c4c904c6080f28c9[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Jun 29 09:52:36 2020 +0200
+
+    Regnet and mempool work
+
+[33mcommit 3fa30141e9f5d006fabd29d57a6faaa8df49f12e[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Jun 28 19:37:42 2020 +0200
+
+    Fix symlink
+
+[33mcommit b3d7e38cf7e4df26aaadc27252d6455aeca5e283[m
+Merge: bb13e41 7baa84f
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Jun 28 13:29:06 2020 +0200
+
+    Merge branch 'dev-dbevolution' of https://github.com/bismuthfoundation/Bismuth into dev-dbevolution
+
+[33mcommit bb13e4102edef996b388a334236cc9f08b23d657[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Jun 28 13:28:32 2020 +0200
+
+    Regnet fixes
+
+[33mcommit 7baa84ffd5dd40fe1614048ef64f69f24798870d[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Jun 26 11:51:11 2020 +0200
+
+    update to new structure
+
+[33mcommit 82e8243a3236deec62cf7ac571447f3bde22a6cd[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun May 24 19:30:22 2020 +0200
+
+    Copy misc as well
+
+[33mcommit 960fe3ab059681b408a7ee5f1f30c7d870de1316[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sat May 23 20:52:02 2020 +0200
+
+    Bump requirements
+
+[33mcommit 98bb832cb1ae8ee229fff5c8229f0da2e34c3784[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sat May 23 20:48:02 2020 +0200
+
+    Partial update - non working state, needs bismuthcore update as well
+
+[33mcommit fe16b69e10aec803a2155577779be63ecb42f038[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri May 22 11:08:22 2020 +0200
+
+    Tweak solodb constructor
+
+[33mcommit f82ae7eae0cd274c92f958fcde3b1fe5af8acc24[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu May 21 22:20:53 2020 +0200
+
+    Prepare for convert tool
+
+[33mcommit befb180c146d3574c3e9fc0eb408b7ea2f8bff23[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Apr 17 21:28:16 2020 +0200
+
+    postatus.json relocation and default plugins inclusion
+
+[33mcommit e00c2cf84c9b3a1677165d6201a1acce8b90c3b4[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Apr 15 09:43:44 2020 +0200
+
+    Further adjustment to keep diff to drift without HF
+
+[33mcommit 39d0ae1b7d7a934ec18447f2f8fa0b853e5b9362[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Apr 5 16:20:24 2020 +0200
+
+    restore float returns to diff
+
+[33mcommit acdf6b1cfa9c3cbfc637b2cab19efa1e5ed3ef6d[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Apr 5 15:44:56 2020 +0200
+
+    proper statusget/statusjson
+
+[33mcommit 7e96acc2e7e1dbdd7080cc77c0ba8a35132e9cc0[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sat Apr 4 12:20:58 2020 +0200
+
+    Further conversion on apihandler - needs bismuthcore update
+
+[33mcommit c77afae1306a2a7f8bbe85a6ae6c69ecd7af49ba[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Apr 4 03:05:07 2020 +0200
+
+    replace query with db handler reference
+
+[33mcommit 2e3efadb021b4bacc7945138026f3c7ec9db3549[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Apr 4 02:08:50 2020 +0200
+
+    type fix
+
+[33mcommit 4903a6bd309ee0e5063d05d8e1018633cf539d7b[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Apr 4 00:07:05 2020 +0200
+
+    replace queries with dbhandler references
+
+[33mcommit c4efe8bee27dce0822a9a434fa17968d0e9a1500[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Apr 3 10:53:49 2020 +0200
+
+    Regnet cleanup
+
+[33mcommit 7f367aa52429ade3fa28130e323f905febc94609[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Apr 3 10:44:09 2020 +0200
+
+    Doc and bump versions
+
+[33mcommit 34bdbe37a90255573dc31e99f045ffd751596312[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Apr 3 10:40:38 2020 +0200
+
+    Using datadir/ for ledger, hyper, index, sequencing
+
+[33mcommit 87645eed57187def35b785c6d7cbd15ee3a21d0c[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Apr 1 15:48:49 2020 +0200
+
+    Fixes
+
+[33mcommit e7337457b87628a0c2f848d6348faa12b97fd2c1[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Apr 1 15:45:27 2020 +0200
+
+    peers.txt now in datadir/live
+
+[33mcommit 11ebc9c051ebaebfe0469001b93cedfd4b673648[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Apr 1 15:35:14 2020 +0200
+
+    ipresolv.json and config dir proofing
+
+[33mcommit 0bbc0e10c5fd837352d22827539e9bdc1eb1be85[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Apr 1 15:16:56 2020 +0200
+
+    On disk mempool.db now in datadir/live by default.
+
+[33mcommit af68d17fc2a41183aa4483195f22185a7dff61ec[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Apr 1 15:00:02 2020 +0200
+
+    heavy3a.bin now lies in datadir by default.
+
+[33mcommit 0f10083e5a98c8e65e909c2ae0e92b5a26442ffa[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Apr 1 12:20:34 2020 +0200
+
+    config doc
+
+[33mcommit 9e2d08b4e8efd6eaf6a3a76fd5e6594f879eafdc[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Apr 1 11:32:56 2020 +0200
+
+    Use wallet.der from specified datadir
+
+[33mcommit e51a3d9f3026136382024a237930a9dae9030dbc[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Apr 1 11:12:44 2020 +0200
+
+    Handle datadir for config dir
+
+[33mcommit da056f5c7d7d5d892bfda834ec25f94fc6a59e68[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Apr 1 10:13:33 2020 +0200
+
+    Had to re-introduce some Decimal to avoid diff drift
+
+[33mcommit a5e400470a4811ced71aa9b503f6e697ecdd911e[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Mar 31 10:42:43 2020 +0200
+
+    datadir doc and scaffold
+
+[33mcommit 5aa01d1b09f47983b89aea9d72abba8f7fd48db3[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Mar 31 10:08:40 2020 +0200
+
+    Move some tools to tools directory + archive
+
+[33mcommit 180c97b8e1dc12e7d9922c5161aec29b17390405[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Mar 29 17:29:00 2020 +0200
+
+    Fix refactoring bug
+
+[33mcommit a046cb0b51c6566c21966acbb242c77a6887fba7[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sat Mar 28 22:18:06 2020 +0100
+
+    Testing new difficulty() method with failsafe
+
+[33mcommit 584196abcd2d45479bcc608430ec0ce4ca197150[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sat Mar 28 18:15:32 2020 +0100
+
+    Reorg, work on difficulty()
+
+[33mcommit cd05abb696a9899044917e8b71ebc443361b3d97[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sat Mar 28 16:31:15 2020 +0100
+
+    More files reorg
+
+[33mcommit 329e28e4fc4e170b7a40a8683ccf66af2ceeaefe[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sat Mar 28 13:06:43 2020 +0100
+
+    More reorg and cleanup
+
+[33mcommit ba6308ec77077420fc3af8c29523bb1f3472ee75[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sat Mar 28 10:26:46 2020 +0100
+
+    Mostly files reorg, step 1/n
+
+[33mcommit 2b77f7141f088fd0485088f5a5edb08cd9df80bf[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 27 11:34:54 2020 +0100
+
+    Type hints
+
+[33mcommit e492213f0fa7735e51c0c1a800819b84b10b3642[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 27 11:28:32 2020 +0100
+
+    Remove db format dependency from api_getaddressinfo
+
+[33mcommit 0e94248231234ce36c7cab4da39e167f53ce41b4[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 27 11:13:54 2020 +0100
+
+    Reorg to simplify main node.py code and enforce local responsabilities
+
+[33mcommit cacdeeef39354d61133371d925d270fe9e790af6[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 27 11:07:06 2020 +0100
+
+    Relocate and simplify Mempool
+
+[33mcommit ed6e449b6f8fdd15a914b9587f09be6cf78f917b[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 27 10:59:51 2020 +0100
+
+    Relocate and simplify Peers
+
+[33mcommit d4f0e4f00bda58719c90f9b99b6a6a561d7f4870[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 27 10:56:57 2020 +0100
+
+    Relocate PluginManager
+
+[33mcommit b647e0c43d0f948d16310f448f2fcd653f0bf212[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 27 10:53:27 2020 +0100
+
+    Simplify ApiHandler instanciation
+
+[33mcommit d5818e91a37d498e313f56f5e610e4c54c2dd525[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 27 10:46:45 2020 +0100
+
+    Relocate ApiHandler
+
+[33mcommit 763d3e7337f4b251df8a1f0ab8ffe8cf9a3947e8[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Mar 19 19:59:14 2020 +0100
+
+    Partial mempool conversion
+
+[33mcommit 4d3ed5b4f247580a2c18aefc31cb8049bad632f0[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Mar 19 19:29:32 2020 +0100
+
+    Mempool type hints
+
+[33mcommit 8cf48b8eed88ff2c3c00b2635824c78a4abd4e8d[m
+Merge: 529a9af 8ddec4d
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Mar 19 19:14:08 2020 +0100
+
+    Merge branch 'dev-dbevolution' of https://github.com/bismuthfoundation/Bismuth into dev-dbevolution
+    
+    Merge
+
+[33mcommit 529a9af1fe412e9be9460ad83fe335009f279602[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Mar 19 19:14:04 2020 +0100
+
+    Move mempool to libs
+
+[33mcommit 94b456836544a9ae7858510b11f67c625638f6ca[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Mar 19 19:13:47 2020 +0100
+
+    Move mempool to libs
+
+[33mcommit 8ddec4d977cd3707e7f4292f9432afee8bd509fe[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Mar 19 09:07:04 2020 +0100
+
+    added notes
+    updated function name to better reflect what it does
+
+[33mcommit 142c1abad507bb18c840914211d210cf44d6fa31[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Mar 17 17:28:36 2020 +0100
+
+    Import fix
+
+[33mcommit 32f1f9dee346f9a71e45c0f56c1e8bc4df25bf21[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Mar 17 17:27:54 2020 +0100
+
+    PEP and cleanup
+
+[33mcommit 4ea0867590093ef52bb9aa8f8204500cdd4fb69b[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Mar 17 17:21:47 2020 +0100
+
+    Move checkpoint_set to Node
+
+[33mcommit 370169240242c088d4d944f0ad84958d848b1509[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Mar 17 17:18:00 2020 +0100
+
+    Move ledger_balance3 to DbHandler
+
+[33mcommit 52ae3107028689262e0cb4faae0497c4f16c2620[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Mar 17 17:13:50 2020 +0100
+
+    Pep, type hints, light cleanup
+
+[33mcommit 6b8a7df94873053ce0206f384f3fe299b9730f4a[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Mar 17 17:05:52 2020 +0100
+
+    Use slots for DbHandler
+
+[33mcommit 0e08eb1d69185de3ebc1183d900d5bad39bf8bfe[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Mar 17 16:55:54 2020 +0100
+
+    Simplify DbHandler instanciation
+
+[33mcommit 19409f5f1710888afaf5e5e7aa24be2b646e7ca4[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Mar 15 10:32:48 2020 +0100
+
+    Potential fix for ram mode True
+
+[33mcommit 2cde911c51249d744086c0df85e8a58a6b044060[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 13 17:13:07 2020 +0100
+
+    More comments
+
+[33mcommit 54f426a691c64c3e1de7393bfaaa8597f21e2b5a[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 13 16:53:44 2020 +0100
+
+    Reorg to spare ressources on incoming connection
+
+[33mcommit f3783ae8696066323cb4ab26b3d7e3c33e31b04a[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 13 16:46:29 2020 +0100
+
+    Mostly comments
+
+[33mcommit c1e67b1c5a2d9634a3599dc9430cef580d15ed26[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 13 15:41:42 2020 +0100
+
+    Move aliases_update to DbHandler
+
+[33mcommit 86f572cb54a4d4e95efad68df5a7351f3a3d8f89[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 13 12:10:39 2020 +0100
+
+    Almost done with single user mode reorg
+
+[33mcommit 2c509050f4198d081fd584b4f39bddc395d949c5[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Mar 13 06:42:56 2020 +0100
+
+    add several descriptors
+
+[33mcommit bb57988ab46b4d1ea6bed11e396bbde2f4f8f38a[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Mar 13 06:16:33 2020 +0100
+
+    use existing dbhandler function for hash seeking
+
+[33mcommit b0567eb98cb75726fea867a1880a11250815253b[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Mar 13 05:55:38 2020 +0100
+
+    remove function definition nesting
+
+[33mcommit 7ab040e470f6fac369ce7b90a8563dee69f08fd0[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Mar 12 09:28:54 2020 +0100
+
+    Adjust digest to fit core Transaction changes.
+
+[33mcommit e492166283fa7b9f93419b4d623c1f9d932df39e[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Mar 11 12:45:50 2020 +0100
+
+    Removed extraneous 'order by'
+
+[33mcommit b4e0af666a9dcdd3817f1d749059cb9d350f39a8[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Mar 11 10:47:19 2020 +0100
+
+    More work in single user mode
+
+[33mcommit 193bf36ddba1530bd81bf4ecc019d7d4c2cae2df[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Mar 11 08:41:17 2020 +0100
+
+    First solo checks
+
+[33mcommit b94a581d0be29b42062127158602e7539cc96480[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Mar 11 08:24:51 2020 +0100
+
+    Introducing SoloDbHandler for single user mode checks
+
+[33mcommit fcd09172cba817b0d1626cf74119f19bee116f6f[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Mar 11 08:01:21 2020 +0100
+
+    Fix hint
+
+[33mcommit 1d4096c0c5cab89ae020de63c80013ce7f9584dc[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Mar 11 05:06:16 2020 +0100
+
+    prepare for standardization
+
+[33mcommit e91bf759d09409a07e3d24d950f4c6f24f46869f[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Mar 11 03:54:17 2020 +0100
+
+    untangle classes from function definition
+
+[33mcommit 329b19e866f729ac4c2c0048ad3a0863851622c7[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sat Mar 7 15:42:39 2020 +0100
+
+    Adjustments to sequence checks, close node after trimming chain.
+
+[33mcommit e32a0f6c5c40bde3c918d2efd06a1d4675666074[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sat Mar 7 14:57:30 2020 +0100
+
+    Probable bugfix - testing
+
+[33mcommit 2f09dd7ce4a299747d8deac030be26e30a2f1768[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sat Mar 7 10:52:22 2020 +0100
+
+    Further debug exclusion
+
+[33mcommit edeaa57475f06c6e34df00c3be7942909b92237a[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sat Mar 7 09:13:54 2020 +0100
+
+    Sanitize user input, - redundant cast, +logs
+
+[33mcommit b1795332337f81fa87e82662c61f2f539910d445[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 6 21:03:45 2020 +0100
+
+    Fix import
+
+[33mcommit 74e1a01d140940fe84126de894c0e33ce08b4b32[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 6 18:22:19 2020 +0100
+
+    Comments only
+
+[33mcommit 0103a82ec21a88c5517ae9928342c878e4b2d038[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 6 18:00:36 2020 +0100
+
+    Fix handling of closed pipes
+
+[33mcommit 137eb0c13333c267301576c0910bb7906b7e7c9e[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 6 15:53:19 2020 +0100
+
+    Fix mandatory message loading
+
+[33mcommit 4a10ac4ed3344ac1934b08fab048e961a9b3b296[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 6 15:31:30 2020 +0100
+
+    Do not pollute debug
+
+[33mcommit 7f4cca4365f51cdfeb8a6ec6639622f3c99e18de[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 6 15:11:20 2020 +0100
+
+    Light refactoring and many type annotations
+
+[33mcommit c4b239f866eea8506ccb199e33faaa733e5a9723[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 6 14:40:38 2020 +0100
+
+    Centralize context dependant peers files names in libs/node only
+
+[33mcommit 21821e99fd473c712047961c6d82822b8978d2fa[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 6 14:26:13 2020 +0100
+
+    Rework of Config and moving core methods into libs/Node object
+
+[33mcommit 839b21238cf96b230d9f70c56dfba235afef8d62[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 6 10:06:21 2020 +0100
+
+    Reorg options/config/Get as libs/config
+
+[33mcommit 4195ebfeadc0006c1d5516e78e4ff45533fcf8eb[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Mar 6 09:45:21 2020 +0100
+
+    Make plugin manager aware of config
+
+[33mcommit 575a0a7dee56c6359f923993dcc197d7ebc71ecb[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Mar 5 19:06:11 2020 +0100
+
+    remove manual includes that have been merged to nuitka
+
+[33mcommit c66e4c3262334637a33ec7d9a58e7333f4e5458f[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Mar 5 11:48:56 2020 +0100
+
+    generalize 'transactions_for_address' method
+
+[33mcommit 54ee3e30857d894027f9f1e392e55270e9eef2e8[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Mar 5 11:37:29 2020 +0100
+
+    More sql factorization
+
+[33mcommit 6105ee7c59e952d45f20c67d034152a96202f344[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Mar 5 11:14:27 2020 +0100
+
+    Mempool rework and more sql factorization
+
+[33mcommit 4a43318222dab1ce625a9cde274b2d8074cdb6b0[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Mar 5 09:51:19 2020 +0100
+
+    Add extra formatting option for full balance
+
+[33mcommit 66a06989ba682f6e0bee909a05603d6d8ac5499a[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Mar 5 09:41:40 2020 +0100
+
+    Move balanceget to dbhandler as balance_get_full, step1
+
+[33mcommit 8b1e7a9d3b614389c2bd7c0346035e640c92ff03[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Mar 4 14:13:30 2020 +0100
+
+    More test vectors
+
+[33mcommit 984def31a0e1b9ad49404225df82f9bf2f2a8fac[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Mar 4 12:47:05 2020 +0100
+
+    Fix blocklast
+
+[33mcommit ccce7b6ab8f010d9c35b0b996ee42347130ab11c[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Mar 4 12:28:03 2020 +0100
+
+    Process blocklast and blocklastjson
+
+[33mcommit 572bb16575e2785d384e1ffa9b952a5c6c0fa709[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Mar 4 12:21:10 2020 +0100
+
+    Process 'blockget'
+
+[33mcommit d286d46ce2331284d4bb8004500bd1adc1744b8e[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Mar 4 12:01:01 2020 +0100
+
+    blockgetjson: Remove low level db handling in node, move to dbhandler
+
+[33mcommit 0f55725ae45eb773157608f320429af76e5bafe4[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Mar 4 10:17:00 2020 +0100
+
+    Move fee_calculate and download_file into bismuthcore.helpers
+
+[33mcommit cf8a0bd2295d2b913e02f17072fa48ffc7239595[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Mar 3 23:57:51 2020 +0100
+
+    converted remaining methods
+    added missing listlimjson to commands.py
+
+[33mcommit 6b3350e67223116bb088d9e552b62cdb1f9ec176[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Mar 3 21:17:49 2020 +0100
+
+    convert blockgetjson
+
+[33mcommit 7c7159a01ef2bc20b80bb5131f648ffe5433c206[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Mar 3 12:10:51 2020 +0100
+
+    Remove need for essentials.format_raw_tx
+
+[33mcommit ca6d4bdf295b2092606afffcf64d57bdbd05e795[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Mar 3 11:49:22 2020 +0100
+
+    Fix _execute and mostly comments in dbhandler.py
+
+[33mcommit 459925913841023e131081462fb5d806b03b5fba[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Tue Mar 3 09:42:26 2020 +0100
+
+    Update .gitignore
+
+[33mcommit 87c0fa7d950b481849d2a0f94e45aa9450c1fbd5[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Tue Mar 3 09:41:58 2020 +0100
+
+    Delete bismuthcore
+
+[33mcommit dcb7d16af71160fd7ed7d00b0da20c6defee3b0b[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Mar 2 22:04:44 2020 +0100
+
+    Prepare for dbhandler extension
+
+[33mcommit 22a1a7fdce7738c4cd375008552d9d873030aeab[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Mar 2 21:22:38 2020 +0100
+
+    Semi port of 'blocklastjson' command.
+
+[33mcommit 083f6c0791987cf326e40a972813357881fc4145[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Mar 2 19:45:40 2020 +0100
+
+    comment
+
+[33mcommit 363d82d7d172f0b90dac66878a6747e69bd3c62b[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Mar 2 19:28:33 2020 +0100
+
+    EGG_EVO comment
+
+[33mcommit 4f164f7611f457f2be46d7ffd17254cda7dbf941[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Mar 2 19:16:21 2020 +0100
+
+    Remove need for local simplecrypt, shipped with BismuthCore
+
+[33mcommit 883fbee8809fb4600fa4a671076806e60e9bd559[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Mar 2 18:37:00 2020 +0100
+
+    Plugins are not part of main code either
+
+[33mcommit e6059b34c6891a51fa1e5851d278b980879eb191[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Mar 2 18:35:14 2020 +0100
+
+    Add more live files to exclusion
+
+[33mcommit 9fc12c351323a8c05cee33bc648059567b3c7693[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Mar 2 18:33:25 2020 +0100
+
+    Ignore local bismuthcore
+    
+    For dev purposes, local bismuthcore is supposed to be a symlink to the BismuthCore pip module.
+    Not to be synced from this main git repo.
+
+[33mcommit bd130b77acc40a0d136a23d8563900a584ec94b3[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Mar 2 18:26:52 2020 +0100
+
+    Add bismuthCore notice
+
+[33mcommit aa4555eda8f5255ec9b0e768947eea854c920246[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Mar 2 18:23:51 2020 +0100
+
+    Update version to avoid ambiguities
+
+[33mcommit bf4b3f1c49792e35c07c6797f64be847eaee4a27[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Mar 2 18:21:23 2020 +0100
+
+    Add warning
+
+[33mcommit cb8a78f7c35a69f4905b0cd993196cb8df13831d[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Dec 11 23:15:14 2019 +0100
+
+    merge social links
+
+[33mcommit 1edf731c11e1ab7bcb44f8286252dad7660fd9fe[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Nov 30 09:50:08 2019 +0100
+
+    remove variable localization altogether
+
+[33mcommit b327e11647b965aca5fa827260b832deee2050fc[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Nov 30 08:37:29 2019 +0100
+
+    reference logger instead of copying
+
+[33mcommit 71e616df68a1680aec7d5fac811c196bed7dee5d[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Nov 29 17:52:59 2019 +0100
+
+    Properly handle peer dropping at bad time
+
+[33mcommit dfb293236571be5e9a1a8dcf59ce39173d004258[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Nov 29 17:48:38 2019 +0100
+
+    Autofix wrong type from distant peer
+
+[33mcommit cafedbb0175c6a96573a07794f3eb4d9abaddb2d[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Nov 29 17:43:24 2019 +0100
+
+    mempool fixes and optimizations
+
+[33mcommit b80aeea4b1b81e592d3a4479000e547044ccf4da[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Nov 29 14:46:34 2019 +0100
+
+    Mempool purge fix
+
+[33mcommit 352c3d1792702b87420e639a0bcaba285a9d319d[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Nov 28 11:42:13 2019 +0100
+
+    Bump version for release
+
+[33mcommit 99c159b7d8701a89ae6239c91c2193cc6a04685b[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Nov 28 10:59:51 2019 +0100
+
+    Fix Decimal / Float bug 1/2
+
+[33mcommit da82712788f545cc88d981437cfba0973044120c[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Nov 28 09:55:45 2019 +0100
+
+    Verbose log on check block fail
+
+[33mcommit 76ad9fdb1876978f72dbfd8b5e6bccda5135b260[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Nov 28 09:38:13 2019 +0100
+
+    More verbose logs for edge case.
+
+[33mcommit 0175f70c1d41e9e38cd7fef141488712976e358e[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Nov 28 09:08:51 2019 +0100
+
+    Fix str > int
+
+[33mcommit f10aef601dc4cabe1e323b64746efb60e83c7ba5[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Nov 28 09:01:21 2019 +0100
+
+    Bump version
+
+[33mcommit 07ad52bedc88c7571b38cd582795c031adc8425b[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Nov 28 09:00:36 2019 +0100
+
+    Fix Decimal dependency by removing need for Decimal
+
+[33mcommit 725be78166bfa81b4c659b2b0d1d1c074f7922be[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Nov 28 02:27:02 2019 +0100
+
+    update gitignore
+
+[33mcommit 61f05a88bcce471f28eee67d10c3f50b4b790baf[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Wed Nov 27 22:31:34 2019 +0100
+
+    Fix buggy log
+
+[33mcommit cd882b5410b60fdcfd9469697da27250e24c190d[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Nov 27 10:42:00 2019 +0100
+
+    "sync failed" output is now a warning
+
+[33mcommit 8163ff42520d6ef550f84a7ff899fa8b0dc917c7[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Wed Nov 27 10:38:49 2019 +0100
+
+    Critical Hotfix
+    
+    and bump version
+
+[33mcommit 54c79ed261605ce589d2961fa6ec615069f187c6[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Nov 18 14:52:42 2019 +0100
+
+    Bump version for reelease
+
+[33mcommit 90ce343bcb8a12cf4b54f5701935d533b21e489d[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Nov 17 10:30:48 2019 +0100
+
+    Ship ledger queries as part of core code
+
+[33mcommit eaeeda88716721311df6bd4451861aaeb34e5338[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Nov 17 09:50:05 2019 +0100
+
+    Log ip of nodes sending bad peers list
+
+[33mcommit 40f5560fe34224003bcafc3b48eaca859bc5b058[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Nov 12 20:14:31 2019 +0100
+
+    Update node alone auto install
+
+[33mcommit 6fff5bb231eb98492a2e7e0e8390794e267d3a70[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Nov 12 19:52:46 2019 +0100
+
+    Lower checkpoints to /30 blocks after HF
+
+[33mcommit dd0140c5196981bed877d53344f55923749f712f[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Nov 12 10:27:31 2019 +0100
+
+    Bugfix
+
+[33mcommit e10f2659fae8382d4064d5742e38d688a29311ac[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Nov 12 10:04:41 2019 +0100
+
+    Bump version
+
+[33mcommit 8a66e6f50a792cf5102bd076ac46a18eede5c80b[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Nov 12 10:03:25 2019 +0100
+
+    Fix slight inconstitencies doc/code
+
+[33mcommit 22ead707d6cb31ceaf7ed8f2661cf52617a043b7[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Nov 12 09:57:57 2019 +0100
+
+    Reduce TTL of txns to 2 hours
+
+[33mcommit 7718efcba3b58c19186d6068bbcda614ad7f4744[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Nov 12 09:36:24 2019 +0100
+
+    Protection against messageless txns to some addresses
+
+[33mcommit 9e8bfa2c0b9450ba03a6d328d8fa8eea88d74900[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Nov 12 09:07:44 2019 +0100
+
+    Fallback for old sqlites, reqs for plugins
+
+[33mcommit d1a8f30168256bc411ee8ae507d80736b4555afe[m
+Merge: 51676e5 ad25d1d
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Sat Nov 9 11:42:43 2019 +0100
+
+    Merge pull request #16 from bismuthfoundation/postfork
+    
+    Merge Postfork Request
+
+[33mcommit ad25d1d1db3820c820054f4a50f9a4b15049a548[m
+Merge: 0d689a3 51676e5
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Sat Nov 9 11:41:30 2019 +0100
+
+    Merge branch 'master' into postfork
+
+[33mcommit 0d689a350b1fb7c38323b37d8c352146fdd5955c[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Sat Nov 9 11:32:10 2019 +0100
+
+    Bump version
+
+[33mcommit 971098dc6ac476a5b404dc64552fe0feff3f6ccc[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Sat Nov 9 11:27:55 2019 +0100
+
+    Update mainnet version checks
+
+[33mcommit c4a18ca7cebae8fb3e0126deb9363a49d11443bd[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Sat Nov 9 11:17:13 2019 +0100
+
+    Always allow new portget command
+    
+    May be required for protocol upgrade, postfork.
+
+[33mcommit 4180f035410b70316676e068787129d6219589f9[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Nov 6 17:21:00 2019 +0100
+
+    prevent testnet from falling into the mainnet condition
+
+[33mcommit 7d0fdc67f50b97f32ada52d62b8f5f8aea5ba8e4[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Nov 6 16:17:43 2019 +0100
+
+    update removal rule of old mainnets
+
+[33mcommit e773599d3e3a25adc1f1ceaa582d732a6f515966[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Nov 6 16:15:47 2019 +0100
+
+    update mainnet version, mainnet version support
+
+[33mcommit 74ebf3ba9bf1847f95f29b8c1ec9a2cc0fc56aa3[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Nov 6 16:13:15 2019 +0100
+
+    fix testnet
+
+[33mcommit 8360eb3b07ee4636ee5602d2e8f66cd1e68261be[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Nov 3 16:10:42 2019 +0100
+
+    lower postfork reward for conditional checking
+
+[33mcommit a74a1a87a551209809242fc6a9b5e0ddbeec79bc[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Nov 2 20:07:49 2019 +0100
+
+    prepare for hardfork
+
+[33mcommit 628b32532b6215400d659d94806364cb46d239ab[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Nov 2 12:59:34 2019 +0100
+
+    add portget
+
+[33mcommit 22e77cbe8d14c0d9e4fa85dc5e97e325b1366004[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Oct 3 12:40:52 2019 +0200
+
+    add options compat
+
+[33mcommit a607b00fe06a33e6929c583eb53788d0629db376[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Oct 2 22:00:39 2019 +0200
+
+    update syntax
+
+[33mcommit 8c2720740204a0560687a1e5cc646c625fe1defd[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Oct 2 20:30:07 2019 +0200
+
+    update light_ip to json
+
+[33mcommit f73fdf084cfd169c2cea574cf3e46281eca7c9dc[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Oct 2 20:19:02 2019 +0200
+
+    update options
+
+[33mcommit b37e98dd742556c5ccf6291addcf4f92a768e55d[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Oct 2 00:31:24 2019 +0200
+
+    peer shuffling, effects both suggested and regular peers
+
+[33mcommit 2b5404117c04d6e6b2b765b607da46a08c1d2ad0[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Sep 20 13:54:04 2019 +0200
+
+    update peers with the not-so-busy nodes
+    fix ban condition
+
+[33mcommit f2bc8a5d10122f42fb1a2c0c0362c4a9672dab06[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Sep 19 18:03:07 2019 +0200
+
+    prevent nodes that refuse to roll back from spamming
+
+[33mcommit 087dd157a1824a4765dc21d3dabf15fe5cb09cf2[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Sep 19 17:53:48 2019 +0200
+
+    removed self.banned from client class and replaced it with a node.peers.is_banned(host) check
+    the other option is to trigger self.banned on every ban (overly complex)
+
+[33mcommit d5fd5a2c6be094ec9d6c017ffad78da2fed866a6[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Sep 6 01:21:49 2019 +0200
+
+    fix broken dependency on updated bisbasic, which has modules removed in favor of bismuthclient (not all)
+    upgrade connection handling (tested)
+
+[33mcommit ab4eec2a026fdf7ed6ad8eb01a4977ede88d1c16[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Mon Sep 2 19:46:55 2019 +0200
+
+    add api_getconfig
+    remove old commands from commands.py
+
+[33mcommit 34d83170ec8d4c47d3496d24edc388a4bc43d531[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Aug 25 09:27:19 2019 +0200
+
+    removed heavy staking module, can be added separately later, in accordance with Bismuth plugin philosophy
+
+[33mcommit 69fd3aafd31cce6def1b09ffc64c95d457243c8a[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Aug 25 09:11:13 2019 +0200
+
+    separate mempool for testnet
+
+[33mcommit 51676e5796e8ad629fe3c194351283da90249f63[m
+Author: geho2 <26554545+geho2@users.noreply.github.com>
+Date:   Sat Aug 24 20:07:14 2019 +0200
+
+    Update peers_test.txt
+
+[33mcommit 30acfe6a0eef503a2b69fafbec95c790bc44095c[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Wed Aug 21 18:32:20 2019 +0200
+
+    Fix another "dictionary changed size during iteration" case
+
+[33mcommit 424f32148a16cb9e18b609bb056c2881aa27c1f3[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Wed Aug 21 17:41:55 2019 +0200
+
+    Bump version for docker image
+
+[33mcommit e77fd71f5d6d08c0ba935e44e02a7a9c48368541[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Aug 20 10:49:11 2019 +0200
+
+    Clean up and more precise debug info when testing peers
+
+[33mcommit 941cb23961cbaa00d9651ae300b8de45d060bef9[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Tue Aug 20 09:41:16 2019 +0200
+
+    Sync requirements.txt with requirements-node.txt
+
+[33mcommit 620c4e02c3871692a57bf7a40c5bca9fcee327c2[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Aug 18 08:04:03 2019 +0200
+
+    Do not raise when skipping peers client loop
+
+[33mcommit af71527e74d52dbbce09f81455e5235d0edd3961[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Aug 17 23:18:53 2019 +0200
+
+    import decimals where missing
+    fix dict() not to include iteration
+    remove default rounding (default)
+
+[33mcommit f4022897d5a15f57064139d671d1bf6ee4090ef8[m
+Author: Jan Kučera <translace@gmail.com>
+Date:   Wed Aug 14 13:24:53 2019 +0200
+
+    Update essentials.py
+    
+    revert change to rollback limit for now
+
+[33mcommit d1e403c9753f1bfb1d088ac806f04afe64d604ff[m
+Merge: 5c5fc6c 3ae1726
+Author: Jan Kučera <translace@gmail.com>
+Date:   Tue Aug 13 17:39:41 2019 -0500
+
+    Merge pull request #15 from bismuthfoundation/dev
+    
+    merging dev branch, will specifically revert checkpoints until a wider agreement is reached
+
+[33mcommit 5c5fc6c765955ffc9d2b234d333db5f163c66764[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Aug 7 11:08:14 2019 +0200
+
+    Add tests and explicit feedback to user on mempool insert
+
+[33mcommit 5a9df7b92d1ad1f88f4880854ed7351ebc87a352[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Aug 7 11:00:14 2019 +0200
+
+    Clean up: fix some 'import *' directives. Some still to be done.
+
+[33mcommit 331fec414e4108778f88006292495b331b6fa092[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Aug 5 10:00:55 2019 +0200
+
+    Bump version for release tag and docker need
+
+[33mcommit 1978e462c2839e400246f1a9c1a49cb6b52e3b7a[m
+Author: EggPool <dev@EggPool.net>
+Date:   Sun Aug 4 11:00:59 2019 +0200
+
+    Handle case of None value for empty addresses when digesting
+
+[33mcommit 1f7e792177955f75a15370b91b1eba405c47eb08[m
+Author: EggPool <dev@EggPool.net>
+Date:   Sun Aug 4 11:00:17 2019 +0200
+
+    Return last error to client in all cases when digesting tx
+
+[33mcommit 18ad7fc1254f09d1a8f3547faa2283257d8cc5a6[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Jul 31 17:33:26 2019 +0200
+
+    Add api_getblockfromhashextra api call for json-rpc, bump version.
+
+[33mcommit 20ccc467f01fa7f2371913de29bf9e883bd95f6b[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Jul 31 15:57:25 2019 +0200
+
+    small tweaks and a few comments related to json-rpc server work.
+
+[33mcommit 3ae17266327658f333ccd398cec646f0fe4a84ff[m
+Author: b-i-z <50231809+b-i-z@users.noreply.github.com>
+Date:   Tue Jul 30 11:47:30 2019 +0100
+
+    Close "conn" in DbHandler.close(), so old hyper.db can be replaced
+
+[33mcommit f8c0f2a07e7259f5eb68ce84434daabb9d9c3db3[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Tue Jul 30 12:33:17 2019 +0200
+
+    Loop over a copy of the dict to avoid errors
+    
+    Dict can change while iterating, and this broke things.
+    Temporary plaster waiting for a better rework.
+
+[33mcommit b07d3e8cf08fe03321e08492f2ae58656039ecbc[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jul 30 00:54:30 2019 -0500
+
+    decreased rollback limit to 30-40
+    removed old peer format support
+    fixed hyperblock recompression
+
+[33mcommit 0c57b5baa7ab793553e7b12720b81437c2416238[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Jul 28 18:48:29 2019 +0200
+
+    Raise mempool freeze tolerance to 15 min instead of 3
+
+[33mcommit d5640a6936a1b38dd0cd84abad7cbed0918c3de8[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Wed Jul 24 17:17:01 2019 +0200
+
+    Update readme.md
+
+[33mcommit f4047ed9a2e0b770e39dca2e779c21d084849b80[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jul 21 21:40:59 2019 -0500
+
+    installer updated:
+    node-irrelevant files are no longer bundled
+    installation naming changed (Bismuth Node) to distinguish from Bismuth Wallet
+    resolve issue with now empty clean "static" folder
+    "files" folder is no longer needed
+
+[33mcommit df874d18b64da90f94cda67566d6b754b486b7ca[m
+Author: Jan Kučera <translace@gmail.com>
+Date:   Sun Jul 21 21:22:18 2019 -0500
+
+    Update README.md
+    
+    update twitter
+
+[33mcommit 0ebb7f8a4d636fe5e23126b6ad49a56c0cc2277e[m
+Author: b-i-z <50231809+b-i-z@users.noreply.github.com>
+Date:   Fri Jul 19 20:38:36 2019 +0100
+
+    Add connect timeouts for peersync
+
+[33mcommit bf6a3e6daddb24188b7927422496c8995fecb789[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Jul 18 15:12:19 2019 +0200
+
+    Fix python version status
+
+[33mcommit 589f742179b5e18debab2f23d5ef8fc1f5fa2c70[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Jul 18 14:53:08 2019 +0200
+
+    statusjson now sends extra info: python_version and last_block_ago
+
+[33mcommit 45b11a9d24ff0d88a21632f9b29477bd14543acc[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Jul 18 11:58:30 2019 +0200
+
+    Adjust .gitignore
+
+[33mcommit df354de5ae8ce8ad689b45771ed79a2887a1736d[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Jul 18 11:57:42 2019 +0200
+
+    Replace local polysign by pip module
+
+[33mcommit eecd3b7b6872bf561a2a57d3284500e0e3b7ef76[m
+Author: b-i-z <50231809+b-i-z@users.noreply.github.com>
+Date:   Thu Jul 18 09:45:41 2019 +0100
+
+    quantize_two/eight/ten optimization, because it's heavily used in certain places
+
+[33mcommit 471d5f97578e7cdcec18635f7b1ea774fe5e9ae2[m
+Author: EggPool <dev@eggpool.net>
+Date:   Thu Jul 18 10:13:33 2019 +0200
+
+    Fix inbound messages, trap reason for incoming block fail
+
+[33mcommit bcf25486d82bd772155397f1690b7f613fc0271b[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Jul 17 15:07:09 2019 -0500
+
+    add supoprt for txid in raw tx formatting (essentials.py)
+
+[33mcommit dd9ee98c981dc5ac93a67d607c590d2b4d8166a4[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Jul 16 19:13:15 2019 +0200
+
+    Make on disk mempool path configurable. Bump version.
+
+[33mcommit 8fb5fa0bd2d8257d01cb949e26ce3ff4b8fdc924[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Tue Jul 16 16:10:19 2019 +0200
+
+    User logs when heavy3 is checked/built.
+
+[33mcommit f17ce56e62b10c6be578ad1a0bfcd3fa14ec9c62[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Tue Jul 16 11:29:33 2019 +0200
+
+    Add shebang
+
+[33mcommit cd4513e486bf9e32b3769b76158db3ab8a8657f3[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Tue Jul 16 11:23:41 2019 +0200
+
+    Add shebang line, to invoke without needing explicit python
+
+[33mcommit 11691fef4726cbe686d6706000466e7e52930707[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Tue Jul 16 11:19:37 2019 +0200
+
+    Removed debug info that polluted json output.
+    
+    Also removed duplicate stop handler
+
+[33mcommit 9eb9661da869dfeebe4372e08717c6a8b79200d1[m
+Author: b-i-z <50231809+b-i-z@users.noreply.github.com>
+Date:   Mon Jul 15 13:25:14 2019 +0100
+
+    Fix RE_RSA_ADDRESS regex
+
+[33mcommit d80652b1adf5e5ec2949c43e790cc8762461dfbd[m
+Author: b-i-z <50231809+b-i-z@users.noreply.github.com>
+Date:   Mon Jul 15 13:10:07 2019 +0100
+
+    Added TXID4 index to dbs. Added block height index to misc. Added case-sensitive likes. Difficulty calculation query now orders by block_height instead of timestamp. Coinbase transaction no longer checks balance of miner before issuing reward. Added connect timeout to peers_test.
+
+[33mcommit 8aecb5b59837fc805a93230f65f978ea5437dcb3[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Jul 15 12:47:50 2019 +0200
+
+    Properly close fopen calls by using 'with'
+
+[33mcommit 2ff58e3307d61c50c1349795d390fbd26d64a56c[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jul 14 11:28:36 2019 -0500
+
+    move old wallet to bismuthprojects repo
+
+[33mcommit 112cef898de408461fdb4985fd2bde54c9bf6e0a[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Jul 13 23:38:21 2019 -0500
+
+    add api_getblockfromheight
+
+[33mcommit 3b98799b1cbe6cac2b40990240e78dfa0b9426a3[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Jul 13 22:53:00 2019 -0500
+
+    upgraded installer compiler
+
+[33mcommit c1c644c7f55f9750745b1144d8e0e757403e403b[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Jul 13 22:47:43 2019 -0500
+
+    removed the nested definition from api and add two separate functions on the proper level
+    added api_getblockfromhash
+
+[33mcommit 6a96d7f3fd56d38b18818e6c2047c114a191009f[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Jul 13 15:49:18 2019 -0500
+
+    upgraded send_noconf not to touch the database at all, added testnet compat, wallet file is now an argument
+    merged send_nogui functionality to send_nogui_noconf
+    moved some dependencies to bisbasic so send_nogui_noconf can be used from any location
+
+[33mcommit 119c50073f9b666278430a7ce3543a32ee9fbed7[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jul 11 19:58:35 2019 -0500
+
+    fix readme
+
+[33mcommit f6d6a50ebb00add524a6aa9ebd171ef9cb20693d[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jul 11 19:52:46 2019 -0500
+
+    update readme
+    move themes,move graphics related to the wallet (tk-wallet)
+    move files related to wallet
+
+[33mcommit a27e849436ddb50e22e82a9384f50a886a7c9fec[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jul 11 15:40:54 2019 -0500
+
+    upgrade aliasesv2 to be resistant to alias mining
+
+[33mcommit cf4199e6842412ef5a8d3b5a8d3a7e6432bb4004[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Jul 8 09:42:52 2019 +0200
+
+    Bugfix
+    
+    Avoid collision of names in tokens transfer.
+    Without that, "token_name_extra" is transfered along with "token_name" transfer
+
+[33mcommit baa7b90c8f668337fdf485044a7e57c96acc09c4[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Jul 7 14:02:05 2019 +0200
+
+    Properly init peershandler with named params
+
+[33mcommit 72b39541dd029142219b68f293c0e8faabe47e86[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Jul 7 11:43:34 2019 +0200
+
+    Stop digestingg block list if node is stopping + comment
+
+[33mcommit 2fbb269a653940b79305b3d2dfb26f86c6b8c7c3[m
+Author: EggPool <dev@eggpool.net>
+Date:   Sun Jul 7 10:21:22 2019 +0200
+
+    Stop check in lenghty peers_test and connection_manager fix
+
+[33mcommit 7b9b6ee52c8f4c9b8b3f2f4d94ec855ad630f5a7[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Jul 5 21:37:53 2019 -0500
+
+    - properly handle token issuance and transfer (check happens after every block, can be changed to be less intentive in the future, but this is safe against interruptions)
+    - add exception handler to mempool
+    - wallet cleanup
+
+[33mcommit 6a81c18644bc10a182a0074d3be808025572ec64[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Jul 5 21:11:12 2019 -0500
+
+    return testnet and regnet support to wallet
+
+[33mcommit 5dd2091540f11086a7a99e76c507e34d81f42fb5[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Jul 5 20:55:01 2019 -0500
+
+    hardened tokens with one simple try/except (for loop type exception hardening)
+    re-enabled independent running of tokens module
+
+[33mcommit d8b6f945d7245b98c7a8423ebfd3a77086fec82b[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Jul 5 17:22:29 2019 -0500
+
+    update wallet instantly on fresh data
+
+[33mcommit a63b626656265066335eb1e14a5058553d578986[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jul 4 04:38:57 2019 -0500
+
+    fix bugs, simplify
+
+[33mcommit 204f5af6f798c80a8e9d1517ae841506c0811589[m
+Merge: 90527b9 c834045
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jul 4 02:25:50 2019 -0500
+
+    Merge remote-tracking branch 'origin/postfork' into postfork
+
+[33mcommit 90527b9aea3b95be4601ee962a05e183e999311f[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jul 4 02:21:11 2019 -0500
+
+    add api_getaddressrange for api explorer
+    improve formatting of api_getblockrange
+
+[33mcommit 04eb46b68566e62842fbc2a5915c0349011c0547[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Jul 3 02:21:48 2019 -0500
+
+    empty var on reuse for format_raw_txs_diffs
+
+[33mcommit c834045fed8ebe49c9b16cb02095b8711debfef9[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Tue Jul 2 10:53:34 2019 +0200
+
+    Define default value of heavy3 file
+
+[33mcommit aeea814f34793bbe6cd3bc74da60b20f8e638902[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jul 2 01:36:29 2019 -0500
+
+    remove print
+
+[33mcommit edad19674a469d1f902cf398912a82b3de406dd5[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Mon Jul 1 05:30:12 2019 -0500
+
+    add dict_validate for broken peerlists
+
+[33mcommit 7ba62d8f2ca148cd002032b15ace63612cc8feb6[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jun 30 21:44:10 2019 -0500
+
+    move redundant graphics
+
+[33mcommit 5f164e8a704a5fef098c687283dd50b12667e5d4[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jun 30 17:42:42 2019 -0500
+
+    remove duplication
+
+[33mcommit 829d0c8017f763a2190a168cee9a2da9d93ab12e[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Jun 29 13:23:41 2019 -0500
+
+    restore sig check poistion to avoid digest issue
+
+[33mcommit eab952c8edf9ef2e79d0946d1a18a2a86cc8b930[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 22:29:52 2019 +0200
+
+    Fix merge
+
+[33mcommit e70f8686375a411cb7b8e28e9759c189e455ddcd[m
+Merge: 63bb833 1f5cbf5
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 22:27:42 2019 +0200
+
+    Merge
+
+[33mcommit 63bb833a5df5973795f2d879b5fea573b1b199b7[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 22:26:25 2019 +0200
+
+    Tuned addpeers call and added cmd_addpeers.py util
+
+[33mcommit bee03e43e036fc0f06531449db429378aaa1cac9[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 20:46:15 2019 +0200
+
+    Fix digest I broke
+
+[33mcommit 1f5cbf5ba6e25d6580d7fa6ae0de1c317b30b4a8[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Jun 28 13:37:22 2019 -0500
+
+    add explainer to rollbacks
+
+[33mcommit 6bdddd6eb85cc43ef71160038a6279daf2d48296[m
+Merge: 80c6ce9 bee03e4
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Jun 28 13:36:57 2019 -0500
+
+    Merge remote-tracking branch 'origin/postfork' into postfork
+
+[33mcommit 80c6ce90611cc043b983ce59c4f00fa6604f16d2[m
+Merge: a68cd94 31cf3a3
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Jun 28 12:07:38 2019 -0500
+
+    Merge remote-tracking branch 'origin/postfork' into postfork
+
+[33mcommit d2096e53e49f9a215320d31d3bc06a43e7321c39[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 18:17:57 2019 +0200
+
+    addpeers command
+
+[33mcommit 0718ca92158f86a6503af21bf3a4f1d024981b59[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 17:48:14 2019 +0200
+
+    comments
+
+[33mcommit 54e8b20441995848d2e20768d5a9885f322daa79[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 17:43:06 2019 +0200
+
+    comments
+
+[33mcommit 7f36aab3f2a8abf3944399952133cb5a7ac16453[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 17:35:20 2019 +0200
+
+    optimize digest again
+
+[33mcommit 12560d56dea16db79490bdc6e8d458c2fb618105[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 17:16:55 2019 +0200
+
+    Line returns and comments
+
+[33mcommit 97ddf7943eb51f2e6f1b07148aed43c3c6a3d781[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 17:00:53 2019 +0200
+
+    lines fixes, comments, and small tweaks.
+
+[33mcommit 8253cf2ea8d4af72c75c7ac96e97c7a78f94b319[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 16:44:56 2019 +0200
+
+    No new incoming connections when stopping, TODO: comments
+
+[33mcommit 0243edcbc860584f514712107fe8fbdce129ad3c[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 16:30:48 2019 +0200
+
+    Fix missing or extra line returns, no functional change
+
+[33mcommit 01019865548a29b167e776961a661d51442abb92[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 15:57:14 2019 +0200
+
+    make sure logs are not pushed
+
+[33mcommit cc5866754acd029c03eb0959e64006429aca2a23[m
+Author: EggPool <dev@eggpool.net>
+Date:   Fri Jun 28 15:56:17 2019 +0200
+
+    add sequencing_last to .gitignore
+
+[33mcommit a68cd942a99c15d6d8a52938731e9bbe0bbcc985[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Jun 26 20:40:00 2019 -0500
+
+    improved logging in peershandler
+    removed redundant function peers_test, peerlists are now updated in peers_dump
+    renamed peers_dump to peers_test
+    fixed saving to peer dict before dumping to file, before it did not work and therefore was very slow (all peer_test did all the work)
+
+[33mcommit 31cf3a300ab5e2a7f5a06a92e6c1ab28204aeefc[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Wed Jun 26 22:25:57 2019 +0200
+
+    Update gitignore
+
+[33mcommit f457b134773ca90e52a3e079e356642e6447ad8d[m
+Author: EggPool <dev@eggpool.net>
+Date:   Wed Jun 26 10:00:26 2019 +0200
+
+    Check _b64encoded, add a few comments, some format fixes
+
+[33mcommit 42175cb7563bb8f1953b4e88e10ad4ef5d9f2671[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jun 25 21:49:57 2019 -0500
+
+    support new tx schemes in transaction jsonification (api + essentials)
+
+[33mcommit 3ad9d36d15206a872e4c472a92baa9ac59a3e814[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jun 25 21:13:30 2019 -0500
+
+    fix transaction assignments in the new range api function
+    disable matplotlib import to wallet to save space dramatically
+
+[33mcommit 69053ff0d979934fb43acb14d5c782eb6dedfb08[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jun 25 04:05:22 2019 -0500
+
+    reorg wallet
+
+[33mcommit d29e9813c5d3dc4b9cfbdb8ebc74e264432dd347[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jun 25 03:59:52 2019 -0500
+
+    wallet hardening
+    removal of stats
+    handling of socket locks
+
+[33mcommit 2a78ba2cb4228e57c3d9d31fff6cee019862892f[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Mon Jun 24 20:24:06 2019 -0500
+
+    min known peer size change from 3 to 6
+
+[33mcommit defe27f007bab064a3de4c6938c6602a98035655[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Mon Jun 24 00:57:43 2019 -0500
+
+    increase wallet timeout
+    - fix range seeking api, issue with mutables / output
+
+[33mcommit f770bca8d775e3bf73573b16f03ae5c593799d19[m
+Author: geho2 <26554545+geho2@users.noreply.github.com>
+Date:   Sat Jun 22 10:14:18 2019 +0200
+
+    Updated verify function
+    
+    Updated verify(db_handler) for ecdsa and ed25519 addresses
+
+[33mcommit 4627c6dc5d6ebf7c6c32cf0f900c6a16c4c49581[m
+Author: geho2 <26554545+geho2@users.noreply.github.com>
+Date:   Sat Jun 22 09:51:15 2019 +0200
+
+    Updated verify function
+    
+    Updated verify(db_handler) for ecdsa and ed25519 addresses
+
+[33mcommit 86c53754e83602d3e8bcaa013d6e28d506c1560e[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Jun 19 19:48:13 2019 -0500
+
+    bugfix: report "Mempool: Attempt to spend from a wrong address"
+
+[33mcommit ebc2ded71ba390d8f6b655724efd4c6df5f483bc[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Jun 19 11:48:33 2019 -0500
+
+    fix condition to work as intended
+
+[33mcommit 03fa0ac2061ed2dba4433d3880e3c8581b82c6be[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jun 18 23:36:06 2019 -0500
+
+    rework api_getdiffrange to provide beautiful output
+
+[33mcommit e546594e080c7b65a88ac7f06e4eb96cfed260f4[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jun 18 17:27:56 2019 -0500
+
+    - improve api_getblockrange
+
+[33mcommit 68ce912fd6c3017f7882da7c3ff7b3327dfeeb80[m
+Merge: da7916e bd376bb
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jun 18 16:11:34 2019 -0500
+
+    Merge remote-tracking branch 'origin/postfork' into postfork
+
+[33mcommit da7916e7372fc5eb9e26eab93249089bfd17b478[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jun 18 16:08:09 2019 -0500
+
+    - zombie node bug removal: improve strict condition for peer saving, do not save peers with wrong protocol version to peers.txt (tested)
+    - API: remove unannounced api_getdiffrange and include it in unannounced api_getblockrange, make it return list of dicts for easy end-dev manipulation
+
+[33mcommit bd376bbbbe6148b3f90a94e46c2f5d8c9931d443[m
+Author: b-i-z <50231809+b-i-z@users.noreply.github.com>
+Date:   Tue Jun 18 20:05:09 2019 +0100
+
+    Fix SQL logging for regnet
+
+[33mcommit c6e36251deb7dfd503871a98dbadfef6bfc3523e[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Mon Jun 17 19:01:04 2019 -0500
+
+    restore variable name
+
+[33mcommit c12b82696f32b97588f1d1de34ec27d1ce479948[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Mon Jun 17 13:12:12 2019 -0500
+
+    keep both descriptions
+
+[33mcommit 777e51f399d9d688cdf96c81d62260adc7f3c1da[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Mon Jun 17 13:09:40 2019 -0500
+
+    api_getblocksafter is now api_getblockrange
+    api_getdiffsafter is now api_getdiffrange
+    commands.py extended with api_getblocksince
+    nuitka compilation script update
+
+[33mcommit 21786d503aaea48cf39ccd14a8e1003ee790d685[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Jun 17 19:03:50 2019 +0200
+
+    Reintroduce needed methods, bump version for RC
+
+[33mcommit 43590e390baae4541378dbe5a33f9dceb71d8783[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Jun 17 16:32:08 2019 +0200
+
+    Add demo_getstatus script
+
+[33mcommit 88c6774a9f29d8fbac065c752e22046ab234bfe9[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jun 16 21:13:20 2019 -0500
+
+    wallet improvements:
+    
+    add keepalive for the main connection
+    rework prints to logs
+    add data verification (asterisk)
+    theme code isolated to functions and moved for better performance
+    tab focus on wallet operations
+    repo url updated
+    optimized how themes are loaded
+
+[33mcommit 88ec78ae9bf1b9badbdf1288865ea2d7373ddaa8[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jun 16 17:12:19 2019 -0500
+
+    threading is now a parameter of the only threaded function (refresh)
+    fixes previous behavior
+
+[33mcommit 74adaee3fb34064cb990a4baa252cea426b5c5b5[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jun 16 15:51:52 2019 -0500
+
+    wallet tokens have their own socket because of threading behavior
+
+[33mcommit ac6edd7bf466c1481b8de04d1a12dfb0714e918c[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jun 16 15:35:41 2019 -0500
+
+    bugfix - revert change to light_ip
+
+[33mcommit 176d57e516d54c17a467bb6f9710bebeb37adab5[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Fri Jun 14 16:45:56 2019 +0200
+
+    typo
+
+[33mcommit 9cac6d466b6a7119350bca03d2c9ace9e574ba65[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Fri Jun 14 16:45:40 2019 +0200
+
+    Add ipwhois requirement for plugin
+
+[33mcommit 68667998cecf46b3905dc122257c0e8f44de221e[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 15:29:34 2019 -0500
+
+    make wallet statistics work
+
+[33mcommit 7f82d632a9af93aecd4fa48a683b3d08269fbb73[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 14:10:59 2019 -0500
+
+    bugfix - method implementation
+
+[33mcommit 3b83c5b8e5a43270411bc67fc6dcd73b53f3121a[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 14:05:17 2019 -0500
+
+    bugfix - method naming
+
+[33mcommit 5241e49bfc318adf41f870d2d68bba6660e83c23[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 12:38:13 2019 -0500
+
+    bugfix:
+    node.last_block, node.last_block_hash are now updated after every block (necessary for future forks, better sync, this synchronizes with the previous release behavior while still keeping advantages of reduced db queries to minimum)
+    on exception, real data are pulled from the database to make sure it is not stuck above the real height, which would prevent sync
+    
+    feature:
+    added condition to blocksnf
+
+[33mcommit 710b11c6dde04a61b428a232520f62a76e6d50d7[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 11:33:25 2019 -0500
+
+    change logging to info in peers
+
+[33mcommit 87b455c7fbf3ba7dfc15ec945d62fc05024853cd[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 10:56:48 2019 -0500
+
+    remove a print
+
+[33mcommit b781aa589e18f1b36f55803410b46579af01cc23[m
+Merge: 8582c2b 939c499
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 04:46:22 2019 -0500
+
+    Merge remote-tracking branch 'origin/postfork' into postfork
+
+[33mcommit 8582c2b30ff89c047120b4c633092e88979a8cc9[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 04:44:34 2019 -0500
+
+    new way to bridge suggested peerlist and normal peerlist
+
+[33mcommit 939c49977cc3c26fd61f38895c12c5c992806d7f[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 04:36:44 2019 -0500
+
+    fix peershandler
+
+[33mcommit 1d82dca2baeb1af0f59b0413bc4a83cef561285c[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 03:35:29 2019 -0500
+
+    fix syntax error
+
+[33mcommit 5b2408a5e486974fa92b6e857186b47730db41e1[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 03:29:47 2019 -0500
+
+    add missing rollback condition
+
+[33mcommit 574b6f65da5b1ba72619fc0538eb7a2ae0e9f589[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 03:21:59 2019 -0500
+
+    full nuitka wallet compilation
+    removal of non-active fuction from connectionmanager
+
+[33mcommit aecec249f957d804ba917cfc4cca75e37b44b6a0[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Thu Jun 13 02:06:23 2019 -0500
+
+    remove peer_dump and related settings
+
+[33mcommit bec5bc10784ce7e4662c5ece4f9af7e83a4a4ece[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Jun 13 09:01:02 2019 +0200
+
+    Auto installer for node alone.
+
+[33mcommit d1e26ff4cbd5a1311f73247ff58c181f5dd552dd[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Jun 13 08:51:31 2019 +0200
+
+    Node alone auto installer
+
+[33mcommit 42eea460db130f2db007d89925d170f51b009fe9[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Jun 13 08:38:08 2019 +0200
+
+    Add demo_getaddresssince.py again
+    
+    Minimal example, needed for exchanges and doc.
+
+[33mcommit 1d42266e37c695f6c1013c3f3a4401b67a1befcb[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Jun 13 08:32:24 2019 +0200
+
+    Re-introduce check_tx.md
+
+[33mcommit 565d4769de73ad382d2f7083c41637d49c977386[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Jun 13 08:30:52 2019 +0200
+
+    Re-introduce check_tx.py
+
+[33mcommit d347c2b967b98f162f83469e4d7791348b352a49[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Thu Jun 13 08:24:03 2019 +0200
+
+    Update BismuthApi link
+
+[33mcommit b2576b71ab0e2ed7019f1d60aa00fc25b146ed37[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Jun 12 23:18:13 2019 -0500
+
+    ending brackets
+
+[33mcommit 11108dc6b0a5dce2a78a3cbeeea441d39c6b787d[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Jun 12 23:08:08 2019 -0500
+
+    critical wallet error fix
+
+[33mcommit 5c1b660d8de00929c9e0ddb8a23b228071ff5ec4[m
+Author: Jan Kučera <translace@gmail.com>
+Date:   Wed Jun 12 22:45:42 2019 -0500
+
+    Update config.txt
+    
+    Undo last change, because wallet servers do not support this format
+
+[33mcommit d65e45bb6eef92f0f5d98c755f7126f03a11fa23[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Wed Jun 12 22:43:51 2019 -0500
+
+    fix error disaply in the wallet
+
+[33mcommit 1fc6f4b855b8228419b7be28aaf418a294c58710[m
+Author: Jan Kučera <translace@gmail.com>
+Date:   Wed Jun 12 19:11:35 2019 -0500
+
+    add port to localhost light_ip
+    
+    Legacy wallet will not start without localhost IP
+
+[33mcommit 3eda463e507cd96a747598272a83f1a4319015db[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Jun 11 13:47:51 2019 +0200
+
+    Factorize all addresses checks. All is now handled in a single place within SignerFactory
+
+[33mcommit 322cdc3841ca1d0cba00ee09676dd1572d9766bb[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Jun 11 13:01:50 2019 +0200
+
+    Naming issue - Replace public key _hashed by proper _b64encoded
+
+[33mcommit adba4bb3d145af3c9db088d5d3a30e37417481dd[m
+Merge: e822e7c 5ccc4e4
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Tue Jun 11 12:21:19 2019 +0200
+
+    Merge branch 'testnet' into postfork
+
+[33mcommit e822e7ca52e9698110d311e1d6910a1a4b3d8888[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Jun 11 11:55:47 2019 +0200
+
+    Harmonize explorer, staking, wallet
+
+[33mcommit 879f6e3e90ce533daef29a55dffdea190753c8a8[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Jun 11 11:36:59 2019 +0200
+
+    Partial harmonize of connections and dh_handler
+
+[33mcommit e9af5a73d6748488dcf233242c9835d633bcf098[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Jun 11 11:30:38 2019 +0200
+
+    Harmonize nuitka compile
+
+[33mcommit f59c35f99b2d84b290452ce38d16b7e2d4742d89[m
+Author: EggPool <dev@eggpool.net>
+Date:   Tue Jun 11 11:29:12 2019 +0200
+
+    Harmonize lib/node.py + format fix
+
+[33mcommit 5ccc4e47f239a54dbecf12b821cd8a7a612f15e6[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jun 11 02:59:42 2019 -0500
+
+    bugfix: make wallet properly cycle through list of walletservers
+
+[33mcommit f1fcc862fa111a711015c93f8a4d3ca7a14fbd06[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jun 11 02:48:09 2019 -0500
+
+    bugfix nuitka compiler
+    integrate tkinter to compilation instead of copying
+
+[33mcommit 902b09b9eece8c97e9dd7736ba4ff6b6fdc9c88a[m
+Merge: 5c3913b 503cf5e
+Author: HCLivess <admin@bismuth.cz>
+Date:   Tue Jun 11 00:25:17 2019 -0500
+
+    Merge remote-tracking branch 'origin/postfork' into testnet
+    
+    # Conflicts:
+    #	config.txt
+
+[33mcommit 5c3913b105e3f8edbc4e055d9e088a877e350560[m
+Merge: 4c0102c b06260a
+Author: HCLivess <admin@bismuth.cz>
+Date:   Mon Jun 10 23:48:15 2019 -0500
+
+    Merge remote-tracking branch 'origin/testnet'
+
+[33mcommit 4c0102cdbe041f372e5284813e038bfe71d986de[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Mon Jun 10 23:42:48 2019 -0500
+
+    patch in old alias system for now
+
+[33mcommit 2e434af1041fb781def50183ce89598d2dd791bb[m
+Merge: 05f49a0 018b90d
+Author: HCLivess <admin@bismuth.cz>
+Date:   Mon Jun 10 23:39:47 2019 -0500
+
+    Merge remote-tracking branch 'origin/master'
+    
+    # Conflicts:
+    #	node.py
+
+[33mcommit 503cf5ee528fd0e40e08d94860589504287b2e38[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Jun 10 15:38:10 2019 +0200
+
+    Re-apply fix to send_nogui_noconf, remove hardcoded ip
+
+[33mcommit 5132fd2dc1a7ebcb5d8359acf3c00c582da2ad6f[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Jun 10 15:36:36 2019 +0200
+
+    Apply mempool default mergedts param to postfork
+
+[33mcommit b06260a49ae945df6624f1bce4e7da49caf40c23[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Jun 10 15:31:26 2019 +0200
+
+    Harmonize peershandler with optional strict param 2/2
+
+[33mcommit 2592a1d405a7ce499a95d43668310131a2f967b4[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Jun 10 15:29:09 2019 +0200
+
+    Harmonize peershandler with optional strict param
+
+[33mcommit 60292680a52d7088134772cada6f962bc1acd5f4[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Jun 10 15:23:01 2019 +0200
+
+    Harmonize peershandler with optional strict param
+
+[33mcommit 38d52401d1937f1267840d1990c1d16fd74ba900[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Jun 10 15:11:18 2019 +0200
+
+    Replay 4d2af20ec0948239af31f186304264bab510d53d from @ericecook
+
+[33mcommit f0bc0e72be8626636fdb836004b2b3827083460d[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Jun 10 15:04:59 2019 +0200
+
+    Synchronize api handler across branches
+    
+    Branches cleanup and merging
+
+[33mcommit 1019955bee326b768c1ed05f312fbd07766eb8e7[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Jun 10 15:03:11 2019 +0200
+
+    Synchronize api handler versions
+
+[33mcommit 018b90df43e0463f3c3165ace6bd7b2c48959aff[m
+Merge: 0e18e73 f1bba0d
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Jun 10 14:01:22 2019 +0200
+
+    Merge pull request #12 from bismuthfoundation/postfork
+    
+    Replay 748874da01962169f83322cfe3a9f0299fe76b3c from hclivess
+
+[33mcommit f1bba0dbf3197b4e263446f70595bb3281c338c6[m
+Author: EggPool <dev@eggpool.net>
+Date:   Mon Jun 10 12:52:40 2019 +0200
+
+    Replay 748874da01962169f83322cfe3a9f0299fe76b3c from hclivess
+
+[33mcommit 0e18e73201cc2608734e03fb457a067eca901285[m
+Merge: 42a7f91 12766c8
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Jun 10 12:03:48 2019 +0200
+
+    Merge pull request #11 from bismuthfoundation/postfork
+    
+    Merge Postfork, last stable, onto master.
+
+[33mcommit 12766c8ad8ee80da3546e8c2ecb8b536e743713a[m
+Merge: 829bc56 42a7f91
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Jun 10 12:00:13 2019 +0200
+
+    Merge branch 'master' into postfork
+
+[33mcommit 713e485c0ba00b4ec5eefaad32e0ebf66016cac9[m
+Merge: 05f49a0 4d2af20
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Jun 10 11:55:07 2019 +0200
+
+    Merge pull request #7 from ericecook/testnet
+    
+    Make heavy3 path configurable
+
+[33mcommit 829bc56b57fecc70a74cf1ab0453dadebdd9a339[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Mon Jun 10 10:55:35 2019 +0200
+
+    Fix dbhandler for api calls
+    
+    Replay of
+    https://github.com/bismuthfoundation/Bismuth/commit/bfe3d8c4c6e1d4a9e798598ca382ba380cc25dcc
+    On current stable branch
+
+[33mcommit 05f49a09b51dd578a30e7f7388c6fae400cb6d71[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Mon Jun 10 01:23:15 2019 -0500
+
+    fix aliases
+    re-enable aliases in the wallet
+
+[33mcommit 748874da01962169f83322cfe3a9f0299fe76b3c[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jun 9 05:38:19 2019 -0500
+
+    remove all copies of libraries, compiler now pulls them from the Python folders which are synced with the system
+
+[33mcommit cc5410a53c45225bbd03ee2c266ae606e36d1504[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jun 9 04:28:19 2019 -0500
+
+    fix a bug with mempool on reverted dbhandler
+
+[33mcommit 8c88f6df724678a640ebe448ccddf0d351285c37[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jun 9 03:51:37 2019 -0500
+
+    reintegrate worker.py database handler
+    reintegrate old alias handling and save the new handling post-fork
+    undo new functions in node.py that circumvented worker's dbhandler
+
+[33mcommit 3f20f3e64f9ba162d564b6f5c0a75bd60cfe276a[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jun 9 03:34:53 2019 -0500
+
+    new aliases as aliasesv2
+
+[33mcommit dab6307ce415f06cafbb2afb399eea058abf56fb[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sun Jun 9 03:23:57 2019 -0500
+
+    change convention
+
+[33mcommit d5c4c3240ab2841f2a985287d287a3bc3c2381ae[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Sat Jun 8 17:02:13 2019 -0500
+
+    update db timestamp on rollback
+    remove duplicate dbhandler function to find last timestamp
+
+[33mcommit af10b2484bc879d193b93d19fe987ed7e9355b89[m
+Merge: ff0299f 42a7f91
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Jun 7 23:29:35 2019 -0500
+
+    Merge remote-tracking branch 'origin/master'
+
+[33mcommit ff0299f73242caf3d610eaf2b7df402cf0d0a5ce[m
+Merge: c84e1d5 f09e182
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Jun 7 23:29:35 2019 -0500
+
+    Merge remote-tracking branch 'origin/testnet'
+
+[33mcommit c84e1d554eb4042c4ec98be9e4cc2428407d5ff8[m
+Author: HCLivess <admin@bismuth.cz>
+Date:   Fri Jun 7 23:29:03 2019 -0500
+
+    try and resolve conflict with master branch
+
+[33mcommit f09e182c2c0e255f5e6a92fbb2fa5f7d079fd5fd[m
+Merge: cf157a1 1ec54f2
+Author: Jan Kučera <translace@gmail.com>
+Date:   Fri Jun 7 23:19:15 2019 -0500
+
+    Merge pull request #9 from bismuthfoundation/experimental
+    
+    /Experimental to /Testnet
+
+[33mcommit 42a7f9121261e20acf107c796695931633315816[m
+Author: EggPool <33421807+EggPool@users.noreply.github.com>
+Date:   Fri Jun 7 14:06:11 2019 +0200
+
+    Update post fork for safety
+    
+    "Master" branch should not be used, see releases.
+    but this is to avoid issues for people cloning it anyway.

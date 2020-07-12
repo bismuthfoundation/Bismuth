@@ -97,7 +97,7 @@ class Config:
             print("Config now needs to be fed with datadir param")
             exit()
         self.datadir = datadir
-        if path.isfile(path.join(datadir,"chain-v2", "ledger.db")):
+        if path.isfile(path.join(datadir, "chain-v2", "ledger.db")):
             if not silent:
                 print("Found v2 ledger")
             self.legacy_db = False
