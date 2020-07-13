@@ -26,7 +26,7 @@ def test_addlistlim_json(myserver):
     op = '12345'
     data = '67890'
     client.send(recipient=client.address, amount=1.0, operation=op, data=data)
-    client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
+    client.command(command="regtest_generate", options=[1])  # Mine the next block
     sleep(1)
     data1 = client.command(command="addlistlim", options=[client.address, 1])
     data2 = client.command(command="addlistlimjson", options=[client.address, 1])
@@ -42,7 +42,7 @@ def test_api_getblockfromhash(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
     client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
     client.send(recipient=client.address, amount=1.0, operation='12345', data='67890')
-    client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
+    client.command(command="regtest_generate", options=[1])  # Mine the next block
     sleep(1)
     data1 = client.command(command="addlistlimjson", options=[client.address, 1])
     block_hash = data1[0]['block_hash']

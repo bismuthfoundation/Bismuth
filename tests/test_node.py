@@ -28,3 +28,8 @@ def test_keygen_json(myserver):
     assert len(data1[1]) > 0 and len(data1[2]) > 0 and \
            len(data1[1]) == len(data2['public_key']) and \
            len(data1[2]) == len(data2['address'])
+
+def test_api_config(myserver):
+    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    data = client.command(command="api_getconfig")
+    assert data['regnet'] == True and data['port'] == 3030
