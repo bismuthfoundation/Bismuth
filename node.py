@@ -549,36 +549,39 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     else:
                         node.logger.app_log.info(f"{peer_ip} not whitelisted for balancegethyperjson command")
 
-                elif data == "mpgetjson" and node.peers.is_allowed(peer_ip, data):
-                    """
-                    # mempool_txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
-                    response_list = []
-                    for transaction in mempool_txs:
-                        response = {"timestamp": transaction[0],
-                                    "address": transaction[1],
-                                    "recipient": transaction[2],
-                                    "amount": transaction[3],
-                                    "signature": transaction[4],
-                                    "public_key": transaction[5],
-                                    "operation": transaction[6],
-                                    "openfield": transaction[7]}
+                elif data == "mpgetjson":
+                    if node.peers.is_allowed(peer_ip, data):
+                        """
+                        # mempool_txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
+                        response_list = []
+                        for transaction in mempool_txs:
+                            response = {"timestamp": transaction[0],
+                                        "address": transaction[1],
+                                        "recipient": transaction[2],
+                                        "amount": transaction[3],
+                                        "signature": transaction[4],
+                                        "public_key": transaction[5],
+                                        "operation": transaction[6],
+                                        "openfield": transaction[7]}
+    
+                            response_list.append(response)
+                        """
+                        mempool_txs = mp.MEMPOOL.transactions_to_send()
+                        # EGG_EVO: Partial conversion. MP still uses legacy format so far.
+                        response_list = [Transaction.from_legacymempool(transaction).to_dict(legacy=True) for transaction in mempool_txs]
+                        send(self.request, response_list)
 
-                        response_list.append(response)
-                    """
-                    mempool_txs = mp.MEMPOOL.transactions_to_send()
-                    # EGG_EVO: Partial conversion. MP still uses legacy format so far.
-                    response_list = [Transaction.from_legacymempool(transaction).to_dict(legacy=True) for transaction in mempool_txs]
-                    send(self.request, response_list)
+                elif data == "mpget":
+                    if node.peers.is_allowed(peer_ip, data):
+                        # mempool_txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
+                        mempool_txs = mp.MEMPOOL.transactions_to_send()
+                        # EGG_EVO: Partial conversion. MP still uses legacy format so far.
+                        # response_tuples = [transaction.to_tuple() for transaction in mempool_txs]
+                        send(self.request, mempool_txs)
 
-                elif data == "mpget" and node.peers.is_allowed(peer_ip, data):
-                    # mempool_txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
-                    mempool_txs = mp.MEMPOOL.transactions_to_send()
-                    # EGG_EVO: Partial conversion. MP still uses legacy format so far.
-                    # response_tuples = [transaction.to_tuple() for transaction in mempool_txs]
-                    send(self.request, mempool_txs)
-
-                elif data == "mpclear" and peer_ip == "127.0.0.1":  # reserved for localhost
-                    mp.MEMPOOL.clear()
+                elif data == "mpclear":  # since we are in elif, no compound conditions.
+                    if peer_ip == "127.0.0.1":  # reserved for localhost
+                        mp.MEMPOOL.clear()
 
                 elif data == "keygen":
                     # if (peer_ip in allowed or "any" in allowed):

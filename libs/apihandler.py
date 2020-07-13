@@ -169,7 +169,8 @@ class ApiHandler:
         :param peers:
         :return: list of node configuration options
         """
-        connections.send(socket_handler, self.config.__dict__)
+        slots = tuple(self.config.__slots__)
+        connections.send(socket_handler, {key: self.config.__getattribute__(key) for key in slots})
 
     def api_clearmempool(self, socket_handler, db_handler: "DbHandler", peers):
         """

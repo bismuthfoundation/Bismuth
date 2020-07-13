@@ -70,7 +70,7 @@ if __name__ == "__main__":
         while True:
             print(start)
             # EGG: This is not optimized for speed, but only needed once (and users can bootstrap instead).
-            test = solo_db_handler.get_blocks(start, step)
+            test = solo_db_handler.get_blocks(start, step - 1 )
             if len(test.transactions) == 0:
                 break
             # insert is way longer if indices are there. so better add indices in a second step

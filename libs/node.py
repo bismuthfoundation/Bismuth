@@ -374,6 +374,14 @@ class Node:
         24|TableLock|0|2|0|transactions|00|
         25|String8|0|7|0|4b35e6dc26850d5f52c9e75ac28e22566f0e90dd25d953553079cd65|00|
         26|Goto|0|1|0||00|
+        
+        
+        Avec index recipient:
+        explain query plan SELECT sum(amount + reward) FROM transactions WHERE recipient = "4b35e6dc26850d5f52c9e75ac28e22566f0e90dd25d953553079cd65" AND (block_height < 1000000 AND block_height > -1000000);
+        0|0|0|SEARCH TABLE transactions USING INDEX Recipient Index (recipient=?)
+        
+        the more the tx, the slower.
+
         """
 
         solo_handler.hyper_commit()
@@ -385,6 +393,7 @@ class Node:
         if os.path.exists(self.config.ledger_path + '.temp'):
             os.rename(self.config.ledger_path + '.temp', self.config.hyper_path)
         self.logger.app_log.warning(f"Status: Recompressed!")
+        sys.exit()  # Temp
 
     def _ram_init(self, solo_handler: SoloDbHandler) -> None:
         # Copy hyper db into ram

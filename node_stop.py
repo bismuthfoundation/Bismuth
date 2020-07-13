@@ -14,7 +14,7 @@ s = socks.socksocket()
 port = 5658
 if "testnet" in version:
     port = 2829
-    print("tesnet mode")
+    print("testnet mode")
 elif "regnet" in version:
     is_regnet = True
     print("Regtest mode")

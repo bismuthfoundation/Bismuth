@@ -79,7 +79,7 @@ is_regnet = False
 
 if "testnet" in version:
     s.connect (("127.0.0.1", 2829))
-    print("tesnet mode")
+    print("testnet mode")
 elif "regnet" in version:
     is_regnet = True
     print("Regtest mode")
