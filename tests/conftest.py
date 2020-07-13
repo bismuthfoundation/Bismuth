@@ -12,6 +12,6 @@ def myserver():
     chdir('..')
     p = Popen(["python3", "node.py", "regnet"])
     chdir('tests')
-    sleep(12)
+    sleep(1)
     yield
     p.terminate()
