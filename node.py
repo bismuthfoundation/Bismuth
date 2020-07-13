@@ -1007,10 +1007,14 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 if __name__ == "__main__":
     datadir = "./datadir"  # Default datadir if empty
     force_regnet = False
+    test_v2 = False
     if len(argv) > 1:
         _, datadir = argv
         if "regnet" == datadir:
             force_regnet = True
+            datadir = "./datadir"
+        elif "V2" == datadir:
+            test_v2 = True
             datadir = "./datadir"
         elif not os.path.isdir(datadir):
             print("No such '{}' dir. Using default".format(datadir))
@@ -1019,7 +1023,10 @@ if __name__ == "__main__":
     wait = 10
     if force_regnet:
         wait = 0
-    config = Config(datadir=datadir, wait=0, force_legacy=True, force_regnet=force_regnet)
+    if test_v2:
+        config = Config(datadir=datadir, wait=wait, force_v2=True, force_regnet=force_regnet)
+    else:
+        config = Config(datadir=datadir, wait=wait, force_legacy=True, force_regnet=force_regnet)
     # config.read() is now implicit at instanciation
     logger = Logger()  # is that class really useful?
     logger.app_log = log.log("node.log", config.debug_level, config.terminal_output)

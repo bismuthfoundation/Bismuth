@@ -337,12 +337,52 @@ class Node:
         unique_addressess = solo_handler.distinct_hyper_recipients(depth_specific)
         for address in unique_addressess:
             solo_handler.update_hyper_balance_at_height(address, depth_specific)
+        """
+        
+        Looks like sqlite3 aggregates by block, then pickups the right address.
+        Would be faster doing it for all addresses at once.
+        Do more tests. Test on freshly converted ledger (no prior hyper) so all is compressible.
+        
+        explain query plan SELECT sum(amount + reward) FROM transactions WHERE recipient = "4b35e6dc26850d5f52c9e75ac28e22566f0e90dd25d953553079cd65" AND (block_height < 1000000 AND block_height > -1000000);
+        0|0|0|SEARCH TABLE transactions USING INDEX Block Height Index (block_height>? AND block_height<?)
+        
+        explain SELECT sum(amount + reward) FROM transactions WHERE recipient = "4b35e6dc26850d5f52c9e75ac28e22566f0e90dd25d953553079cd65" AND (block_height < 1000000 AND block_height > -1000000);
+        0|Init|0|23|0||00|
+        1|Null|0|1|3||00|
+        2|OpenRead|0|2|0|10|00|
+        3|OpenRead|1|3|0|k(2,nil,nil)|00|
+        4|Integer|-1000000|4|0||00|
+        5|SeekGT|1|17|4|1|00|
+        6|Integer|1000000|4|0||00|
+        7|IdxGE|1|17|4|1|00|
+        8|IdxRowid|1|5|0||00|
+        9|Seek|0|5|0||00|
+        10|Column|0|3|6||00|
+        11|Ne|7|16|6|(BINARY)|52|
+        12|Column|0|4|9||00|
+        13|Column|0|9|10||00|
+        14|Add|10|9|8||00|
+        15|AggStep|0|8|1|sum(1)|01|
+        16|Next|1|7|0||00|
+        17|Close|0|0|0||00|
+        18|Close|1|0|0||00|
+        19|AggFinal|1|1|0|sum(1)|00|
+        20|Copy|1|11|0||00|
+        21|ResultRow|11|1|0||00|
+        22|Halt|0|0|0||00|
+        23|Transaction|0|0|4|0|01|
+        24|TableLock|0|2|0|transactions|00|
+        25|String8|0|7|0|4b35e6dc26850d5f52c9e75ac28e22566f0e90dd25d953553079cd65|00|
+        26|Goto|0|1|0||00|
+        """
+
         solo_handler.hyper_commit()
         solo_handler.cleanup_hypo(depth_specific)
         solo_handler.close()
 
         if os.path.exists(self.config.hyper_path):
             os.remove(self.config.hyper_path)  # remove the old hyperblocks to rebuild
+        if os.path.exists(self.config.ledger_path + '.temp'):
             os.rename(self.config.ledger_path + '.temp', self.config.hyper_path)
         self.logger.app_log.warning(f"Status: Recompressed!")
 
