@@ -33,3 +33,16 @@ def test_api_config(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
     data = client.command(command="api_getconfig")
     assert data['regnet'] == True and data['port'] == 3030
+
+def test_api_getaddresssince(myserver):
+    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    client.command(command="regtest_generate", options=[1])  # Mine a block so that we have some funds
+    client.send(recipient=client.address, amount=1.0)  # Tries to send 1.0 to self
+    client.command(command="regtest_generate", options=[10])  # Mine 10 more blocks
+    sleep(1)
+    data2 = client.command(command="blocklastjson")
+    since = data2['block_height'] - 10
+    conf = 8
+    data = client.command(command="api_getaddresssince", options=[since,conf,client.address])
+    N = len(data['transactions'])
+    assert N == 3
