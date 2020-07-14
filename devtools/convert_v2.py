@@ -89,7 +89,7 @@ if __name__ == "__main__":
         while True:
             print(start)
             # EGG: This is not optimized for speed, but only needed once (and users can bootstrap instead).
-            test = solo_db_handler.get_miscs(start, step)
+            test = solo_db_handler.get_miscs(start, step - 1)
             #print(test)
             if len(test) != 0:
                 solo_db_handler2.miscs_to_ledger(test)

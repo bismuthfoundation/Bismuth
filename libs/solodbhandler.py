@@ -538,7 +538,6 @@ class SoloDbHandler:
                 y = y_init
             if row[0] != y:
                 self.logger.app_log.error(f"Status: Chain {name} transaction sequencing error at: {row[0]}. {row[0]} instead of {y}")
-                sys.exit()
                 self.rollback(y)  # Will also rollback the other db, misc, tokens and aliases
                 self.logger.app_log.warning(
                     f"Status: Due to a sequencing issue at block {y}, chain has been rolled back and will be resynchronized")
@@ -559,14 +558,15 @@ class SoloDbHandler:
         y1 = self._sequencing_check(sequencing_last, self._ledger_cursor, "Ledger")
         y2 = self._sequencing_check(sequencing_last, self._hyper_cursor, "Hyper")
 
-        # perform test on misc table - start at 1000000 min
+        # perform test on misc table - start at 1300000 min
+        start = max(1300000, sequencing_last)
         y = 0
-        start = min(1000000, sequencing_last)
         for row in self._ledger_cursor.execute("SELECT block_height FROM misc WHERE block_height > ? ORDER BY block_height ASC",
                              (start,)):
             y_init = row[0]
             if y < 1:
                 y = y_init
+                print(y)
             if row[0] != y:
                 self.logger.app_log.warning(
                     f"Status: Chain Index sequencing error at: {row[0]}. {row[0]} instead of {y}")

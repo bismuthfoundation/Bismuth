@@ -393,7 +393,7 @@ class Node:
         if os.path.exists(self.config.ledger_path + '.temp'):
             os.rename(self.config.ledger_path + '.temp', self.config.hyper_path)
         self.logger.app_log.warning(f"Status: Recompressed!")
-        sys.exit()  # Temp
+        # sys.exit()  # Temp
 
     def _ram_init(self, solo_handler: SoloDbHandler) -> None:
         # Copy hyper db into ram
