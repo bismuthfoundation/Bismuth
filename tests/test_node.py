@@ -60,3 +60,8 @@ def test_api_getblockssince(myserver):
     blocks = client.command(command="api_getblocksince", options=[since])
     N = len(blocks)
     assert N == 11 and blocks[0][11] == data and float(blocks[0][4]) == amount
+
+def test_add_validate(myserver):
+    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    data = client.command(command="addvalidate", options=[client.address])
+    assert data == "valid"
