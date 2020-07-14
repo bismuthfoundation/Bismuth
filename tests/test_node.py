@@ -46,3 +46,17 @@ def test_api_getaddresssince(myserver):
     data = client.command(command="api_getaddresssince", options=[since,conf,client.address])
     N = len(data['transactions'])
     assert N == 3
+
+def test_api_getblockssince(myserver):
+    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    client.command(command="regtest_generate", options=[1])  # Mine a block so that we have some funds
+    data='1234567890'
+    amount = 1.5
+    client.send(recipient=client.address, amount=amount, data=data)  # Tries to send amount to self
+    client.command(command="regtest_generate", options=[10])  # Mine 10 more blocks
+    sleep(1)
+    data2 = client.command(command="blocklastjson")
+    since = data2['block_height'] - 10
+    blocks = client.command(command="api_getblocksince", options=[since])
+    N = len(blocks)
+    assert N == 11 and blocks[0][11] == data and float(blocks[0][4]) == amount
