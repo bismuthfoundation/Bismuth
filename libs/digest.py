@@ -371,7 +371,7 @@ def process_blocks(blocks: list, node: "Node", db_handler: "DbHandler", block_in
             block_instance.block_height_new = node.last_block + 1
             block_instance.start_time_block = ttime()
 
-            fork_reward_check(node=node, db_handler=db_handler)
+            fork_reward_check(node=node, db_handler=db_handler)  # This raises on rollback
 
             # sort_transactions also computes several hidden variables, like miner_tx.q_block_timestamp
             # So it has to be run before the check

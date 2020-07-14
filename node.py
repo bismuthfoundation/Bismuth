@@ -14,7 +14,7 @@
 import platform
 import socketserver
 import threading
-from sys import version_info, argv
+from sys import version_info, argv, exc_info
 import os
 from time import time as ttime, sleep
 from decimal import Decimal
@@ -324,6 +324,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                     except Exception as e:
                         node.logger.app_log.warning(f"Inbound: Sync failed {e}")
+                        exc_type, exc_obj, exc_tb = exc_info()
+                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                        node.logger.app_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
 
                 elif data == "nonewblk":
                     send(self.request, "sync")

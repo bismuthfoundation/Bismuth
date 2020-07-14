@@ -39,11 +39,14 @@ def sql_trace_callback(log, sql_id, statement: str):
 class DbHandler:
     # Define  slots. One instance per thread, can be significant.
     __slots__ = ("ram", "ledger_ram_file", "ledger_path", "hyper_path", "logger", "trace_db_calls", "index_db",
-                 "index", "index_cursor", "hdd", "h", "hdd2", "h2", "conn", "c", "old_sqlite", "plugin_manager")
+                 "index", "index_cursor", "hdd", "h", "hdd2", "h2", "conn", "c", "old_sqlite", "plugin_manager",
+                 "legacy_db")
 
     def __init__(self, index_db: str, ledger_path: str, hyper_path: str, ram: bool, ledger_ram_file: str,
-                 logger: "Logger", old_sqlite: bool=False, trace_db_calls: bool=False, plugin_manager=None):
+                 logger: "Logger", old_sqlite: bool=False, trace_db_calls: bool=False, plugin_manager=None,
+                 legacy_db=True):
         """To be used only for tests - See .from_node() factory above."""
+        self.legacy_db = legacy_db
         self.ram = ram
         self.ledger_ram_file = ledger_ram_file
         self.hyper_path = hyper_path
@@ -93,7 +96,8 @@ class DbHandler:
         """All params we need are known to node."""
         return DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram,
                          node.ledger_ram_file, node.logger, old_sqlite=node.config.old_sqlite,
-                         trace_db_calls=node.config.trace_db_calls, plugin_manager=node.plugin_manager)
+                         trace_db_calls=node.config.trace_db_calls, plugin_manager=node.plugin_manager,
+                         legacy_db=node.config.legacy_db)
 
     # ==== Aliases ==== #
 
@@ -383,16 +387,25 @@ class DbHandler:
         self._execute(self.c, 'SELECT * FROM transactions where reward != 0 ORDER BY block_height DESC LIMIT 1')
         # TODO EGG_EVO: benchmark vs "SELECT * FROM transactions WHERE reward != 0 AND block_height= (select max(block_height) from transactions)")
         # Q: Does it help or make it safer/faster to add AND reward > 0 ?
-        transaction = Transaction.from_legacy(self.c.fetchone())
-        # EGG_EVO: now returns the transaction object itself, higher level adjustments processed.
+        if self.legacy_db:
+            transaction = Transaction.from_legacy(self.c.fetchone())
+        else:
+            # V2
+            transaction = Transaction.from_v2(self.c.fetchone())
+        # now returns the transaction object itself, higher level adjustments processed.
         # return transaction.to_dict(legacy=True)
         return transaction
 
     def last_block_hash(self) -> str:
         # returns last block hash from live data as hex string
-        self._execute(self.c, "SELECT block_hash FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
-        # EGG_EVO: if new db, convert bin to hex
-        return self.c.fetchone()[0]
+        self._execute(self.c,
+                      "SELECT block_hash FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1")
+        last_hash = self.c.fetchone()[0]
+        # if new db, convert bin to hex
+        if self.legacy_db:
+            return last_hash
+        else:
+            return last_hash.hex()  # v2
 
     def last_block_timestamp(self, back: int=0) -> Union[float, None]:
         """
