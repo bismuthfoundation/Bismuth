@@ -4,7 +4,17 @@
 
 from time import sleep
 from bismuthclient.bismuthclient import BismuthClient
+import hashlib
 
+def normalize_key(a):
+    b = "-----BEGIN PUBLIC KEY-----\n"
+    i = 0
+    n = 64
+    while ( i*n < len(a) ):
+        b = b + a[i*n:(i+1)*n] + '\n'
+        i = i + 1
+    b = b + "-----END PUBLIC KEY-----"
+    return b
 
 def test_port_regnet(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
@@ -65,3 +75,12 @@ def test_add_validate(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
     data = client.command(command="addvalidate", options=[client.address])
     assert data == "valid"
+
+def test_pubkey_address(myserver):
+    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    client.command(command="regtest_generate", options=[1])  # Mine a block
+    sleep(1)
+    data = client.command(command="blocklastjson")
+    pubkey = normalize_key(data['public_key'])
+    address = hashlib.sha224(pubkey.encode("utf-8")).hexdigest()
+    assert address == client.address
