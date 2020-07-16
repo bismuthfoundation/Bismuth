@@ -252,7 +252,7 @@ class Peers:
         """Number of nodes in consensus"""
         return len(self.peer_opinion_dict)
 
-    def is_allowed(self, peer_ip: str, command: str='') -> bool:
+    def is_allowed(self, peer_ip: str, command: str='', silent: bool=False) -> bool:
         """Tells if the given peer is allowed for that command"""
         # TODO: more granularity here later
         # Always allow whitelisted ip to post as block
@@ -263,8 +263,16 @@ class Peers:
             return True
         # only allow local host for "stop" and addpeers command
         if command in ('stop', 'addpeers'):
-            return peer_ip == '127.0.0.1'
-        return peer_ip in self.config.allowed or "any" in self.config.allowed
+            if peer_ip == '127.0.0.1':
+                return True
+        if self.config.allowed is True:
+            return True
+        if "any" in self.config.allowed or "any" == self.config.allowed:
+            return True
+        if peer_ip in self.config.allowed:
+            return True
+        self.app_log.warning(f"{peer_ip} not whitelisted for {command} command", "Peers")
+        return False
 
     def is_whitelisted(self, peer_ip: str, command: str='') -> bool:
         # TODO: could be handled later on via "allowed" and rights.

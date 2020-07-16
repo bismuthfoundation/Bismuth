@@ -495,7 +495,7 @@ class Node:
         Not trusting hyperblock nodes for old blocks because of trimming,
         they wouldn't find the hash and cause rollback.
         """
-        self.logger.app_log.info(f"Rollback operation on {block_hash_delete} initiated by {peer_ip}")
+        self.logger.app_log.warning(f"Rollback operation on {block_hash_delete} initiated by {peer_ip}", "General")
         my_time = ttime()
         if not self.db_lock.locked():
             self.db_lock.acquire()

@@ -267,21 +267,21 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: list, blo
             # append, but do not insert to ledger before whole block is validated,
             # note that it takes already validated values (decimals, length)
             node.logger.app_log.info(f"Chain: Appending transaction back to block with "
-                                     f"{len(block_transactions)} transactions in it")
+                                     f"{len(block_transactions)} transactions in it", "Digest")
             block_transactions.append((str(block_instance.block_height_new), str(db_timestamp), str(db_address),
                                        str(db_recipient), str(db_amount), str(db_signature),
                                        str(db_public_key_b64encoded), str(block_instance.block_hash), str(fee),
                                        str(reward), str(db_operation), str(db_openfield)))
             try:
                 mp.MEMPOOL.delete_transaction(db_signature)
-                node.logger.app_log.info(f"Chain: Removed processed transaction {db_signature[:56]}"
-                                         f" from the mempool while digesting")
+                node.logger.app_log.debug(f"Chain: Removed processed transaction {db_signature[:56]}"
+                                         f" from the mempool while digesting", "Mempool")
             except:
                 # tx was not or is no more in the local mempool, not an issue.
                 pass
 
     except Exception as e:
-        print("process_transactions: {}".format(e))
+        print("Process_transactions: {}".format(e))
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
