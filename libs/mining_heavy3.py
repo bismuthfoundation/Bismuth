@@ -17,8 +17,8 @@ from decimal import Decimal
 
 from libs import regnet
 
-from libs.fork import Fork
-fork = Fork()
+# from libs.fork import Fork
+# fork = Fork()
 
 __version__ = '0.1.4'
 

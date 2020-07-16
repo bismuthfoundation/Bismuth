@@ -3,6 +3,9 @@ This class is a config and helper for managing fork data in a single place.
 """
 
 # from __future__ import annotations  # python3.7 only
+
+from bismuthcore.transaction import Transaction
+
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
   from libs.node import Node
@@ -10,7 +13,8 @@ if TYPE_CHECKING:
 
 
 class Fork:
-    def __init__(self):
+    def __init__(self, config=None):
+        self.config = config
         # TODO: explain and document use of these params.
         self.POW_FORK = 1450000
         self.POW_FORK_TESTNET = 894170
@@ -20,7 +24,8 @@ class Fork:
         self.FORK_REWARD_TESTNET = None
         self.PASSED = False
         self.PASSED_TESTNET = False
-        self.REWARD_MAX = 6
+        self.REWARD_MAX = 6.0
+        self.REWARD_MAX_INT = Transaction.f8_to_int(self.REWARD_MAX)
 
         #self.POW_FORK = 1168860 #HACK
         #self.versions_remove = [] #HACK
@@ -44,7 +49,10 @@ class Fork:
             db_handler._execute_param(db_handler.h, "SELECT reward FROM transactions WHERE block_height = ? AND reward != 0", (self.POW_FORK + 1,))
             self.FORK_REWARD = db_handler.h.fetchone()[0]
 
-        if self.FORK_REWARD < self.REWARD_MAX:
+        max = self.REWARD_MAX
+        if self.config is not None and not self.config.legacy_db:
+            max = self.REWARD_MAX_INT
+        if self.FORK_REWARD < max:
             self.PASSED = True
         return self.PASSED
 
@@ -61,6 +69,8 @@ class Fork:
 
         # print(type(self.FORK_REWARD_TESTNET)) # said <class 'float'>
 
-        if self.FORK_REWARD_TESTNET < self.REWARD_MAX:
+        max = self.REWARD_MAX
+        if self.config is not None and not self.config.legacy_db:
+            max = self.REWARD_MAX_INT
+        if self.FORK_REWARD_TESTNET < max:
             self.PASSED_TESTNET = True
-        return self.PASSED_TESTNET

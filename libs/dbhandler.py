@@ -11,6 +11,7 @@ from decimal import Decimal
 from bismuthcore.compat import quantize_eight
 from bismuthcore.transaction import Transaction
 from bismuthcore.block import Block
+from bismuthcore.transactionslist import TransactionsList
 from bismuthcore.helpers import fee_calculate
 import functools
 from libs.fork import Fork
@@ -228,9 +229,11 @@ class DbHandler:
             self.logger.app_log.warning(f"Failed to roll back the token index below {(height)} due to {e}")
 
     def tokens_update(self):
+        # TODO: move at init/Single user stage, not every run - Move into plugin as well
         self.index_cursor.execute(
             "CREATE TABLE IF NOT EXISTS tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)")
         self.index.commit()
+
         self.index_cursor.execute("SELECT block_height FROM tokens ORDER BY block_height DESC LIMIT 1;")
         try:
             token_last_block = int(self.index_cursor.fetchone()[0])
@@ -655,7 +658,12 @@ class DbHandler:
         # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
         # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
         # Transaction objects - themselves - are db agnostic.
-        transaction_list = [Transaction.from_legacy(entry) for entry in block_desired_result]
+        if self.legacy_db:
+            transaction_list = [Transaction.from_legacy(entry) for entry in block_desired_result]
+        else:
+            # from_v2 is TODO EGG_EVO - to add to BismuthCore. Not needed for legacy -> V2 conversion.
+            print("get_address_range Transaction.from_v2 not supported yet")
+            sys.exit()
         return Block(transaction_list)
 
     def get_block_hash_for_height(self, block_height: int) -> str:
@@ -664,13 +672,13 @@ class DbHandler:
         :param block_height:
         :return:
         """
-        # EGG_EVO: Thi+s sql request is the same in both cases (int/float) but
         try:
             self._execute_param(self.h, "SELECT block_hash FROM transactions WHERE block_height = ?", (block_height, ))
-            # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
-            # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
             hash_hex = self.h.fetchone()[0]
-            return hash_hex
+            if self.legacy_db:
+                return hash_hex
+            else:
+                return hash_hex.hex()  # v2 db stores as bin
         except:
             return ''
 
@@ -692,7 +700,12 @@ class DbHandler:
         # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
         # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
         # Transaction objects - themselves - are db agnostic.
-        transaction_list = [Transaction.from_legacy(entry) for entry in block_desired_result]
+        if self.legacy_db:
+            transaction_list = [Transaction.from_legacy(entry) for entry in block_desired_result]
+        else:
+            # from_v2 is TODO EGG_EVO - to add to BismuthCore. Not needed for legacy -> V2 conversion.
+            print("get_address_range Transaction.from_v2 not supported yet")
+            sys.exit()
         return Block(transaction_list)
 
     def get_address_range(self, address: str, starting_block: int, limit: int) -> Block:
@@ -706,8 +719,13 @@ class DbHandler:
         # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
         # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
         # Transaction objects - themselves - are db agnostic.
-        transaction_list = [Transaction.from_legacy(entry) for entry in transactions]
-        return Block(transaction_list)
+        if self.legacy_db:
+            transaction_list = [Transaction.from_legacy(entry) for entry in transactions]
+        else:
+            # from_v2 is TODO EGG_EVO - to add to BismuthCore. Not needed for legacy -> V2 conversion.
+            print("get_address_range Transaction.from_v2 not supported yet")
+            sys.exit()
+        return TransactionsList(transaction_list)
 
     def transaction_signature_exists(self, encoded_signature: str) -> bool:
         """Tells whether that transaction already exists in the ledger"""
@@ -742,27 +760,38 @@ class DbHandler:
     # ====  Maintenance methods ====
 
     def backup_higher(self, block_height: int):
-        # TODO EGG_EVO, returned data is dependent of db format. is this an issue if consistent? What is it then used for?
+        # TODO EGG_EVO, returned data is dependent of db format.
+        # Is this an issue if consistent? What is it then used for?
+        # => It's used in node.py, blocknf: backup txs are re-inserted into mempool via mp.MEMPOOL.merge()
+        # which expects legacy format.
+        #
         # "backup higher blocks than given, takes data from c, which normally means RAM"
         self._execute_param(self.c, "SELECT * FROM transactions WHERE block_height >= ?;", (block_height,))
         backup_data = self.c.fetchall()
 
-        self._execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height)) #this belongs to rollback_under
-        self.commit(self.conn)  # this belongs to rollback_under
+        self._execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
+                            (block_height, -block_height))  # this belongs to rollback_under
+        self.commit(self.conn)
 
-        self._execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,)) #this belongs to rollback_under
-        self.commit(self.conn)  # this belongs to rollback_under
+        self._execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;",
+                            (block_height,))  # this belongs to rollback_under
+        self.commit(self.conn)
 
         return backup_data
 
     def rollback_under(self, block_height: int) -> None:
-        self.h.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height,))
+        # EGG: TEMP
+        self.logger.app_log.error(f"rollback_under {block_height} - STOPPED - Temp Debug")
+        sys.exit()
+        self.h.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
+                       (block_height, -block_height,))
         self.commit(self.hdd)
 
         self.h.execute("DELETE FROM misc WHERE block_height >= ?", (block_height,))
         self.commit(self.hdd)
 
-        self.h2.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height,))
+        self.h2.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
+                        (block_height, -block_height,))
         self.commit(self.hdd2)
 
         self.h2.execute("DELETE FROM misc WHERE block_height >= ?", (block_height,))
@@ -860,7 +889,7 @@ class DbHandler:
 
     def hn_reward(self, node, block_array, miner_tx, mirror_hash):
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
-        fork = Fork()
+        fork = Fork(node.config)
 
         if node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET:
             reward_sum = 24 - 10 * (node.last_block + 5 - fork.POW_FORK_TESTNET) / 3000000

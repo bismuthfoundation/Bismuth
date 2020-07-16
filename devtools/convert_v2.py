@@ -9,15 +9,12 @@ import sys
 
 # Bis specific modules
 sys.path.append('../')
-from libs.digest import digest_block
-from libs import keys, regnet, log
+from libs import log
 from libs.logger import Logger
-from libs.node import Node
 from libs.config import Config
-from libs.dbhandler import DbHandler
 from libs.solodbhandler import SoloDbHandler
 
-VERSION = "0.0.1-convert"
+VERSION = "0.0.2-convert"
 
 if __name__ == "__main__":
     datadir = "../datadir"  # Default datadir if empty

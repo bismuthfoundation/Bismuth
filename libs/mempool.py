@@ -343,7 +343,7 @@ class Mempool:
 
     def delete_transaction(self, signature: str) -> None:
         """
-        Delete a single tx by its id
+        Delete a single tx by its id (str, b64encoded)
         :return:
         """
         with self.lock:

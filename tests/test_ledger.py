@@ -7,21 +7,23 @@ from bismuthclient.bismuthclient import BismuthClient
 
 
 def test_blocklast_json(myserver):
-    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     data1 = client.command(command="blocklast")
     data2 = client.command(command="blocklastjson")
     assert (int(data1[0]) == data2['block_height']) and (data1[7] == data2['block_hash'])
 
+
 def test_balance_json(myserver):
-    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     data1 = client.command(command="balanceget", options=[client.address])
     data2 = client.command(command="balancegetjson", options=[client.address])
     assert data1[0] == data2['balance'] and data1[1] == data2['credit'] and \
            data1[2] == data2['debit'] and data1[3] == data2['fees'] and \
            data1[4] == data2['rewards'] and data1[5] == data2['balance_no_mempool']
 
+
 def test_addlistlim_json(myserver):
-    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
     op = '12345'
     data = '67890'
@@ -38,8 +40,9 @@ def test_addlistlim_json(myserver):
        data1[0][10] == data2[0]['operation'] and data1[0][11] == data2[0]['openfield'] and \
        data1[0][10] == op and data1[0][11] == data
 
+
 def test_api_getblockfromhash(myserver):
-    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
     client.send(recipient=client.address, amount=1.0, operation='12345', data='67890')
     client.command(command="regtest_generate", options=[1])  # Mine the next block

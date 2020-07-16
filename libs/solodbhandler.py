@@ -16,6 +16,7 @@ from decimal import Decimal
 from bismuthcore.compat import quantize_two, quantize_eight
 from bismuthcore.transaction import Transaction
 from bismuthcore.block import Block
+from bismuthcore.transactionslist import TransactionsList
 import functools
 from time import time as ttime
 from os import path
@@ -291,7 +292,7 @@ class SoloDbHandler:
             print("Transaction.from_v2 not supported yet")
             sys.exit()
             #transaction_list = [Transaction.from_v2(entry) for entry in blocks]
-        return Block(transaction_list)
+        return TransactionsList(transaction_list)
 
     @timeit
     def blocks_to_ledger(self, test: Block):

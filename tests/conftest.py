@@ -7,11 +7,12 @@ import pytest
 from subprocess import Popen
 from time import sleep
 
+
 @pytest.fixture(scope="session")
 def myserver():
     chdir('..')
     p = Popen(["python3", "node.py", "regnet"])
     chdir('tests')
-    sleep(1)
+    sleep(5)  # Get some time for the node to boot up on slow machines
     yield
     p.terminate()

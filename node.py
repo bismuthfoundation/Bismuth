@@ -18,6 +18,7 @@ from sys import version_info, argv, exc_info
 import os
 from time import time as ttime, sleep
 from decimal import Decimal
+from tornado.log import enable_pretty_logging
 # moved to DbHandler
 # import aliases  # PREFORK_ALIASES
 # import future.aliasesv2 as aliases # POSTFORK_ALIASES
@@ -25,6 +26,7 @@ from decimal import Decimal
 # Bis specific modules
 from libs.connections import send, receive
 from libs.digest import digest_block
+from libs.digestv2 import digest_block_v2
 from bismuthcore.helpers import sanitize_address
 from bismuthcore.transaction import Transaction
 from libs import keys, client, mempool as mp, regnet, log, essentials
@@ -32,13 +34,13 @@ from libs.nodebackgroundthread import NodeBackgroundThread
 from libs.logger import Logger
 from libs.node import Node
 from libs.config import Config
-from libs.fork import Fork
+# from libs.fork import Fork
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.19-evo"  # Experimental db-evolution branch
+VERSION = "5.0.20-evo"  # Experimental db-evolution branch
 
-fork = Fork()
+# fork = Fork()
 
 appname = "Bismuth"
 appauthor = "Bismuth Foundation"
@@ -229,12 +231,16 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                     node.logger.app_log.info(f"{peer_ip} banned")
                                     break
                             else:
-                                digest_block(node, segments, self.request, peer_ip, db_handler)
+                                if node.config.legacy_db:
+                                    digest_block(node, segments, self.request, peer_ip, db_handler)
+                                else:
+                                    digest_block_v2(node, segments, self.request, peer_ip, db_handler)
                         else:
                             node.logger.app_log.warning(f"Rejecting to sync from {peer_ip}")
                             send(self.request, "blocksrj")
                             node.logger.app_log.info(
-                                f"Inbound: Distant peer {peer_ip} is at {received_block_height}, should be at least {max(block_req,node.last_block+1)}")
+                                f"Inbound: Distant peer {peer_ip} is at {received_block_height}, "
+                                f"should be at least {max(block_req,node.last_block+1)}")
                     send(self.request, "sync")
 
                 elif data == "blockheight":
@@ -393,7 +399,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                 node.plugin_manager.execute_action_hook('mined', mined)
                                 node.logger.app_log.info("Inbound: Processing block from miner")
                                 try:
-                                    digest_block(node, segments, self.request, peer_ip, db_handler)
+                                    if node.config.legacy_db:
+                                        digest_block(node, segments, self.request, peer_ip, db_handler)
+                                    else:
+                                        digest_block_v2(node, segments, self.request, peer_ip, db_handler)
                                 except ValueError as e:
                                     node.logger.app_log.warning("Inbound: block {}".format(str(e)))
                                     return
@@ -412,7 +421,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         else:
                             # Not mainnet
                             try:
-                                digest_block(node, segments, self.request, peer_ip, db_handler)
+                                if node.config.legacy_db:
+                                    digest_block(node, segments, self.request, peer_ip, db_handler)
+                                else:
+                                    digest_block_v2(node, segments, self.request, peer_ip, db_handler)
                             except ValueError as e:
                                 node.logger.app_log.warning("Inbound: block {}".format(str(e)))
                                 return
@@ -1035,6 +1047,7 @@ if __name__ == "__main__":
         config = Config(datadir=datadir, wait=wait, force_legacy=True, force_regnet=force_regnet)
     # config.read() is now implicit at instanciation
     logger = Logger()  # is that class really useful?
+    enable_pretty_logging()
     logger.app_log = log.log("node.log", config.debug_level, config.terminal_output)
     logger.app_log.warning("Configuration settings loaded")
     # Pre-node tweaks
@@ -1048,7 +1061,11 @@ if __name__ == "__main__":
 
     # Will start node init sequence
     # Node instanciation is now responsible for lots of things that were previously done here or below
-    node = Node(digest_block, config,  app_version=VERSION, logger=logger, keys=keys.Keys())
+    if config.legacy_db:
+        node = Node(digest_block, config, app_version=VERSION, logger=logger, keys=keys.Keys())
+    else:
+        node = Node(digest_block_v2, config, app_version=VERSION, logger=logger, keys=keys.Keys())
+
     node.logger.app_log.warning(f"Python version: {node.py_version}")
 
     try:

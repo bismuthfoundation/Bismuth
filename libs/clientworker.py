@@ -11,6 +11,7 @@ from libs.connections import send, receive
 from libs import client
 from libs.dbhandler import DbHandler
 from libs.digest import digest_block
+from libs.digestv2 import digest_block_v2
 
 # See why we do that: https://stackoverflow.com/questions/39740632/python-type-hinting-without-cyclic-imports
 # I'm not using from __future__ because some nodes still run on python 3.6
@@ -265,7 +266,10 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                             if node.peers.warning(s, peer_ip, "Failed to deliver the longest chain", 2):
                                 raise ValueError(f"{peer_ip} is banned")
                         else:
-                            digest_block(node, segments, s, peer_ip, db_handler)
+                            if node.config.legacy_db:
+                                digest_block(node, segments, s, peer_ip, db_handler)
+                            else:
+                                digest_block_v2(node, segments, s, peer_ip, db_handler)
                             # receive theirs
                     else:
                         send(s, "blocksrj")

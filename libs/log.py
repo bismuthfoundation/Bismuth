@@ -40,6 +40,8 @@ def log(log_file, level_input="WARNING", terminal_output=False):
     app_log.setLevel(level)
     app_log.addHandler(my_handler)
 
+    # Handled by tornado default colored handler
+    """
     # This part is what goes on console.
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(level)
@@ -53,5 +55,5 @@ def log(log_file, level_input="WARNING", terminal_output=False):
         formatter = logging.Formatter('%(asctime)s %(funcName)s(%(lineno)d) %(message)s')
     ch.setFormatter(formatter)
     app_log.addHandler(ch)
-
+    """
     return app_log
