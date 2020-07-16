@@ -3,6 +3,7 @@
 # The regnet server is started by conftest.py
 
 from time import sleep
+
 from bismuthclient.bismuthclient import BismuthClient
 
 
@@ -106,24 +107,26 @@ def test_send_more_than_owned_in_two_transactions(myserver):
     balance = float(client.balance())
     assert (balance > 1.0)
 
+
 def test_fee(myserver):
-    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
-    client.command(command="regtest_generate",options=[1]) #Mine a block so we have some funds
+    client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
+    client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
     data = '12345678901234567890123456789012345678901234567890'
     client.send(recipient=client.address, amount=0, data=data)
-    client.command(command="regtest_generate",options=[1]) #Mine the next block
+    client.command(command="regtest_generate", options=[1])  # Mine the next block
     sleep(1)
     tx = client.latest_transactions(num=1)
-    assert float(tx[0]["fee"]) == 0.01 + 1e-5*len(data)
+    assert float(tx[0]["fee"]) == 0.01 + 1e-5 * len(data)
+
 
 def test_operation_length(myserver):
-    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
-    client.command(command="regtest_generate",options=[1]) #Mine a block so we have some funds
+    client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
+    client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
     operation = '123456789012345678901234567890'
     client.send(recipient=client.address, amount=0, operation=operation)
     operation = '1234567890123456789012345678901'
     client.send(recipient=client.address, amount=0, operation=operation)
-    client.command(command="regtest_generate",options=[1]) #Mine the next block
+    client.command(command="regtest_generate", options=[1])  # Mine the next block
     sleep(1)
     tx = client.latest_transactions(num=2)
     assert (len(tx[0]["operation"]) == 30) and (len(tx[1]["operation"]) == 1)

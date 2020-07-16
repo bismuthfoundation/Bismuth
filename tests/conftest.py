@@ -3,9 +3,10 @@
 # python3 should work on most recent Linux distros
 
 from os import chdir
-import pytest
 from subprocess import Popen
 from time import sleep
+
+import pytest
 
 
 @pytest.fixture(scope="session")

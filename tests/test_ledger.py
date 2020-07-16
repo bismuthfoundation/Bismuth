@@ -3,6 +3,7 @@
 # The regnet server is started by conftest.py
 
 from time import sleep
+
 from bismuthclient.bismuthclient import BismuthClient
 
 
@@ -51,5 +52,5 @@ def test_api_getblockfromhash(myserver):
     block_hash = data1[0]['block_hash']
     data2 = client.command(command="api_getblockfromhash", options=[block_hash])
     block_height = str(data1[0]['block_height'])
-    N = len(data2[block_height]['transactions'])
-    assert data2[block_height]['block_hash'] == block_hash and N == 2
+    n = len(data2[block_height]['transactions'])
+    assert data2[block_height]['block_hash'] == block_hash and n == 2
