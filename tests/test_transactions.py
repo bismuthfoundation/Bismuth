@@ -3,9 +3,20 @@
 # The regnet server is started by conftest.py
 
 from time import sleep
-
+from base64 import b64decode, b64encode
 from bismuthclient.bismuthclient import BismuthClient
+from bismuthcore.transaction import Transaction
+from polysign.signerfactory import SignerFactory
 
+def normalize_key(a):
+    b = "-----BEGIN PUBLIC KEY-----\n"
+    i = 0
+    n = 64
+    while i * n < len(a):
+        b = b + a[i * n:(i + 1) * n] + '\n'
+        i = i + 1
+    b = b + "-----END PUBLIC KEY-----"
+    return b
 
 def test_amount_and_recipient(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
@@ -130,3 +141,20 @@ def test_operation_length(myserver):
     sleep(1)
     tx = client.latest_transactions(num=2)
     assert (len(tx[0]["operation"]) == 30) and (len(tx[1]["operation"]) == 1)
+
+def test_tx_signature(myserver):
+    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    client.command(command="regtest_generate", options=[1])  # Mine a block
+    sleep(1)
+    r = client.command(command="blocklast")
+    tx = Transaction.from_legacy_params(r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7],r[8],r[9],r[10],r[11])
+    buffer = tx.to_buffer_for_signing()
+    db_signature_enc = r[5]
+    db_public_key_hashed = b64encode(normalize_key(r[6]).encode("utf-8"))
+    db_address = r[2]
+    bOK = True
+    try:
+        SignerFactory.verify_bis_signature(db_signature_enc, db_public_key_hashed, buffer, db_address)
+    except:
+        bOK = False
+    assert bOK
