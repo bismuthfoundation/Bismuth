@@ -3,20 +3,11 @@
 # The regnet server is started by conftest.py
 
 from time import sleep
-from base64 import b64decode, b64encode
+from base64 import b64encode
 from bismuthclient.bismuthclient import BismuthClient
 from bismuthcore.transaction import Transaction
 from polysign.signerfactory import SignerFactory
-
-def normalize_key(a):
-    b = "-----BEGIN PUBLIC KEY-----\n"
-    i = 0
-    n = 64
-    while i * n < len(a):
-        b = b + a[i * n:(i + 1) * n] + '\n'
-        i = i + 1
-    b = b + "-----END PUBLIC KEY-----"
-    return b
+from common import normalize_key
 
 def test_amount_and_recipient(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
