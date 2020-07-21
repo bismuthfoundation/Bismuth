@@ -3,8 +3,8 @@
 # The regnet server is started by conftest.py
 
 from time import sleep
-
 from bismuthclient.bismuthclient import BismuthClient
+from hashlib import sha224
 
 
 def test_blocklast_json(myserver):
@@ -54,3 +54,21 @@ def test_api_getblockfromhash(myserver):
     block_height = str(data1[0]['block_height'])
     n = len(data2[block_height]['transactions'])
     assert data2[block_height]['block_hash'] == block_hash and n == 2
+
+
+def test_db_blockhash(myserver):
+    client = BismuthClient(servers_list={'127.0.0.1:3030'},wallet_file='../datadir/wallet.der')
+    client.command(command="regtest_generate", options=[2])  # Mine two blocks
+    sleep(1)
+    data = client.command(command="blocklastjson")
+    since = data['block_height'] - 2
+    r = client.command(command="api_getblocksince", options=[since])
+    db_block_hash_prev = r[0][7]
+    db_block_hash = r[1][7]
+
+    amount = '0.00000000'
+    timestamp = str(r[1][1])
+    tx_list = []
+    tx_list.append((timestamp,r[1][2],r[1][3],amount,r[1][5],r[1][6],r[1][10],r[1][11]))
+    block_hash = sha224((str(tx_list) + db_block_hash_prev).encode("utf-8")).hexdigest()
+    assert db_block_hash == block_hash
