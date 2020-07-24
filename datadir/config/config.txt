@@ -33,3 +33,6 @@ trace_db_calls=False
 ;mempool_path=./datadir/live/mempool.db
 ;ledger_path=static/ledger.db
 ;hyper_path=static/hyper.db
+
+; WIP - 0 = less verbose, 1 mid-verbose, 2 very verbose
+verbosity=0

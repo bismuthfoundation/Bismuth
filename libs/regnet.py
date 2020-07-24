@@ -114,17 +114,20 @@ def generate_one_block(blockhash: str, mempool_txs: List[tuple], node: "Node", d
                         block_send.append(transaction)  # append tuple to list for each run
                         removal_signature.append(str(mpdata[4]))  # for removal after successful mining
                     # claim reward
-                    block_timestamp = '%.2f' % time.time()
-                    transaction_reward = (str(block_timestamp), str(ADDRESS[:56]), str(ADDRESS[:56]),
-                                          '%.8f' % float(0), "0", str(nonce))  # only this part is signed!
+                    block_timestamp = f"{time.time():.2f}"
+                    """block_timestamp = '%.2f' % time.time()
+                    transaction_reward = str((str(block_timestamp), str(ADDRESS[:56]), str(ADDRESS[:56]),
+                                          '%.8f' % float(0), "0", str(nonce)))  # only this part is signed!
+                    """
+                    transaction_reward = str((block_timestamp, ADDRESS[:56], ADDRESS[:56], f"{0:.8f}", "0", str(nonce)))
                     # node.logger.app_log.warning transaction_reward
-
-                    hash = SHA.new(str(transaction_reward).encode("utf-8"))
+                    node.logger.app_log.warning(f"Buffer to sign: {transaction_reward}")
+                    tx_hash = SHA.new(transaction_reward.encode("utf-8"))
                     signer = PKCS1_v1_5.new(KEY)
-                    signature = signer.sign(hash)
+                    signature = signer.sign(tx_hash)
                     signature_enc = base64.b64encode(signature)
 
-                    if signer.verify(hash, signature):
+                    if signer.verify(tx_hash, signature):
                         node.logger.app_log.warning("Signature valid")
                         block_send.append((str(block_timestamp), str(ADDRESS[:56]), str(ADDRESS[:56]), '%.8f' % float(0),
                                            str(signature_enc.decode("utf-8")), str(PUBLIC_KEY_B64ENCODED.decode("utf-8")),
