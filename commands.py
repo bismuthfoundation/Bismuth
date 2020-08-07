@@ -1,563 +1,428 @@
 #!/usr/bin/env python3
 
-import socks, time, sys, json
-from libs import connections
-from libs.config import Config
-
-config = Config(datadir="./datadir", force_legacy=True, wait=0, silent=True)
-version = config.version
-# version = "mainnet"
-
-# print ('Number of arguments:', len(sys.argv), 'arguments.')
-# print ('Argument List:', str(sys.argv))
-
-try:
-    command = sys.argv[1]
-
-    try:
-        arg1 = sys.argv[2]
-    except:
-        pass
-
-    try:
-        arg2 = sys.argv[3]
-    except:
-        pass
-
-    try:
-        arg3 = sys.argv[4]
-    except:
-        pass
-
-    try:
-        arg4 = sys.argv[5]
-    except:
-        pass
-
-    try:
-        arg5 = sys.argv[6]
-    except:
-        pass
-
-except:
-
-    entry = input("No argument detected, please insert command manually\n").split()
-    command = entry[0]
-    print (entry)
-
-    try:
-        arg1 = entry[1]
-    except:
-        pass
-    try:
-        arg2 = entry[2]
-    except:
-        pass
-    try:
-        arg3 = entry[3]
-    except:
-        pass
-    try:
-        arg4 = entry[4]
-    except:
-        pass
-    try:
-        arg5 = entry[5]
-    except:
-        pass
-
-    try:
-        arg6 = entry[6]
-    except:
-        pass
-
-
-s = socks.socksocket()
-s.settimeout(10)
-
-is_regnet = False
-
-if "testnet" in version:
-    s.connect (("127.0.0.1", 2829))
-    print("testnet mode")
-elif "regnet" in version:
-    is_regnet = True
-    print("Regtest mode")
-    s.connect (("127.0.0.1", 3030))
-else:
-    s.connect(("127.0.0.1", 5658))
-    #s.connect(("34.192.6.105", 5658))
-    #s.connect(("bismuth.live", 5658))
-
-def api_getconfig(socket):
-    connections.send(s, "api_getconfig")
-    result = connections.receive(s)
-    print (result)
-
-def diffget(socket):
-    #check difficulty
-    connections.send(s, "diffget")
-    diff = connections.receive(s)
-    print ("Current difficulty: {}".format(diff))
-    #check difficulty
-
-def diffgetjson(socket):
-    #check difficulty
-    connections.send(s, "diffgetjson")
-    response = connections.receive(s)
-    #for key in response:
-    #    print (key,":",response[key])
-    print(json.dumps(response))
-    #check difficulty
-
-def balanceget(socket, arg1):
-    #get balance
-    connections.send(s, "balanceget")
-    connections.send(s, arg1)
-    balanceget_result = connections.receive(s)
-    print ("Address balance: {}".format(balanceget_result[0]))
-    print ("Address credit: {}".format(balanceget_result[1]))
-    print ("Address debit: {}".format(balanceget_result[2]))
-    print ("Address fees: {}".format(balanceget_result[3]))
-    print ("Address rewards: {}".format(balanceget_result[4]))
-    print ("Address balance without mempool: {}".format (balanceget_result[5]))
-    #get balance
-
-def balancegetjson(socket, arg1):
-    #get balance
-    connections.send(s, "balancegetjson")
-    connections.send(s, arg1)
-    response = connections.receive(s)
-    print(json.dumps(response))
-    #get balance
-
-def balancegethyper(socket, arg1):
-    #get balance
-    connections.send(s, "balancegethyper")
-    connections.send(s, arg1)
-    balanceget_result = connections.receive(s)
-    print ("Address balance: {}".format(balanceget_result))
-    #get balance
-
-def balancegethyperjson(socket, arg1):
-    #get balance
-    connections.send(s, "balancegethyperjson")
-    connections.send(s, arg1)
-    response = connections.receive(s)
-    print(json.dumps(response))
-    #get balance
-
-#insert to mempool
-#DIRECT INSERT, NO REMOTE TX CONSTRUCTION
-def mpinsert(s, transaction):
-    connections.send(s, "mpinsert")
-    connections.send(s, transaction)
-    confirmation = connections.receive(s)
-    print (confirmation)
-#insert to mempool
-
-def mpget(socket):
-    #ask for mempool
-    connections.send(s, "mpget")
-    mempool = connections.receive(s)
-    print ("Current mempool: {}".format(mempool))
-    #ask for mempool
-
-def mpgetjson(socket):
-    #ask for mempool
-    connections.send(s, "mpgetjson")
-    response_list = connections.receive(s)
-    print ("Current mempool:")
-    print(json.dumps(response_list))
-    #ask for mempool
-
-def difflast(socket):
-    #ask for last difficulty
-    connections.send(s, "difflast")
-    response = connections.receive(s)
-    blocklast = response[0]
-    difflast = response[1]
-    print("Last block: {}".format(blocklast))
-    print ("Last difficulty: {}".format(difflast))
-    #ask for last difficulty
-
-def difflastjson(socket):
-    #ask for last difficulty
-    connections.send(s, "difflastjson")
-    response = connections.receive(s)
-    print(json.dumps(response))
-    #ask for last difficulty
-
-def blocklast(socket):
-    #get last block
-    connections.send(s, "blocklast")
-    block_last = connections.receive(s)
-
-    print ("Last block number: {}".format(block_last[0]))
-    print ("Last block timestamp: {}".format(block_last[1]))
-    print ("Last block hash: {}".format(block_last[7]))
-    #get last block
-
-def blocklastjson(socket):
-    #get last block
-    connections.send(s, "blocklastjson")
-    response = connections.receive(s)
-    print(json.dumps(response))
-    #get last block
-
-def api_getblocksince(socket, arg1=None):
-    #get last block
-    connections.send(s, "api_getblocksince")
-    if arg1:
-        connections.send(s, arg1)
-    response = connections.receive(s)
-    print(json.dumps(response))
-    #get last block
-
-def keygen(socket):
-    #generate address
-    #RECEIVES PRIVATE KEY FROM NODE
-    connections.send(s, "keygen")
-    keys_generated = connections.receive(s)
-
-    print ("Private key: {}".format(keys_generated[0]))
-    print ("Public key: {}".format(keys_generated[1]))
-    print ("Address: {}".format(keys_generated[2]))
-    #generate address
-
-def keygenjson(socket):
-    #generate address
-    #RECEIVES PRIVATE KEY FROM NODE
-    connections.send(s, "keygenjson")
-    response = connections.receive(s)
-    print(json.dumps(response))
-    #generate address
-
-def blockget(socket, arg1):
-    #get block
-    connections.send(s, "blockget")
-    connections.send(s, arg1)
-    block_get = connections.receive(s)
-    print ("Requested block: {}".format(block_get))
-    print ("Requested block number of transactions: {}".format(len(block_get)))
-    print ("Requested block height: {}".format(block_get[0][0]))
-    #get block
-
-def blockgetjson(socket, arg1):
-    #get block
-    connections.send(s, "blockgetjson")
-    connections.send(s, arg1)
-    response_list = connections.receive(s)
-    print(json.dumps(response_list))
-    #get block
-
-def addlist(socket, arg1):
-    #get all txs for an address
-    connections.send(s, "addlist")
-    connections.send(s, arg1)
-    address_tx_list = connections.receive(s)
-    print("All transactions for requested address:")
-    for row in address_tx_list:
-        print (row)
-    #get all txs for an address
-
-def addlistlim(socket, arg1, arg2):
-    #get x txs for an address
-    connections.send(s, "addlistlim")
-    connections.send(s, arg1)
-    connections.send(s, arg2)
-    address_tx_list = connections.receive(s)
-    print("Transactions for requested address:")
-    for row in address_tx_list:
-        print (row)
-    #get all txs for an address
-
-def addlistlimjson(socket, arg1, arg2):
-    #get x txs for an address
-    connections.send(s, "addlistlimjson")
-    connections.send(s, arg1)
-    connections.send(s, arg2)
-    response_list = connections.receive(s)
-    print("Transactions for requested address:")
-    print(json.dumps(response_list))
-    #get all txs for an address
-
-def addlistlimmir(socket, arg1, arg2):
-    #get x negative txs for an address
-    connections.send(s, "addlistlimmir")
-    connections.send(s, arg1)
-    connections.send(s, arg2)
-    address_tx_list = connections.receive(s)
-    print("Mirror transactions for requested address:")
-    for row in address_tx_list:
-        print (row)
-    #get all txs for an address
-
-def addlistlimmirjson(socket, arg1, arg2):
-    #get x negative txs for an address
-    connections.send(s, "addlistlimmirjson")
-    connections.send(s, arg1)
-    connections.send(s, arg2)
-    response_list = connections.receive(s)
-    print("Mirror transactions for requested address:")
-    print(json.dumps(response_list))
-    #get all txs for an address
-
-def listlim(socket, arg1):
-    #get x last txs
-    connections.send(s, "listlim")
-    connections.send(s, arg1)
-    tx_list = connections.receive(s)
-    print("All transactions for requested range:")
-    for row in tx_list:
-        print (row)
-
-def api_getblockfromhash(socket, arg1):
-    connections.send(s, "api_getblockfromhash")
-    connections.send(s, arg1)
-    reply = connections.receive(s)
-    print(reply)
-
-def listlimjson(socket, arg1):
-    #get x last txs
-    connections.send(s, "listlimjson")
-    connections.send(s, arg1)
-    response_list = connections.receive(s)
-    print("All transactions for requested range:")
-    print(json.dumps(response_list))
-
-def txsend(socket, arg1, arg2, arg3, arg4, arg5):
-    #generate transaction
-    #SENDS PRIVATE KEY TO NODE
-    connections.send(s, "txsend")
-
-    remote_tx_timestamp = '%.2f' % time.time()
-    remote_tx_privkey = arg1  # node will dump pubkey+address from this
-    remote_tx_recipient = arg2
-    remote_tx_amount = arg3
-    remote_tx_operation = arg4
-    remote_tx_openfield = arg5
-
-    #connections.send(s, (remote_tx_timestamp, remote_tx_privkey, remote_tx_recipient, remote_tx_amount, remote_tx_keep, remote_tx_openfield))
-    connections.send(s, (str(remote_tx_timestamp), str(remote_tx_privkey), str(remote_tx_recipient), str(remote_tx_amount), str(remote_tx_operation), str(remote_tx_openfield)))
-    #generate transaction
-
-    signature = connections.receive(s)
-    print (signature)
-
-def aliasget(socket, arg1):
-    connections.send(s, "aliasget")
-    connections.send(s, arg1)
-    alias_results = connections.receive(s)
-    print (alias_results)
-
-def tokensget(socket, arg1):
-    connections.send(s, "tokensget")
-    connections.send(s, arg1)
-    tokens_results = connections.receive(s)
-    print (tokens_results)
-
-def addfromalias(socket, arg1):
-    connections.send(s, "addfromalias")
-    connections.send(s, arg1)
-    address_fetch = connections.receive(s)
-    print (address_fetch)
-
-def peersget(socket):
-    connections.send(s, "peersget")
-    peers_received = connections.receive(s)
-    print (peers_received)
-
-def statusget(socket):
-    connections.send(s, "statusget")
-    response = connections.receive(s)
-    print(json.dumps(response))
-
-def statusjson(socket):
-    connections.send(s, "statusjson")
-    response = connections.receive(s)
-    print(json.dumps(response))
-
-def portget(socket):
-    connections.send(s, "portget")
-    response = connections.receive(s)
-    print(json.dumps(response))
-
-def addvalidate(socket, arg1):
-    connections.send(s, "addvalidate")
-    connections.send(s, arg1)
-    validate_result = connections.receive(s)
-    print (validate_result)
-
-def aliasesget(socket, arg1):
-    arg_split = arg1.split(",")
-    print (arg_split)
-
-    connections.send(s, "aliasesget")
-    connections.send(s, arg_split)
-    alias_results = connections.receive(s)
-    print (alias_results)
-
-def api_getaddresssince(socket, arg1, arg2, arg3):
-    connections.send(s, "api_getaddresssince")
-    connections.send(s, arg1)
-    connections.send(s, arg2)
-    connections.send(s, arg3)
-    response = connections.receive(s)
-    print(json.dumps(response))
-
-if command == "getversion":
-    connections.send(s, "getversion")
-    print(connections.receive(s))
-
-if command == "generate":
-    if not is_regnet:
-        print("Only available on regnet")
-        sys.exit()
-    connections.send(s, "regtest_generate")
-    connections.send(s, arg1)
-    print(connections.receive(s))
-
-if command == "mpfill":
-    if not is_regnet:
-        print("Only available on regnet")
-        sys.exit()
-    connections.send(s, "regtest_mpfill")
-    connections.send(s, arg1)
-    print(connections.receive(s))
-
-if command == "mpinsert":
-    #arg1 = '1520788207.69', '4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed', '4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed', '0.00000000', 'e0piKXvc636t0fYmxdOti3fJZ+G1vQYAJ2IZv4inPGQYgG4nS0lU+61LDQQVqeGvmsDOsxFhM6VVLpYExPmc5HF6e1ZAr5IXQ69s88sJBx/XVl1YavAdo0katGDyvZpQf609F8PVbtD0zzBinQjfkoXU/NXo00CEyniyYPxAXuI=', 'LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlHZk1BMEdDU3FHU0liM0RRRUJBUVVBQTRHTkFEQ0JpUUtCZ1FES3ZMVGJEeDg1YTF1Z2IvNnhNTWhWT3E2VQoyR2VZVDgrSXEyejlGd0lNUjQwbDJ0dEdxTks3dmFyTmNjRkxJdThLbjRvZ0RRczNXU1dRQ3hOa2haaC9GcXpGCllZYTMvSXRQUGZ6clhxZ2Fqd0Q4cTRadDRZbWp0OCsyQmtJbVBqakZOa3VUUUl6Mkl1M3lGcU9JeExkak13N24KVVZ1OXRGUGlVa0QwVm5EUExRSURBUUFCCi0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQ==', '0', ''
-    mpinsert(s, arg1)
-
-if command == "aliasget":
-    aliasget(s, arg1)
-
-if command == "tokensget":
-    tokensget(s, arg1)
-
-if command == "addvalidate":
-    addvalidate(s, arg1)
-
-if command == "aliasesget":
-    aliasesget(s, arg1)
-
-elif command == "diffget":
-    diffget(s)
-
-elif command == "diffgetjson":
-    diffgetjson(s)
-
-elif command == "difflast":
-    difflast(s)
-
-elif command == "difflastjson":
-    difflastjson(s)
-
-elif command == "balanceget":
-    balanceget(s, arg1)
-
-elif command == "balancegetjson":
-    balancegetjson(s, arg1)
-
-elif command == "balancegethyper":
-    balancegethyper(s, arg1)
-
-elif command == "balancegethyperjson":
-    balancegethyperjson(s, arg1)
-
-elif command == "api_getconfig":
-    api_getconfig(s)
-
-elif command == "mpget":
-    mpget(s)
-
-elif command == "mpgetjson":
-    mpgetjson(s)
-
-elif command == "statusjson":
-    statusjson(s)
-
-elif command == "portget":
-    portget(s)
-
-elif command == "peersget":
-    peersget(s)
-
-elif command == "blocklast":
-    blocklast(s)
-
-elif command == "blocklastjson":
-    blocklastjson(s)
-
-elif command == "keygen":
-    keygen(s)
-
-elif command == "keygenjson":
-    keygenjson(s)
-
-elif command == "blockget":
-    blockget(s, arg1)
-
-elif command == "blockgetjson":
-    blockgetjson(s, arg1)
-
-elif command == "addlist":
-    addlist(s, arg1)
-
-elif command == "addlistlim":
-    addlistlim(s, arg1, arg2)
-
-elif command == "listlimjson":
-    listlimjson(s, arg1)
-
-elif command == "addlistlimjson":
-    addlistlimjson(s, arg1, arg2)
-
-elif command == "addlistlimmir":
-    addlistlimmir(s, arg1, arg2)
-
-elif command == "addlistlimmirjson":
-    addlistlimmirjson(s, arg1, arg2)
-
-elif command == "listlim":
-    listlim(s, arg1)
-
-elif command == "api_getblockfromhash":
-    api_getblockfromhash(s, arg1)
-
-elif command == "api_getblocksince":
-    try:
-        api_getblocksince(s, int(arg1))
-    except:
-        api_getblocksince(s)
-
-elif command == "stop":
-    connections.send(s, "stop")
-    print("Asked to Stop")
-
-elif command == "api_mempool":
-    connections.send(s, "api_mempool")
-    print(connections.receive(s))
-
-
-elif command == "addfromalias":
-    addfromalias(s, arg1)
-
-elif command == "api_getaddresssince":
-    api_getaddresssince(s, arg1, arg2, arg3)
-
-elif command == "txsend":
-    try:
-        arg4
-    except:
-        arg4="0"
-
-    try:
-        arg5
-    except:
-        arg5=""
-
-    txsend(s, arg1, arg2, arg3, arg4, arg5)
-
-s.close()
+import socks
+import json
+import click
+from libs.connections import send, receive
+
+
+class Config:
+    def __init__(self, mode, host, timeout):
+        self.timeout = timeout
+        self.host = host
+
+        if mode == "regnet":
+            self.port = 3030
+            self.is_regnet = True
+
+        elif mode == "testnet":
+            self.port = 2829
+            self.is_testnet = True
+
+        elif mode == "mainnet":
+            self.port = 5658
+
+
+def load_local_address(keyfile="wallet.der"):
+    with open(keyfile, "r") as keyfile:
+        wallet_dict = json.load(keyfile)
+    address = wallet_dict["Address"]
+    return address
+
+
+local_address = load_local_address()
+
+
+@click.group()
+@click.option("--mode", "-m", default="mainnet", help="mainnet, testnet, regnet")
+@click.option("--host", "-h", default="127.0.0.1", help="IP")
+@click.option("--timeout", "-t", default=30, help="Timeout in seconds")
+# @click.option("--format", "-f", is_flag=True) #  not implemented yet
+
+
+@click.pass_context
+def cli(ctx, mode, host, timeout):
+    ctx.obj = Config(mode, host, timeout)
+
+
+@cli.command()
+@click.argument("command", nargs=-1)
+@click.pass_context
+def forward(**kwargs):
+    """Directly forwards commands"""
+
+    commands = kwargs.get("command")  # extract kwarg
+    ctx = kwargs.get("ctx")  # extract kwarg
+
+    key_command = commands[0]
+    extra_args = commands[1:]
+
+    response = send_command(ctx, key_command, extra_args)
+    click.echo(response)
+
+
+def send_command(ctx, key, extra_args_input=None):
+    """Handles connection, sending and receiving"""
+    s = socks.socksocket()
+    s.connect((ctx.obj.host, ctx.obj.port))
+
+    print(key)
+    send(s, key)
+
+    if extra_args_input and type(extra_args_input) is list:
+        for extra_arg in extra_args_input:
+            send(s, extra_arg)
+    elif extra_args_input and type(extra_args_input) in [str, tuple]:
+        send(s, extra_args_input)
+
+    response = receive(s, timeout=ctx.obj.timeout)
+    return response
+
+
+@cli.command()
+@click.pass_context
+def api_getconfig(ctx):
+    """Configuration"""
+    click.echo(send_command(ctx=ctx, key="api_getconfig"))
+
+
+@cli.command()
+@click.pass_context
+def diffget(ctx):
+    """Realtime difficulty, used in mining"""
+    click.echo(send_command(ctx=ctx, key="diffget"))
+
+
+@cli.command()
+@click.pass_context
+def diffgetjson(ctx):
+    """JSON realtime difficulty, used in mining"""
+    click.echo(send_command(ctx=ctx, key="diffgetjson"))
+
+
+@cli.command()
+@click.argument("address", type=str, default=local_address)
+@click.pass_context
+def balanceget(ctx, address):
+    """Balance of a particular address"""
+    click.echo(send_command(ctx=ctx, key="balanceget", extra_args_input=address))
+
+
+@cli.command()
+@click.argument("address", type=str, default=local_address)
+@click.pass_context
+def balancegetjson(ctx, address):
+    """JSON balance of a particular address"""
+    click.echo(send_command(ctx=ctx, key="balancegetjson", extra_args_input=address))
+
+
+@cli.command()
+@click.argument("address", type=str, default=local_address)
+@click.pass_context
+def balancegethyper(ctx, address):
+    """Balance of a particular address in hyperledger"""
+    click.echo(send_command(ctx=ctx, key="balancegethyper", extra_args_input=address))
+
+
+@cli.command()
+@click.argument("address", type=str, default=local_address)
+@click.pass_context
+def balancegethyperjson(ctx, address):
+    """JSON balance of a particular address in hyperledger"""
+    click.echo(
+        send_command(ctx=ctx, key="balancegethyperjson", extra_args_input=address)
+    )
+
+
+@cli.command()
+@click.argument("transaction")
+@click.pass_context
+def mpinsert(ctx, transaction):
+    """Insert raw transaction into the mempool"""
+    click.echo(send_command(ctx=ctx, key="mpinsert", extra_args_input=transaction))
+
+
+@cli.command()
+@click.pass_context
+def mpget(ctx):
+    """Current mempool content"""
+    click.echo(send_command(ctx=ctx, key="mpget"))
+
+
+@cli.command()
+@click.pass_context
+def mpgetjson(ctx):
+    """JSON current mempool content"""
+    click.echo(send_command(ctx=ctx, key="mpgetjson"))
+
+
+@cli.command()
+@click.pass_context
+def difflast(ctx):
+    """Last mined difficulty"""
+    click.echo(send_command(ctx=ctx, key="difflast"))
+
+
+@cli.command()
+@click.pass_context
+def difflastjson(ctx):
+    """JSON Last mined difficulty"""
+    click.echo(send_command(ctx=ctx, key="difflastjson"))
+
+
+@cli.command()
+@click.pass_context
+def blocklast(ctx):
+    """Last block content"""
+    click.echo(send_command(ctx=ctx, key="blocklast"))
+
+
+@cli.command()
+@click.pass_context
+def blocklastjson(ctx):
+    """JSON Last block content"""
+    click.echo(send_command(ctx=ctx, key="blocklastjson"))
+
+
+@cli.command()
+@click.argument("since")
+@click.pass_context
+def api_getblocksince(ctx, since=None):
+    """Block since"""
+    click.echo(send_command(ctx=ctx, key="api_getblocksince", extra_args_input=since))
+
+
+@cli.command()
+@click.pass_context
+def keygen(ctx):
+    """Generate RSA key pairs"""
+    click.echo(send_command(ctx=ctx, key="keygen"))
+
+
+@cli.command()
+@click.pass_context
+def keygenjson(ctx):
+    """JSON generate RSA key pairs"""
+    click.echo(send_command(ctx=ctx, key="keygenjson"))
+
+
+@cli.command()
+@click.argument("height")
+@click.pass_context
+def blockget(ctx, height):
+    """Get block from a particular height"""
+    click.echo(send_command(ctx=ctx, key="blockget", extra_args_input=height))
+
+
+@cli.command()
+@click.argument("height")
+@click.pass_context
+def blockgetjson(ctx, height):
+    """JSON block from a particular height"""
+    click.echo(send_command(ctx=ctx, key="blockgetjson", extra_args_input=height))
+
+
+@cli.command()
+@click.argument("address", type=str, default=local_address)
+@click.pass_context
+def addlist(ctx, address):
+    """All transactions of an address"""
+    click.echo(send_command(ctx=ctx, key="addlist", extra_args_input=address))
+
+
+@cli.command()
+@click.argument("address", type=str, default=local_address)
+@click.argument("limit")
+@click.pass_context
+def addlistlim(ctx, address, limit):
+    """Given number of transactions of an address"""
+    click.echo(
+        send_command(ctx=ctx, key="addlistlim", extra_args_input=[address, limit])
+    )
+
+
+@cli.command()
+@click.argument("address", type=str, default=local_address)
+@click.argument("limit")
+@click.pass_context
+def addlistlimjson(ctx, address, limit):
+    """JSON given number of transactions of an address"""
+    click.echo(
+        send_command(ctx=ctx, key="addlistlimjson", extra_args_input=[address, limit])
+    )
+
+
+@cli.command()
+@click.argument("address", type=str, default=local_address)
+@click.argument("limit")
+@click.pass_context
+def addlistlimmir(ctx, address, limit):
+    """Given number of mirror transactions of an address"""
+    click.echo(
+        send_command(ctx=ctx, key="addlistlimmir", extra_args_input=[address, limit])
+    )
+
+
+@cli.command()
+@click.argument("address", type=str, default=local_address)
+@click.argument("limit")
+@click.pass_context
+def addlistlimmirjson(ctx, address, limit):
+    """JSON Given number of mirror transactions of an address"""
+    click.echo(
+        send_command(
+            ctx=ctx, key="addlistlimmirjson", extra_args_input=[address, limit]
+        )
+    )
+
+
+@cli.command()
+@click.argument("limit")
+@click.pass_context
+def listlim(ctx, limit):
+    """Given number of last transactions"""
+    click.echo(send_command(ctx=ctx, key="listlim", extra_args_input=limit))
+
+
+@cli.command()
+@click.argument("limit")
+@click.pass_context
+def listlimjson(ctx, limit):
+    """JSON given number of last transactions"""
+    click.echo(send_command(ctx=ctx, key="limit", extra_args_input=limit))
+
+
+@cli.command()
+@click.argument("hash")
+@click.pass_context
+def api_getblockfromhash(ctx, hash_to_seek):
+    """Retrieve block contents based on block hash"""
+    click.echo(
+        send_command(ctx=ctx, key="api_getblockfromhash", extra_args_input=hash_to_seek)
+    )
+
+
+@cli.command()
+@click.argument(
+    "transaction: (str(timestamp), "
+    "str(private_key), "
+    "str(recipient), "
+    "str(amount), "
+    "str(operation), "
+    "str(data))",
+    nargs=1,
+)
+@click.pass_context
+def txsend(ctx, timestamp, private_key, recipient, amount, operation, data):
+    click.echo(
+        send_command(
+            ctx=ctx,
+            key="txsend",
+            extra_args_input=(
+                str(timestamp),
+                str(private_key),
+                str(recipient),
+                str(amount),
+                str(operation),
+                str(data),
+            ),
+        )
+    )
+
+
+@cli.command()
+@click.argument("address", type=str, default=local_address)
+@click.pass_context
+def aliasget(ctx, address):
+    """Retrieve all aliases for a given address"""
+    click.echo(send_command(ctx=ctx, key="aliasget", extra_args_input=address))
+
+
+@cli.command()
+@click.argument("address", type=str, default=local_address)
+@click.pass_context
+def tokensget(ctx, address):
+    """Retrieve tokens for a given address"""
+    click.echo(send_command(ctx=ctx, key="tokensget", extra_args_input=address))
+
+
+@cli.command()
+@click.argument("alias")
+@click.pass_context
+def addfromalias(ctx, alias):
+    """Retrieve an alias which is matching the given address"""
+    click.echo(send_command(ctx=ctx, key="tokensget", extra_args_input=alias))
+
+
+@cli.command()
+@click.pass_context
+def peersget(ctx):
+    """Retrieve list of peers"""
+    click.echo(send_command(ctx=ctx, key="peersget"))
+
+
+@cli.command()
+@click.pass_context
+def statusget(ctx):
+    """Retrieve status"""
+    click.echo(send_command(ctx=ctx, key="statusget"))
+
+
+@cli.command()
+@click.pass_context
+def portget(ctx):
+    """Retrieve port on which the node is running"""
+    click.echo(send_command(ctx=ctx, key="portget"))
+
+
+@cli.command()
+@click.argument("address", type=str, default=local_address)
+@click.pass_context
+def addvalidate(ctx, address):
+    """Validate a given address"""
+    click.echo(send_command(ctx=ctx, key="tokensget", extra_args_input=address))
+
+
+@cli.command()
+@click.pass_context
+def aliasesget(ctx, aliases):
+    """Retrieve addresses for multiple aliases"""
+    aliases_list = aliases.split(",")
+    click.echo(send_command(ctx=ctx, key="aliasesget", extra_args_input=aliases_list))
+
+
+def api_getaddresssince(ctx, since_height, minconf, address):
+    """
+    Returns the full transactions following a given block_height (will not include the given height) for the given address, with at least min_confirmations confirmations,
+    as well as last considered block.
+    Returns at most transactions from 720 blocks at a time (the most *older* ones if it truncates) so about 12 hours worth of data.
+    """
+    click.echo(
+        send_command(
+            ctx=ctx,
+            key="api_getaddresssince",
+            extra_args_input=[since_height, minconf, address],
+        )
+    )
+
+
+@cli.command()
+@click.pass_context
+def getversion(ctx):
+    """Retrieve node version"""
+    click.echo(send_command(ctx=ctx, key="getversion"))
+
+
+@cli.command()
+@click.argument("number")
+@click.pass_context
+def regtest_generate(ctx, number):
+    """Mine blocks in regnet"""
+    if ctx.obj.is_regnet:
+        click.echo(
+            send_command(ctx=ctx, key="regtest_generate", extra_args_input=number)
+        )
+
+
+if __name__ == "__main__":
+    cli()
