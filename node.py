@@ -235,9 +235,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         send(self.request, node.hdd_block)
                         # send own block height
                         if received_block_height > node.hdd_block:
-                            node.logger.app_log.warning("Inbound: Client {} has higher block {} vs ours {}"
-                                                        .format(peer_ip, received_block_height, node.hdd_block),
-                                                        "Chain")
+                            node.logger.consensus_log.warning("Inbound: Client {} has higher block {} vs ours {}"
+                                                        .format(peer_ip, received_block_height, node.hdd_block))
                             node.logger.consensus_log.info(f"Inbound: block_hash to send: {node.hdd_hash}")
                             send(self.request, node.hdd_hash)
                             # receive their latest sha_hash
@@ -245,13 +244,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                         elif received_block_height <= node.hdd_block:
                             if received_block_height == node.hdd_block:
-                                node.logger.app_log.info(
-                                    f"Inbound: We have the same height as {peer_ip} ({received_block_height}), hash will be verified",
-                                    "Chain")
+                                node.logger.consensus_log.info(
+                                    f"Inbound: We have the same height as {peer_ip} ({received_block_height}), hash will be verified")
                             else:
-                                node.logger.app_log.warning(
-                                    f"Inbound: We have higher ({node.hdd_block}) block height than {peer_ip} ({received_block_height}), hash will be verified",
-                                    "Chain")
+                                node.logger.consensus_log.warning(
+                                    f"Inbound: We have higher ({node.hdd_block}) block height than {peer_ip} ({received_block_height}), hash will be verified")
 
                             data = receive(self.request)  # receive client's last block_hash
                             # send all our followup hashes
