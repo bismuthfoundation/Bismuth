@@ -271,7 +271,7 @@ class Peers:
             return True
         if peer_ip in self.config.allowed:
             return True
-        self.app_log.warning(f"{peer_ip} not whitelisted for {command} command", "Peers")
+        self.peers_log.warning(f"{peer_ip} not whitelisted for {command} command")
         return False
 
     def is_whitelisted(self, peer_ip: str, command: str='') -> bool:

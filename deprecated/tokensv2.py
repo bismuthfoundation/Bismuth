@@ -205,7 +205,7 @@ if __name__ == "__main__":
     node.config.terminal_output = True
 
     node.logger = logger.Logger()
-    node.logger.app_log = log.log("local_test.log", node.config.debug_level, node.config.terminal_output)
+    node.logger.set_app_log(log.log("local_test.log", node.config.debug_level, node.config.terminal_output))
     node.logger.app_log.warning("Configuration settings loaded")
 
     # EGG: kept this constructor for testing purposes, out of a Node instance.

@@ -20,10 +20,15 @@ DECIMAL1 = Decimal(1.0)
 DECIMAL2 = Decimal(2.0)
 DECIMAL16 = Decimal(16.0)
 DECIMAL60 = Decimal(60.0)
+DECIMAL180 = Decimal(180.0)
 
 
 def difficulty(node: "Node", db_handler: "DbHandler") -> tuple:
     ctime = ttime()  # So both methods use same time
+    return deprecated_difficulty(node, db_handler, time=ctime)
+
+    # This was used to run the new - faster - diff method but make sure it conforms exactly to the previous one.
+    # It does not irl, so I deactivated the benchmark for now.
     new = new_difficulty(node, db_handler, time=ctime)
     if True:  # Temp debug to make sure the "new" diff is exactly the same as the "old" one.
         diff = deprecated_difficulty(node, db_handler, time=ctime)
@@ -222,20 +227,20 @@ def deprecated_difficulty(node, db_handler, time: float=0):
             return (float('%.10f' % regnet.REGNET_DIFF), float('%.10f' % (regnet.REGNET_DIFF - 8)), float(time_to_generate),
                     float(regnet.REGNET_DIFF), float(block_time), float(0), float(0), block_height)
 
-        hashrate = pow(2, diff_block_previous / Decimal(2.0)) / (
-                block_time * ceil(28 - diff_block_previous / Decimal(16.0)))
+        hashrate = pow(2, diff_block_previous / DECIMAL2) / (
+                block_time * ceil(28 - diff_block_previous / DECIMAL16))
         # Calculate new difficulty for desired blocktime of 60 seconds
-        target = Decimal(60.00)
+        target = DECIMAL60  # Decimal(60.00)
         # D0 = diff_block_previous
         difficulty_new = Decimal(
-            (2 / log(2)) * log(hashrate * target * ceil(28 - diff_block_previous / Decimal(16.0))))
+            (2 / log(2)) * log(hashrate * target * ceil(28 - diff_block_previous / DECIMAL16)))
         # Feedback controller
         Kd = 10
         difficulty_new = difficulty_new - Kd * (block_time - block_time_prev)
         diff_adjustment = (difficulty_new - diff_block_previous) / 720  # reduce by factor of 720
 
-        if diff_adjustment > Decimal(1.0):
-            diff_adjustment = Decimal(1.0)
+        if diff_adjustment > 1:
+            diff_adjustment = DECIMAL1  # Decimal(1.0)
 
         difficulty_new_adjusted = quantize_ten(diff_block_previous + diff_adjustment)
         difficulty2 = difficulty_new_adjusted
@@ -250,7 +255,7 @@ def deprecated_difficulty(node, db_handler, time: float=0):
                 FORK.limit_version(node)
         # /fork handling
 
-        diff_drop_time = Decimal(180)
+        diff_drop_time = DECIMAL180  # Decimal(180)
 
         if Decimal(ctime) > Decimal(timestamp_last) + Decimal(2 * diff_drop_time):
             # Emergency diff drop

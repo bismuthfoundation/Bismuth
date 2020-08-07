@@ -26,7 +26,7 @@ if __name__ == "__main__":
     print("Using", datadir, "data dir")
     config_legacy = Config(datadir=datadir, force_legacy=True)  # config.read() is now implicit at instanciation
     logger = Logger()  # is that class really useful?
-    logger.app_log = log.log("convert.log", config_legacy.debug_level, config_legacy.terminal_output)
+    logger.set_app_log(log.log("convert.log", config_legacy.debug_level, config_legacy.terminal_output))
     logger.app_log.warning("Configuration settings loaded")
     # Pre-node tweaks
     # wallet_file_name = config_legacy.get_wallet_path()

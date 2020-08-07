@@ -798,7 +798,7 @@ class DbHandler:
         self.commit(self.hdd2)
 
     def rollback_to(self, block_height: int) -> None:
-        self.logger.app_log.error("rollback_to is deprecated, use rollback_under", "General")
+        self.logger.dev_log.warning("rollback_to is deprecated, use rollback_under")
         self.rollback_under(block_height)
 
     def to_db(self, block_array, diff_save, block_transactions) -> None:

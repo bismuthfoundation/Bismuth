@@ -278,8 +278,8 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: list, blo
                                        str(reward), str(db_operation), str(db_openfield)))
             try:
                 mp.MEMPOOL.delete_transaction(db_signature)
-                node.logger.app_log.debug(f"Chain: Removed processed transaction {db_signature[:56]} "
-                                          f"from the mempool while digesting", "Mempool")
+                node.logger.mempool_log.debug(f"Chain: Removed processed transaction {db_signature[:56]} "
+                                          f"from the mempool while digesting")
             except:
                 # tx was not or is no more in the local mempool
                 pass

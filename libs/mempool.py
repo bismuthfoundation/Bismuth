@@ -178,7 +178,7 @@ class Mempool:
                                           uri=True, timeout=1, isolation_level=None,
                                           check_same_thread=False)
                 if self.trace_db_calls:
-                    self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log,"MEMPOOL-RAM"))
+                    self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log, "MEMPOOL-RAM"))
                 self.db.execute('PRAGMA journal_mode = WAL;')
                 self.db.execute("PRAGMA page_size = 4096;")
                 self.db.text_factory = str
@@ -190,7 +190,7 @@ class Mempool:
                 self.db = sqlite3.connect(self.mempool_path, timeout=1,
                                           check_same_thread=False)
                 if self.trace_db_calls:
-                    self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log,"MEMPOOL"))
+                    self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log, "MEMPOOL"))
                 self.db.text_factory = str
                 self.cursor = self.db.cursor()
 
@@ -204,7 +204,7 @@ class Mempool:
                     self.db = sqlite3.connect(self.mempool_path, timeout=1,
                                               check_same_thread=False)
                     if self.trace_db_calls:
-                        self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log,"MEMPOOL"))
+                        self.db.set_trace_callback(functools.partial(sql_trace_callback,self.app_log, "MEMPOOL"))
                     self.db.text_factory = str
                     self.cursor = self.db.cursor()
                     self._execute(SQL_CREATE)

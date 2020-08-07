@@ -37,7 +37,7 @@ from libs.config import Config
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.21-evo"  # Experimental db-evolution branch
+VERSION = "5.0.22-evo"  # Experimental db-evolution branch
 
 
 appname = "Bismuth"
@@ -132,12 +132,12 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 if data == 'version':
                     data = receive(self.request)
                     if data not in node.config.version_allow:
-                        node.logger.app_log.warning(
-                            f"Protocol version mismatch: {data}, should be {node.config.version_allow}", "Peers")
+                        node.logger.peers_log.warning(
+                            f"Protocol version mismatch: {data}, should be {node.config.version_allow}")
                         send(self.request, "notok")
                         return
                     else:
-                        node.logger.app_log.info(f"Inbound: Protocol version matched with {peer_ip}: {data}", "Peers")
+                        node.logger.peers_log.info(f"Inbound: Protocol version matched with {peer_ip}: {data}")
                         send(self.request, "ok")
                         node.peers.store_mainnet(peer_ip, data)
 
@@ -147,7 +147,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == 'mempool':
                     # receive theirs
                     segments = receive(self.request)
-                    node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, db_handler, size_bypass=False), "Mempool")
+                    node.logger.mempool_log.info(mp.MEMPOOL.merge(segments, peer_ip, db_handler, size_bypass=False))
                     # improvement possible - pass peer_ip from worker
                     # receive theirs
                     if mp.MEMPOOL.sendable(peer_ip):
@@ -166,14 +166,14 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "hello":
                     if node.is_regnet:
-                        node.logger.app_log.error("Inbound: Got hello but I'm in regtest mode, closing.", "General")
+                        node.logger.dev_log.error("Inbound: Got hello but I'm in regtest mode, closing.")
                         return
                     send(self.request, "peers")
                     peers_send = node.peers.peer_list_disk_format()
                     send(self.request, peers_send)
                     while node.db_lock.locked():
                         node.sleep()
-                    node.logger.app_log.info("Inbound: Sending sync request", "Peers")
+                    node.logger.peers_log.info("Inbound: Sending sync request")
 
                     send(self.request, "sync")
 
@@ -185,7 +185,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     send(self.request, "sync")
 
                 elif data == "blocksfnd":
-                    node.logger.app_log.info(f"Inbound: Client {peer_ip} has the block(s)", "Peers")  # node should start sending txs in this step
+                    node.logger.peers_log.info(f"Inbound: Client {peer_ip} has the block(s)")  # node should start sending txs in this step
                     # node.logger.app_log.info("Inbound: Combined segments: " + segments)
                     if node.db_lock.locked():
                         node.logger.app_log.info(f"Skipping sync from {peer_ip}, syncing already in progress")
@@ -194,23 +194,23 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         if node.last_block_timestamp < ttime() - 600:
                             # block_req = most_common(consensus_blockheight_list)
                             block_req = node.peers.consensus_most_common
-                            node.logger.app_log.info("Most common block rule triggered", "Chain")
+                            node.logger.consensus_log.info("Most common block rule triggered")
                         else:
                             # block_req = max(consensus_blockheight_list)
                             block_req = node.peers.consensus_max
-                            node.logger.app_log.info("Longest chain rule triggered", "Chain")
+                            node.logger.consensus_log.info("Longest chain rule triggered")
                         # Nothing guarantees "received_block_height" has been defined before or is up to date.
                         # Should for a pristine client, but can't make sure.
                         # TODO Egg: Add some state here in the flow, at least a flag.
                         if int(received_block_height) >= block_req and int(received_block_height) > node.last_block:
                             try:  # they claim to have the longest chain, things must go smooth or ban
-                                node.logger.app_log.warning(f"Confirming to sync from {peer_ip}", "Chain")
+                                node.logger.consensus_log.warning(f"Confirming to sync from {peer_ip}")
                                 node.plugin_manager.execute_action_hook('sync', {'what': 'syncing_from', 'ip': peer_ip})
                                 send(self.request, "blockscf")
                                 segments = receive(self.request)
                             except:
-                                if node.peers.warning(self.request, peer_ip, "Failed to deliver the longest chain", "Chain"):
-                                    node.logger.app_log.info(f"{peer_ip} banned")
+                                if node.peers.warning(self.request, peer_ip, "Failed to deliver the longest chain"):
+                                    node.logger.peers_log.info(f"{peer_ip} banned")
                                     break
                             else:
                                 if node.config.legacy_db:
@@ -218,18 +218,18 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                 else:
                                     digest_block_v2(node, segments, self.request, peer_ip, db_handler)
                         else:
-                            node.logger.app_log.warning(f"Rejecting to sync from {peer_ip}", "Chain")
+                            node.logger.consensus_log.warning(f"Rejecting to sync from {peer_ip}")
                             send(self.request, "blocksrj")
-                            node.logger.app_log.info(
+                            node.logger.consensus_log.info(
                                 f"Inbound: Distant peer {peer_ip} is at {received_block_height}, "
-                                f"should be at least {max(block_req,node.last_block+1)}", "Chain")
+                                f"should be at least {max(block_req,node.last_block+1)}")
                     send(self.request, "sync")
 
                 elif data == "blockheight":
                     try:
                         received_block_height = int(receive(self.request))  # receive client's last block height
-                        node.logger.app_log.info(
-                            f"Inbound: Received block height {received_block_height} from {peer_ip} ", "Peers")
+                        node.logger.peers_log.info(
+                            f"Inbound: Received block height {received_block_height} from {peer_ip} ")
                         consensus_blockheight = received_block_height  # str int to remove leading zeros
                         node.peers.consensus_add(peer_ip, consensus_blockheight, self.request, node.hdd_block)
                         send(self.request, node.hdd_block)
@@ -238,7 +238,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             node.logger.app_log.warning("Inbound: Client {} has higher block {} vs ours {}"
                                                         .format(peer_ip, received_block_height, node.hdd_block),
                                                         "Chain")
-                            node.logger.app_log.info(f"Inbound: block_hash to send: {node.hdd_hash}", "Chain")
+                            node.logger.consensus_log.info(f"Inbound: block_hash to send: {node.hdd_hash}")
                             send(self.request, node.hdd_hash)
                             # receive their latest sha_hash
                             # confirm you know that sha_hash or continue receiving
@@ -257,13 +257,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             # send all our followup hashes
                             if data == "*":
                                 # connection lost, no need to go on, that was banning the node like it forked.
-                                node.logger.app_log.warning(f"Inbound: {peer_ip} dropped connection", "Peers")
+                                node.logger.peers_log.warning(f"Inbound: {peer_ip} dropped connection")
                                 break
-                            node.logger.app_log.info(f"Inbound: Will seek the following block: {data}", "Chain")
+                            node.logger.consensus_log.info(f"Inbound: Will seek the following block: {data}")
 
                             client_block = db_handler.block_height_from_hash(data)
                             if client_block is None:
-                                node.logger.app_log.warning(f"Inbound: Block {data[:8]} of {peer_ip} not found", "Chain")
+                                node.logger.consensus_log.warning(f"Inbound: Block {data[:8]} of {peer_ip} not found")
                                 if node.config.full_ledger:
                                     send(self.request, "blocknf")  # announce block hash was not found
                                 else:
@@ -271,34 +271,34 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                 send(self.request, data)
 
                                 if node.peers.warning(self.request, peer_ip, "Forked", 2):
-                                    node.logger.app_log.info(f"{peer_ip} banned", "Peers")
+                                    node.logger.peers_log.info(f"{peer_ip} banned")
                                     break
 
                             else:
-                                node.logger.app_log.info(f"Inbound: Client is at block {client_block}", "Chain")
+                                node.logger.consensus_log.info(f"Inbound: Client is at block {client_block}")
                                 # now check if we have any newer
                                 if node.hdd_hash == data or not node.config.egress:
                                     if node.config.egress:
-                                        node.logger.app_log.info(f"Inbound: Client {peer_ip} has the latest block", "Chain")
+                                        node.logger.consensus_log.info(f"Inbound: Client {peer_ip} has the latest block")
                                     else:
-                                        node.logger.app_log.warning(f"Inbound: Egress disabled for {peer_ip}", "Chain")
+                                        node.logger.consensus_log.warning(f"Inbound: Egress disabled for {peer_ip}")
                                     node.sleep()  # reduce CPU usage
                                     send(self.request, "nonewblk")
 
                                 else:
                                     blocks_fetched = db_handler.blocksync(client_block)
-                                    node.logger.app_log.info(f"Inbound: Selected {blocks_fetched}", "Chain")
+                                    node.logger.consensus_log.info(f"Inbound: Selected {blocks_fetched}")
                                     send(self.request, "blocksfnd")
                                     confirmation = receive(self.request)
                                     if confirmation == "blockscf":
-                                        node.logger.app_log.info("Inbound: Client confirmed they want to sync from us", "Peers")
+                                        node.logger.peers_log.info("Inbound: Client confirmed they want to sync from us")
                                         send(self.request, blocks_fetched)
                                     elif confirmation == "blocksrj":
-                                        node.logger.app_log.info(
-                                            "Inbound: Client rejected to sync from us because we don't have the latest block", "Peers")
+                                        node.logger.peers_log.info(
+                                            "Inbound: Client rejected to sync from us because we don't have the latest block")
 
                     except Exception as e:
-                        node.logger.app_log.warning(f"Inbound: Sync failed {e}", "General")
+                        node.logger.consensus_log.warning(f"Inbound: Sync failed {e}")
                         exc_type, exc_obj, exc_tb = exc_info()
                         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                         node.logger.app_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
@@ -312,9 +312,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if consensus_blockheight == node.peers.consensus_max:
                         node.blocknf(block_hash_delete, peer_ip, db_handler)
                         if node.peers.warning(self.request, peer_ip, "Rollback", 2):
-                            node.logger.app_log.warning(f"{peer_ip} banned", "Peers")
+                            node.logger.peers_log.warning(f"{peer_ip} banned")
                             break
-                    node.logger.app_log.info("Inbound: Deletion complete, sending sync request", "Chain")
+                    node.logger.consensus_log.info("Inbound: Deletion complete, sending sync request")
                     while node.db_lock.locked():
                         node.sleep()
                     send(self.request, "sync")
@@ -325,9 +325,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if consensus_blockheight == node.peers.consensus_max:
                         node.blocknf(block_hash_delete, peer_ip, db_handler, hyperblocks=True)
                         if node.peers.warning(self.request, peer_ip, "Rollback", 2):
-                            node.logger.app_log.warning(f"{peer_ip} banned", "Peers")
+                            node.logger.peers_log.warning(f"{peer_ip} banned")
                             break
-                    node.logger.app_log.info("Inbound: Deletion complete, sending sync request", "Chain")
+                    node.logger.consensus_log.info("Inbound: Deletion complete, sending sync request")
                     while node.db_lock.locked():
                         node.sleep()
                     send(self.request, "sync")
@@ -336,7 +336,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     # if (peer_ip in allowed or "any" in allowed):  # from miner
                     if node.peers.is_allowed(peer_ip, data):  # from miner
                         # TODO: rights management could be done one level higher instead of repeating the same check everywhere
-                        node.logger.app_log.warning(f"Inbound: Received a block from miner {peer_ip}", "Chain")
+                        node.logger.consensus_log.warning(f"Inbound: Received a block from miner {peer_ip}")
                         # receive block
                         segments = receive(self.request)
                         # node.logger.app_log.info("Inbound: Combined mined segments: " + segments)
@@ -359,22 +359,22 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                 reason = "Inbound: Block from miner skipped because we are digesting already"
                                 mined['reason'] = reason
                                 node.plugin_manager.execute_action_hook('mined', mined)
-                                node.logger.app_log.warning(reason, "Chain")
+                                node.logger.consensus_log.warning(reason)
                                 return
                             elif node.last_block >= node.peers.consensus_max - 3:
                                 mined['result'] = True
                                 node.plugin_manager.execute_action_hook('mined', mined)
-                                node.logger.app_log.info("Inbound: Processing block from miner", "Chain")
+                                node.logger.consensus_log.info("Inbound: Processing block from miner")
                                 try:
                                     if node.config.legacy_db:
                                         digest_block(node, segments, self.request, peer_ip, db_handler)
                                     else:
                                         digest_block_v2(node, segments, self.request, peer_ip, db_handler)
                                 except ValueError as e:
-                                    node.logger.app_log.warning("Inbound: block {}".format(str(e)), "General")
+                                    node.logger.consensus_log.warning("Inbound: block {}".format(str(e)))
                                     return
                                 except Exception as e:
-                                    node.logger.app_log.error("Inbound: Processing block from miner {}".format(e), "General")
+                                    node.logger.consensus_log.error("Inbound: Processing block from miner {}".format(e))
                                     return
                                 # This new block may change the int(diff). Trigger the hook whether it changed or not.
                                 # node.difficulty = difficulty(node, db_handler_instance)
@@ -384,7 +384,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                          f"should be at least {node.peers.consensus_max - 3}"
                                 mined['reason'] = reason
                                 node.plugin_manager.execute_action_hook('mined', mined)
-                                node.logger.app_log.warning(reason, "Chain")
+                                node.logger.consensus_log.warning(reason)
                         else:
                             # Not mainnet
                             try:
@@ -393,10 +393,10 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                 else:
                                     digest_block_v2(node, segments, self.request, peer_ip, db_handler)
                             except ValueError as e:
-                                node.logger.app_log.warning("Inbound: block {}".format(str(e)), "General")
+                                node.logger.consensus_log.warning("Inbound: block {}".format(str(e)))
                                 return
                             except Exception as e:
-                                node.logger.app_log.error("Inbound: Processing block from miner {}".format(e), "General")
+                                node.logger.consensus_log.error("Inbound: Processing block from miner {}".format(e))
                                 return
                     else:
                         receive(self.request)  # receive block, but do nothing about it
@@ -432,9 +432,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "mpinsert":
                     if node.peers.is_allowed(peer_ip, data):
                         mempool_insert = receive(self.request)
-                        node.logger.app_log.warning("mpinsert command", "Mempool")
+                        node.logger.mempool_log.warning("mpinsert command")
                         mpinsert_result = mp.MEMPOOL.merge(mempool_insert, peer_ip, db_handler, size_bypass=True, wait=True)
-                        node.logger.app_log.warning(f"mpinsert result: {mpinsert_result}", "Mempool")
+                        node.logger.mempool_log.warning(f"mpinsert result: {mpinsert_result}")
                         send(self.request, mpinsert_result)
 
                 elif data == "balanceget":
@@ -451,7 +451,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "balancegethyper":
                     # EGG: What is the reason for these hyper commands? look like they use the same data source anyway as the regular one.
-                    node.logger.app_log.warning(f"{peer_ip} {data} command is deprecated", "Peers")
+                    node.logger.peers_log.warning(f"{peer_ip} {data} command is deprecated")
                     if node.peers.is_allowed(peer_ip, data):
                         balance_address = sanitize_address(receive(self.request))  # for which address
                         balanceget_result =db_handler.balance_get_full(balance_address, mp.MEMPOOL)[0]
@@ -459,7 +459,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 elif data == "balancegethyperjson":
                     # EGG: What is the reason for these hyper commands? look like they use the same data source anyway as the regular one.
-                    node.logger.app_log.warning(f"{peer_ip} {data} command is deprecated", "Peers")
+                    node.logger.peers_log.warning(f"{peer_ip} {data} command is deprecated")
                     if node.peers.is_allowed(peer_ip, data):
                         balance_address = sanitize_address(receive(self.request))  # for which address
                         balance_dict = db_handler.balance_get_full(balance_address, mp.MEMPOOL, as_dict=True)
@@ -488,7 +488,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "keygen":
                     if node.peers.is_allowed(peer_ip, data):
                         (gen_private_key_readable, gen_public_key_readable, gen_address) = rsa_key_generate()
-                        node.logger.app_log.warning("keygen is unsafe and deprecated, please don't use.", "General")
+                        node.logger.dev_log.warning("keygen is unsafe and deprecated, please don't use.")
                         send(self.request, (gen_private_key_readable, gen_public_key_readable, gen_address))
                         (gen_private_key_readable, gen_public_key_readable, gen_address) = (None, None, None)
 
@@ -498,7 +498,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         response = {"private_key": gen_private_key_readable,
                                     "public_key": gen_public_key_readable,
                                     "address": gen_address}
-                        node.logger.app_log.warning("keygenjson is unsafe and deprecated, please don't use.", "General")
+                        node.logger.dev_log.warning("keygenjson is unsafe and deprecated, please don't use.")
                         send(self.request, response)
                         (gen_private_key_readable, gen_public_key_readable, gen_address) = (None, None, None)
 
@@ -601,7 +601,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         # Egg: we could add an optional "update" boolean flag to addfromalias, that would auto prepend aliases_update.
                         # Avoids line above, and avoids doing the update if we finally get no alias
                         address_fetch = db_handler.addfromalias(alias_address)
-                        node.logger.app_log.info(f"Fetched the following alias address: {address_fetch}", "Peers")
+                        node.logger.peers_log.info(f"Fetched the following alias address: {address_fetch}")
                         send(self.request, address_fetch)
 
                 elif data == "pubkeyget":
@@ -632,7 +632,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     # TODO: To remove.
                     if node.peers.is_allowed(peer_ip, data):
                         send(self.request, "txsend is unsafe and deprecated, please don't use.")
-                        node.logger.app_log.warning("txsend is unsafe and deprecated, please don't use.", "General")
+                        node.logger.dev_log.warning("txsend is unsafe and deprecated, please don't use.")
 
                 # less important methods
                 elif data == "addvalidate":
@@ -835,7 +835,8 @@ if __name__ == "__main__":
     # config.read() is now implicit at instanciation
     logger = Logger()  # is that class really useful?
     enable_pretty_logging()
-    logger.app_log = log.log("node.log", config.debug_level, config.terminal_output)
+    app_log = log.log("node.log", config.debug_level, config.terminal_output)
+    logger.set_app_log(app_log)
     logger.app_log.warning("Configuration settings loaded")
     # Pre-node tweaks
     # upgrade wallet location after nuitka-required "files" folder introduction
