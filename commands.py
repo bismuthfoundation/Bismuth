@@ -61,7 +61,7 @@ def forward(**kwargs):
     click.echo(response)
 
 
-def send_command(ctx, key, extra_args_input=None):
+def send_command(ctx, key, extra_args_input=None, return_answer=True):
     """Handles connection, sending and receiving"""
     s = socks.socksocket()
     s.connect((ctx.obj.host, ctx.obj.port))
@@ -75,8 +75,11 @@ def send_command(ctx, key, extra_args_input=None):
     elif extra_args_input and type(extra_args_input) in [str, tuple]:
         send(s, extra_args_input)
 
-    response = receive(s, timeout=ctx.obj.timeout)
-    return response
+    if return_answer:
+        response = receive(s, timeout=ctx.obj.timeout)
+        return response
+    else:
+        return None
 
 
 @cli.command()
@@ -367,6 +370,12 @@ def statusget(ctx):
     """Retrieve status"""
     click.echo(send_command(ctx=ctx, key="statusget"))
 
+
+@cli.command()
+@click.pass_context
+def stop(ctx):
+    """Ask the node to close nicely"""
+    click.echo(send_command(ctx=ctx, key="stop", return_answer=False))
 
 @cli.command()
 @click.pass_context
