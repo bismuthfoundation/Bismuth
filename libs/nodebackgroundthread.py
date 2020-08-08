@@ -23,7 +23,7 @@ class NodeBackgroundThread (threading.Thread):
         self.background_thread()
 
     def background_thread(self) -> None:
-        self.node.logger.app_log.warning("Status: Starting Node background Thread")
+        self.node.logger.status_log.info("Starting Node background Thread")
         until_purge = 0
 
         while not self.node.IS_STOPPING:
@@ -41,17 +41,17 @@ class NodeBackgroundThread (threading.Thread):
                 if not self.node.is_regnet:
                     # regnet never tries to connect
                     self.node.peers.client_loop(self.node)
-                self.node.logger.app_log.warning(f"Status: Threads at {threading.active_count()} / {self.node.config.thread_limit}")
-                self.node.logger.app_log.info(f"Status: Syncing nodes: {self.node.syncing}")
-                self.node.logger.app_log.info(f"Status: Syncing nodes: {len(self.node.syncing)}/3")
+                self.node.logger.status_log.info(f"Threads at {threading.active_count()} / {self.node.config.thread_limit}")
+                self.node.logger.status_log.info(f"Syncing nodes: {len(self.node.syncing)}/3")
+                self.node.logger.status_log.debug(f"Syncing nodes: {self.node.syncing}")
 
                 # Status display for Peers related info
-                self.node.peers.status_log()
+                self.node.peers.print_status_log()
                 self.mempool.status()
                 # last block
                 if self.node.last_block_ago:
                     self.node.last_block_ago = time() - int(self.node.last_block_timestamp)
-                    self.node.logger.app_log.warning(f"Status: Last block {self.node.last_block} was generated "
+                    self.node.logger.status_log.info(f"Last block {self.node.last_block} was generated "
                                                 f"{'%.2f' % (self.node.last_block_ago / 60) } minutes ago")
                 # status Hook
                 uptime = int(time() - self.node.startup_time)

@@ -859,7 +859,7 @@ if __name__ == "__main__":
         extra_commands = node.plugin_manager.execute_filter_hook('extra_commands_prefixes', extra_commands)
         node.logger.app_log.warning("Extra prefixes: " + ",".join(extra_commands.keys()))
 
-        node.logger.app_log.warning(f"Status: Starting node version {VERSION} on port {node.config.port}")
+        node.logger.status_log.info(f"Starting node version {VERSION} on port {node.config.port}")
         node.startup_time = ttime()
         try:
             mp.MEMPOOL = mp.Mempool(node)
@@ -871,7 +871,7 @@ if __name__ == "__main__":
             node.node_block_init(db_handler_initial)  # Egg: to be called after single user mode only
 
             if node.config.tor:
-                node.logger.app_log.warning("Status: Not starting a local server to conceal identity on Tor network")
+                node.logger.status_log.info("Not starting a local server to conceal identity on Tor network")
             else:
                 # Port 0 means to select an arbitrary unused port
                 host, port = "0.0.0.0", int(node.config.port)
@@ -889,7 +889,7 @@ if __name__ == "__main__":
                 server_thread = threading.Thread(target=server.serve_forever)
                 server_thread.daemon = True
                 server_thread.start()
-                node.logger.app_log.warning("Status: Server loop running.")
+                node.logger.status_log.info("Server loop running.")
 
             background_thread = NodeBackgroundThread(node, mp.MEMPOOL)
             background_thread.start()
@@ -902,13 +902,13 @@ if __name__ == "__main__":
         node.logger.app_log.info(e)
         raise
 
-    node.logger.app_log.warning("Status: Bismuth loop running.")
+    node.logger.status_log.info("Bismuth loop running.")
 
     while True:
         if node.IS_STOPPING:
             if not node.db_lock.locked():
-                node.logger.app_log.warning("Status: Securely disconnected main processes, "
+                node.logger.status_log.warning("Securely disconnected main processes, "
                                             "subprocess termination in progress.")
                 break
         sleep(0.5)
-    node.logger.app_log.warning("Status: Clean Stop")
+    node.logger.status_log.info("Clean Stop")

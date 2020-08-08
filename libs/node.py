@@ -217,7 +217,7 @@ class Node:
             regnet.PUBLIC_KEY_B64ENCODED = self.keys.public_key_b64encoded
             regnet.ADDRESS = self.keys.address
             regnet.KEY = self.keys.key
-        self.logger.app_log.warning(f"Status: Local address: {self.keys.address}")
+        self.logger.status_log.info(f"Local address: {self.keys.address}")
 
     def bootstrap(self):
         # EGG_EVO: Temp hack preventing deleting local DB at this dev stage.
@@ -252,7 +252,7 @@ class Node:
         redownload = False
         # force bootstrap via adding an empty "fresh_sync" file in the dir.
         if os.path.exists("fresh_sync") and self.is_mainnet:
-            self.logger.app_log.warning("Status: Fresh sync required, bootstrapping from the website")
+            self.logger.status_log.warning("Fresh sync required, bootstrapping from the website")
             os.remove("fresh_sync")
             redownload = True
         try:
@@ -261,8 +261,8 @@ class Node:
             if len(ledger_schema) != 12:
                 # EGG_EVO: Kept this test for the time being, but will need more complete and distinctive test
                 # depending on the db type
-                self.logger.app_log.error(
-                    f"Status: Integrity check on ledger failed, bootstrapping from the website")
+                self.logger.status_log.error(
+                    f"Integrity check on ledger failed, bootstrapping from the website")
                 redownload = True
             command_field_type = ledger_schema[10][2]
             if command_field_type != "TEXT":
@@ -286,54 +286,54 @@ class Node:
             # cross-integrity check
             if hdd_block_max == hdd2_block_last == hdd2_block_last_misc == hdd_block_max_diff \
                     and self.config.hyper_recompress:  # cross-integrity check
-                self.logger.app_log.warning("Status: Recompressing hyperblocks (keeping full ledger)")
+                self.logger.status_log.info("Recompressing hyperblocks (keeping full ledger)")
                 self.recompress = True
                 # print (hdd_block_max,hdd2_block_last,node.config.hyper_recompress)
             elif hdd_block_max == hdd2_block_last and not self.config.hyper_recompress:
-                self.logger.app_log.warning("Status: Hyperblock recompression skipped")
+                self.logger.status_log.info("Hyperblock recompression skipped")
                 self.recompress = False
             else:
                 lowest_block = min(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
                 highest_block = max(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
-                self.logger.app_log.warning(
-                    f"Status: Cross-integrity check failed, {highest_block} will be rolled back below {lowest_block}")
+                self.logger.status_log.warning(
+                    f"Cross-integrity check failed, {highest_block} will be rolled back below {lowest_block}")
                 solo_handler.rollback(lowest_block)  # rollback to the lowest value
                 self.recompress = False
         else:
-            self.logger.app_log.warning("Status: Compressing ledger to Hyperblocks")
+            self.logger.status_log.info("Compressing ledger to Hyperblocks")
             self.recompress = True
 
     def _recompress_ledger_prepare(self, rebuild: bool=False) -> None:
         """Aggregates transactions and compress old ledger entries into hyper blocks"""
-        self.logger.app_log.warning(f"Status: Recompressing, please be patient...")
+        self.logger.status_log.info(f"Recompressing, please be patient...")
 
         files_remove = [self.config.ledger_path + '.temp', self.config.ledger_path + '.temp-shm',
                         self.config.ledger_path + '.temp-wal']
         for file in files_remove:
             if os.path.exists(file):
                 os.remove(file)
-                self.logger.app_log.warning(f"Removed old {file}")
+                self.logger.app_log.info(f"Removed old {file}")
 
         # We start from either ledger or current hyper as data base, then work on hyper only.
         if not os.path.isfile(self.config.hyper_path):
             # Force rebuild if there is no hyper.
             rebuild = True
         if rebuild:
-            self.logger.app_log.warning(f"Status: Hyperblocks will be rebuilt")
+            self.logger.status_log.info(f"Hyperblocks will be rebuilt")
             copy(self.config.ledger_path, self.config.ledger_path + '.temp')
         else:
             copy(self.config.hyper_path, self.config.ledger_path + '.temp')
-        self.logger.app_log.warning(f"recompress_ledger_prepare done")
+        self.logger.status_log.info(f"recompress_ledger_prepare done")
 
     def _recompress_ledger(self, solo_handler: SoloDbHandler, depth: int = 15000) -> None:
         solo_handler.prepare_hypo()  # avoid double processing by renaming Hyperblock addresses to Hypoblock
-        self.logger.app_log.warning(f"Recompress: Opening temp db and adding indices...")
+        self.logger.status_log.info(f"Recompress: Opening temp db and adding indices...")
         solo_handler.open_temp_hyper()  # Use ledger.db.temp as temp. hyper, adding indices if needed
         db_block_height = solo_handler.block_height_max_hyper()
         depth_specific = db_block_height - depth
-        self.logger.app_log.warning(f"Recompress: Block height {db_block_height}, depth_specific {depth_specific}")
+        self.logger.status_log.info(f"Recompress: Block height {db_block_height}, depth_specific {depth_specific}")
         # Now gather all active addresses
-        self.logger.app_log.warning(f"Gathering addresses...")
+        self.logger.status_log.info(f"Gathering addresses...")
         unique_addressess = solo_handler.distinct_hyper_recipients(depth_specific)
         for address in unique_addressess:
             solo_handler.update_hyper_balance_at_height(address, depth_specific)
@@ -392,7 +392,7 @@ class Node:
             os.remove(self.config.hyper_path)  # remove the old hyperblocks to rebuild
         if os.path.exists(self.config.ledger_path + '.temp'):
             os.rename(self.config.ledger_path + '.temp', self.config.hyper_path)
-        self.logger.app_log.warning(f"Status: Recompressed!")
+        self.logger.status_log.info(f"Recompressed!")
         # sys.exit()  # Temp
 
     def _ram_init(self, solo_handler: SoloDbHandler) -> None:
@@ -402,21 +402,21 @@ class Node:
             self.ram_db = None
             return
         try:
-            self.logger.app_log.warning("Status: Moving database to RAM")
+            self.logger.status_log.info("Moving database to RAM")
             self.ram_db = solo_handler.db_to_ram(self.config.hyper_path, self.ledger_ram_file)
-            self.logger.app_log.warning("Status: Hyperblock ledger moved to RAM")
+            self.logger.status_log.info("Hyperblock ledger moved to RAM")
         except Exception as e:
-            self.logger.app_log.warning("Move to ram: {}".format(e))
+            self.logger.app_log.error("Move to ram: {}".format(e))
             raise
 
     def node_block_init(self, db_handler: "DbHandler") -> None:
         """Init node heights properties from db"""
         # EGG_EVO: we could maybe delay this part until we have the final db_handler, in order to avoid dupped methods.
         # Check if these properties are of use or not in the following single user mode calls.
-        self.logger.app_log.warning("Status: Starting Node blocks init...")
+        self.logger.status_log.info("Starting Node blocks init...")
         self.hdd_block = db_handler.block_height_max()
         self.difficulty = difficulty(self, db_handler)  # check diff for miner
-        print("Current difficulty", self.difficulty)
+        self.logger.status_log.debug("Current difficulty {}".format(self.difficulty))
         self.last_block = self.hdd_block  # ram equals drive at this point
 
         self.last_block_hash = db_handler.last_block_hash()  # dup
@@ -424,13 +424,13 @@ class Node:
         self.last_block_timestamp = db_handler.last_block_timestamp()  # dup
 
         self.checkpoint_set()
-        self.logger.app_log.warning("Status: Indexing aliases")
+        self.logger.status_log.info("Indexing aliases")
         db_handler.aliases_update()
 
     def single_user_checks(self) -> None:
         """Called at instanciation time, when db is not shared yet.
         Exclusive checks, rollbacks aso are to be gathered here"""
-        self.logger.app_log.warning("Status: Starting Single user checks...")
+        self.logger.status_log.info("Starting Single user checks...")
         # print("Initial files check")
         self._initial_files_checks()
         solo_handler = SoloDbHandler(config=self.config, logger=self.logger)  # This instance will only live for the scope of single_user_checks(),
@@ -456,23 +456,23 @@ class Node:
 
         self._ram_init(solo_handler)  # Save this one for the end (time consuming if something goes wrong)
         #
-        self.logger.app_log.warning("Status: Single user checks done.")
+        self.logger.status_log.info("Single user checks done.")
 
     def _initial_files_checks(self):
         if not self.config.full_ledger and os.path.exists(self.config.ledger_path) and self.is_mainnet:
             os.remove(self.config.ledger_path)
-            self.logger.app_log.warning("Removed full ledger for hyperblock mode")
+            self.logger.app_log.info("Removed full ledger for hyperblock mode")
         if not self.config.full_ledger and not self.is_regnet:
-            self.logger.app_log.warning("Cloning hyperblocks to ledger file")
+            self.logger.app_log.info("Cloning hyperblocks to ledger file")
             copy(self.config.hyper_path, self.config.ledger_path)  # hacked to remove all the endless checks
         if self.is_regnet:
             # Delete mempool
             if os.path.isfile(self.config.mempool_path):
                 os.remove(self.config.mempool_path)
         # needed for docker logs
-        self.logger.app_log.warning(f"Checking Heavy3 file, can take up to 5 minutes... {self.config.heavy3_path}")
+        self.logger.status_log.info(f"Checking Heavy3 file, can take up to 5 minutes... {self.config.heavy3_path}")
         mining_heavy3.mining_open(self.config.heavy3_path)
-        self.logger.app_log.warning(f"Status: Heavy3 file Ok!")
+        self.logger.status_log.info(f"Heavy3 file Ok!")
 
     def checkpoint_set(self):
 
@@ -485,7 +485,7 @@ class Node:
         checkpoint = round_down(self.last_block, limit) - limit
         if checkpoint != self.checkpoint:
             self.checkpoint = checkpoint
-            self.logger.app_log.warning(f"Checkpoint set to {self.checkpoint}")
+            self.logger.status_log.info(f"Checkpoint set to {self.checkpoint}")
 
     def blocknf(self, block_hash_delete: str, peer_ip: str, db_handler: "DbHandler", hyperblocks: bool=False) -> None:
         """
@@ -499,7 +499,7 @@ class Node:
         my_time = ttime()
         if not self.db_lock.locked():
             self.db_lock.acquire()
-            self.logger.app_log.warning(f"Database lock acquired")
+            self.logger.app_log.debug(f"Database lock acquired")
             backup_data = None  # used in "finally" section
             skip = False
             reason = ""
@@ -560,7 +560,7 @@ class Node:
             finally:
                 self.db_lock.release()
 
-                self.logger.app_log.warning(f"Database lock released")
+                self.logger.app_log.debug(f"Database lock released")
 
                 if skip:
                     rollback = {"timestamp": my_time, "height": db_block_height, "ip": peer_ip,

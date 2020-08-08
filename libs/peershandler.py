@@ -30,11 +30,12 @@ class Peers:
     __slots__ = ('app_log', 'config', 'logstats', 'node', 'peersync_lock', 'startup_time', 'reset_time', 'warning_list',
                  'stats', 'connection_pool', 'peer_opinion_dict', 'consensus_percentage', 'consensus',
                  'tried', 'peer_dict', 'peerfile', 'suggested_peerfile', 'banlist', 'whitelist', 'ban_threshold',
-                 'ip_to_mainnet', 'peers', 'accept_peers', 'peerlist_updated', 'peers_log')
+                 'ip_to_mainnet', 'peers', 'accept_peers', 'peerlist_updated', 'peers_log', 'status_log')
 
     def __init__(self, node: "Node", logstats: bool =True):
         self.app_log = node.logger.app_log
         self.peers_log = node.logger.peers_log
+        self.status_log = node.logger.status_log
         self.config = node.config
         self.logstats = logstats
         self.peersync_lock = threading.Lock()
@@ -514,7 +515,7 @@ class Peers:
                 self.reset_tried()
                 self.reset_time = time()
 
-            self.peers_log.info("Status: Testing peers")
+            self.status_log.info("Testing peers")
             self.peer_dict.update(self.peers_get(self.peerfile))
 
             # TODO: this is not OK. client_loop is called every 30 sec and should NOT contain any lengthy calls.
@@ -522,30 +523,30 @@ class Peers:
             self.peers_test(self.peerfile, self.peer_dict, strict=True)
 
         except Exception as e:
-            self.peers_log.warning(f"Status: peers client loop skipped due to error: {e}")
+            self.peers_log.warning(f"Peers client loop skipped due to error: {e}")
             # raise
             """We do not want to raise here, since the rest of the calling method would be skipped also.
             It's ok to skip this part only
             The calling method has other important subsequent calls that have to be done.
             """
 
-    def status_log(self) -> None:
+    def print_status_log(self) -> None:
         """Prints the peers part of the node status"""
         if self.banlist:
-            self.peers_log.warning(f"Status: Banlist Count : {len(self.banlist)}")
-            self.peers_log.info(f"Status: Banlist: {self.banlist}")
+            self.status_log.info(f"Peers: Banlist Count: {len(self.banlist)}")
+            self.status_log.debug(f"Peers: Banlist: {self.banlist}")
         if self.whitelist:
-            self.peers_log.warning(f"Status: Whitelist Count : {len(self.whitelist)}")
-            self.peers_log.info(f"Status: Whitelist: {self.whitelist}")
+            self.status_log.info(f"Peers: Whitelist Count: {len(self.whitelist)}")
+            self.status_log.debug(f"Peers: Whitelist: {self.whitelist}")
 
-        self.peers_log.warning(f"Status: Known Peers: {len(self.peer_dict)}")
-        self.peers_log.debug(f"Status: Known Peers: {self.peer_dict}")
+        self.status_log.info(f"Known Peers count: {len(self.peer_dict)}")
+        self.status_log.debug(f"Known Peers: {self.peer_dict}")
 
-        self.peers_log.info(f"Status: Tried: {self.tried}")
-        self.peers_log.info(f"Status: Tried Count: {len(self.tried)}")
-        self.peers_log.info(f"Status: List of Outbound connections: {self.connection_pool}")
-        self.peers_log.warning(f"Status: Number of Outbound connections: {len(self.connection_pool)}")
+        self.status_log.info(f"Tried PeersCount: {len(self.tried)}")
+        self.status_log.debug(f"Tried peers: {self.tried}")
+        self.status_log.info(f"Peers: Number of Outbound connections: {len(self.connection_pool)}")
+        self.status_log.debug(f"Peers: List of Outbound connections: {self.connection_pool}")
         if self.consensus:  # once the consensus is filled
-            self.peers_log.warning(f"Status: Consensus height: {self.consensus} = {self.consensus_percentage}%")
-            self.peers_log.warning(f"Status: Last block opinion: {self.peer_opinion_dict}")
-            self.peers_log.warning(f"Status: Total number of nodes: {len(self.peer_opinion_dict)}")
+            self.status_log.info(f"Consensus height: {self.consensus} = {self.consensus_percentage}%")
+            self.status_log.info(f"Last block opinion: {self.peer_opinion_dict}")
+            self.status_log.info(f"Total number of nodes: {len(self.peer_opinion_dict)}")

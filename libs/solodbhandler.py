@@ -355,7 +355,7 @@ class SoloDbHandler:
 
     def rollback(self, block_height: int) -> None:
         """Specific rollback method for single user mode"""
-        self.logger.app_log.warning(f"Status: Rolling back below: {block_height} (Solo)")
+        self.logger.status_log.warning(f"Rolling back below: {block_height} (Solo)")
         # EGG: I dupped code there, I'm not proud of that. To be handled in a more generic way (solo/db handler)
         # Good thing is this is not db format dependant.
         #db_handler.rollback_under(block_height)
@@ -372,26 +372,26 @@ class SoloDbHandler:
         try:
             self._index_cursor.execute("DELETE FROM tokens WHERE block_height >= ?;", (block_height,))
             self._index_db.commit()
-            self.logger.app_log.warning(f"Rolled back the token index below {(block_height)}")
+            self.logger.app_log.info(f"Rolled back the token index below {(block_height)}")
         except Exception as e:
-            self.logger.app_log.warning(f"Failed to roll back the token index below {(block_height)} due to {e}")
+            self.logger.app_log.error(f"Failed to roll back the token index below {(block_height)} due to {e}")
             # Maybe it would be better (solo mode, once only at start) to just quit on error there and above, to avoid starting with a corrupted state.
 
         #db_handler.aliases_rollback(block_height)
         try:
             self._index_cursor.execute("DELETE FROM aliases WHERE block_height >= ?;", (block_height,))
             self._index_db.commit()
-            self.logger.app_log.warning(f"Rolled back the alias index below {(block_height)}")
+            self.logger.app_log.info(f"Rolled back the alias index below {(block_height)}")
         except Exception as e:
-            self.logger.app_log.warning(f"Failed to roll back the alias index below {(block_height)} due to {e}")
+            self.logger.app_log.error(f"Failed to roll back the alias index below {(block_height)} due to {e}")
 
-        self.logger.app_log.warning(f"Status: Chain rolled back below {block_height} (Solo)")
+        self.logger.status_log.info(f"Chain rolled back below {block_height} (Solo)")
 
     def prepare_hypo(self) -> None:
         """avoid double processing by renaming Hyperblock addresses to Hypoblock"""
         if self._hyper_cursor is None:
             # No hyper yet, nothing to do
-            self.logger.app_log.warning("Prepare_hypo was avoided")
+            self.logger.status_log.debug("Prepare_hypo was avoided")
             return
         self._hyper_cursor.execute("UPDATE transactions SET address = 'Hypoblock' WHERE address = 'Hyperblock'")
         self._hyper_db.commit()
@@ -538,10 +538,10 @@ class SoloDbHandler:
             if y < 1:
                 y = y_init
             if row[0] != y:
-                self.logger.app_log.error(f"Status: Chain {name} transaction sequencing error at: {row[0]}. {row[0]} instead of {y}")
+                self.logger.status_log.warning(f"Chain {name} transaction sequencing error at: {row[0]}. {row[0]} instead of {y}")
                 self.rollback(y)  # Will also rollback the other db, misc, tokens and aliases
-                self.logger.app_log.warning(
-                    f"Status: Due to a sequencing issue at block {y}, chain has been rolled back and will be resynchronized")
+                self.logger.status_log.info(
+                    f"Due to a sequencing issue at block {y}, chain has been rolled back and will be resynchronized")
                 return y
             y += 1
         return y
@@ -553,9 +553,9 @@ class SoloDbHandler:
             with open(self.config.get_db_path("sequencing_last"), 'r') as filename:
                 sequencing_last = int(filename.read())
         except:
-            self.logger.app_log.warning("Sequencing anchor not found, Checking whole chain")
+            self.logger.status_log.warning("Sequencing anchor not found, Checking whole chain")
             sequencing_last = 0
-        self.logger.app_log.warning(f"Status: Testing chain sequencing, starting with block {sequencing_last}")
+        self.logger.status_log.info(f"Testing chain sequencing, starting with block {sequencing_last}")
         y1 = self._sequencing_check(sequencing_last, self._ledger_cursor, "Ledger")
         y2 = self._sequencing_check(sequencing_last, self._hyper_cursor, "Hyper")
 
@@ -569,43 +569,43 @@ class SoloDbHandler:
                 y = y_init
                 print(y)
             if row[0] != y:
-                self.logger.app_log.warning(
-                    f"Status: Chain Index sequencing error at: {row[0]}. {row[0]} instead of {y}")
+                self.logger.status_log.warning(
+                    f"Chain Index sequencing error at: {row[0]}. {row[0]} instead of {y}")
                 sys.exit()
                 self.rollback(y)
-                self.logger.app_log.warning(
-                    f"Status: Due to a sequencing issue at block {y}, chain has been rolled back and will be resynchronized")
+                self.logger.status_log.info(
+                    f"Due to a sequencing issue at block {y}, chain has been rolled back and will be resynchronized")
             y = y + 1
 
-        self.logger.app_log.warning(f"Status: Chains sequencing test complete.")
+        self.logger.status_log.info(f"Chains sequencing test complete.")
         y3 = y
         y = min(y1, y2, y3)
         if y > 2000:
-            self.logger.app_log.warning(f"Status: Set new sequencing anchor to {y}")
+            self.logger.status_log.info(f"Set new sequencing anchor to {y}")
             with open(self.config.get_db_path("sequencing_last"), 'w') as filename:
                 filename.write(str(y - 1000))  # room for rollbacks
 
     def verify(self):
         # deeper check of the chain, including sig and hashes.
         try:
-            self.logger.app_log.warning("Blockchain verification started...")
+            self.logger.status_log.info("Blockchain verification started...")
             # verify blockchain
             self._ledger_cursor.execute("SELECT Count(*) FROM transactions")
             db_rows = self._ledger_cursor.fetchone()[0]
-            self.logger.app_log.warning("Total steps: {}".format(db_rows))
+            self.logger.status_log.debug("Total steps: {}".format(db_rows))
             # verify genesis
             try:
                 self._ledger_cursor.execute("SELECT block_height, recipient FROM transactions WHERE block_height = 1")
                 result = self._ledger_cursor.fetchall()[0]
                 block_height = result[0]
                 genesis = result[1]
-                self.logger.app_log.warning(f"Genesis: {genesis}")
+                self.logger.status_log.info(f"Genesis: {genesis}")
                 if str(genesis) != self.config.genesis and int(
                         block_height) == 0:
                     self.logger.app_log.error("Invalid genesis address")
                     sys.exit(1)
             except:
-                self.logger.app_log.warning("Hyperblock mode in use")
+                self.logger.status_log.info("Hyperblock mode in use")
             # verify genesis
             db_hashes = {
                 '27258-1493755375.23': 'acd6044591c5baf121e581225724fc13400941c7',
@@ -709,7 +709,7 @@ class SoloDbHandler:
                         invalid = invalid + 1
 
             if invalid == 0:
-                self.logger.app_log.warning("All transactions in the local ledger are valid")
+                self.logger.status_log.info("All transactions in the local ledger are valid")
             else:
                 self.logger.app_log.error("Full transactions check unsuccessful")
                 sys.exit(1)

@@ -25,9 +25,10 @@ if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
     from libs.node import Node
 
-g__version__ = "0.0.8i"
+g__version__ = "0.0.8j"
 
 """
+0.0.8j - Logging
 0.0.7h - Moves to libs and more type hints
 0.0.5g - Add default param to mergedts for compatibility
 0.0.5f - Using polysign
@@ -128,6 +129,8 @@ class Mempool:
     def __init__(self, node: "Node"):
         try:
             self.app_log = node.logger.app_log
+            self.status_log = node.logger.status_log
+            self.mempool_log = node.logger.mempool_log
             self.config = node.config
             self.db_lock = node.db_lock
             self.ram = self.config.mempool_ram
@@ -146,7 +149,7 @@ class Mempool:
             self.testnet = node.is_testnet
 
             if self.testnet:
-                self.app_log.warning("Starting mempool in testnet mode")
+                self.mempool_log.warning("Starting mempool in testnet mode")
                 self.mempool_path = "mempool_testnet.db"
                 self.mempool_ram_file = "file:mempool_testnet?mode=memory&cache=shared"
             else:
@@ -171,7 +174,7 @@ class Mempool:
         Checks if mempool exists, create if not.
         :return:
         """
-        self.app_log.warning("Mempool Check")
+        self.mempool_log.info("Mempool Check")
         with self.lock:
             if self.ram:
                 self.db = sqlite3.connect(self.mempool_ram_file,
@@ -185,7 +188,7 @@ class Mempool:
                 self.cursor = self.db.cursor()
                 self.cursor.execute(SQL_CREATE)
                 self.db.commit()
-                self.app_log.warning("Status: In memory mempool file created")
+                self.status_log.info("In memory mempool file created")
             else:
                 self.db = sqlite3.connect(self.mempool_path, timeout=1,
                                           check_same_thread=False)
@@ -209,7 +212,7 @@ class Mempool:
                     self.cursor = self.db.cursor()
                     self._execute(SQL_CREATE)
                     self._commit()
-                    self.app_log.warning("Status: Recreated mempool file")
+                    self.status_log.info("Recreated mempool file")
 
     def _execute(self, sql: str, param: Union[None, tuple]=None, cursor: sqlite3.Connection=None) -> None:
         """
@@ -230,8 +233,8 @@ class Mempool:
                     cursor.execute(sql)
                 break
             except Exception as e:
-                self.app_log.warning("Database query: {} {}".format(cursor, sql))
-                self.app_log.warning("Database retry reason: {}".format(e))
+                self.mempool_log.warning("Database retry reason: {}".format(e))
+                self.mempool_log.debug("Database query: {} {}".format(cursor, sql))
                 time.sleep(0.1)
 
     def _commit(self) -> None:
@@ -245,7 +248,7 @@ class Mempool:
                 self.db.commit()
                 break
             except Exception as e:
-                self.app_log.warning("Database retry reason: {}".format(e))
+                self.mempool_log.warning("Database commit retry reason: {}".format(e))
                 time.sleep(0.1)
 
     def _fetchone(self, sql: str, param: Union[None, tuple]=None, write: bool=False) -> Union[str, list, int, float]:
@@ -300,12 +303,12 @@ class Mempool:
         :return:
         """
         with self.lock:
-            self.app_log.warning("Purging mempool")
+            self.mempool_log.info("Purging mempool")
             try:
                 self._execute(SQL_PURGE)
                 self._commit()
             except Exception as e:
-                self.app_log.error("Error {} on mempool purge".format(e))
+                self.mempool_log.error("Error {} on mempool purge".format(e))
 
     def clear(self) -> None:
         """
@@ -372,19 +375,22 @@ class Mempool:
         try:
             limit = time.time()
             frozen = [peer for peer in self.peers_sent if self.peers_sent[peer] > limit]
-            self.app_log.warning("Status: MEMPOOL Frozen = {}".format(", ".join(frozen)))
+            self.status_log.info("MEMPOOL Frozen Count {}".format(len(frozen)))
+            self.status_log.debug("MEMPOOL Frozen = {}".format(", ".join(frozen)))
             # print(limit, self.peers_sent, frozen)
             # Cleanup old nodes not synced since 15 min
             limit = limit - 15 * 60
             with self.peers_lock:
                 self.peers_sent = {peer: self.peers_sent[peer] for peer in self.peers_sent if
                                    self.peers_sent[peer] > limit}
-            self.app_log.warning(
-                "Status: MEMPOOL Live = {}".format(", ".join(set(self.peers_sent.keys()) - set(frozen))))
+            live = set(self.peers_sent.keys() - set(frozen))
+            self.status_log.info("MEMPOOL Live Count {}".format(len(live)))
+            self.status_log.debug(
+                "MEMPOOL Live = {}".format(", ".join(live)))
             status = self._fetchall(SQL_STATUS)
             count, open_len, senders, recipients = status[0]
-            self.app_log.warning(
-                "Status: MEMPOOL {} Txs from {} senders to {} distinct recipients. Openfield len {}".
+            self.status_log.warning(
+                "MEMPOOL {} Txs from {} senders to {} distinct recipients. Openfield len {}".
                     format(count, senders, recipients, open_len))
             return status[0]
         except:
@@ -445,7 +451,7 @@ class Mempool:
             tx_count = len(all)
             tx_list = [tx[1] + ' ' + tx[2] + ' : ' + str(tx[3]) for tx in all]
             # print("I have {} txs for {} but won't send: {}".format(tx_count, peer_ip, "\n".join(tx_list)))
-            print("I have {} txs for {} but won't send".format(tx_count, peer_ip))
+            self.mempool_log.warning("I have {} txs for {} but won't send".format(tx_count, peer_ip))
             return []
         # Get our raw txs
         if peer_ip not in self.peers_sent:
@@ -520,7 +526,7 @@ class Mempool:
             raise ValueError("Connection lost")
         try:
             if self.peers_sent[peer_ip] > time.time() and peer_ip != '127.0.0.1':
-                self.app_log.warning("Mempool ignoring merge from frozen {}".format(peer_ip))
+                self.mempool_log.info("Mempool ignoring merge from frozen {}".format(peer_ip))
                 mempool_result.append("Mempool ignoring merge from frozen {}".format(peer_ip))
                 return mempool_result
         except:
@@ -530,7 +536,7 @@ class Mempool:
             if peer_ip != '127.0.0.1':
                 with self.peers_lock:
                     self.peers_sent[peer_ip] = time.time() + 10 * 60
-                self.app_log.warning("Freezing mempool from {} for 10 min - Bad TX format".format(peer_ip))
+                self.mempool_log.warning("Freezing mempool from {} for 10 min - Bad TX format".format(peer_ip))
             mempool_result.append("Bad TX Format")
             return mempool_result
 
@@ -542,7 +548,7 @@ class Mempool:
                     # By default, we don't wait.
                     mempool_result.append("Locked ledger, dropping txs")
                     return mempool_result
-                self.app_log.warning("Waiting for block digestion to finish before merging mempool")
+                self.mempool_log.warning("Waiting for block digestion to finish before merging mempool")
                 time.sleep(1)
         # if reverting, don't bother with main lock, go on.
         # Let's really dig
@@ -682,7 +688,7 @@ class Mempool:
                             if (peer_ip != '127.0.0.1') and (ledger_in < time_now - 60 * 15):
                                 with self.peers_lock:
                                     self.peers_sent[peer_ip] = time.time() + FREEZE_MIN * 60
-                                self.app_log.warning("Freezing mempool from {} for {} min.".format(peer_ip, FREEZE_MIN))
+                                self.mempool_log.warning("Freezing mempool from {} for {} min.".format(peer_ip, FREEZE_MIN))
                             # Here, we point blank stop processing the batch from this host since it's outdated.
                             # Update: Do not, since it blocks further valid tx - case has been found in real use.
                             # return mempool_result
@@ -762,11 +768,11 @@ class Mempool:
                 return mempool_result
                 # TODO: Here maybe commit() on c to release the write lock?
             except Exception as e:
-                self.app_log.warning("Mempool: Error processing: {} {}".format(data, e))
+                self.mempool_log.warning("Mempool: Error processing: {} {}".format(data, e))
                 if self.config.debug:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                    self.app_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
+                    self.mempool_log.warning("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
                     mempool_result.append("Exception: {}".format(str(e)))
                     # if left there, means debug can *not* be used in production,
                     # or exception is not sent back to the client.
