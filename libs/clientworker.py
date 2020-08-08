@@ -35,7 +35,7 @@ def sendsync(sdef, peer_ip: str, status: str, node: "Node") -> None:
     returns None
     """
     # TODO: ERROR, does **not** save anything. code or comment wrong.
-    node.logger.app_log.info(f"Outbound: Synchronization with {peer_ip} finished after: {status}, sending new sync request")
+    node.logger.app_log.debug(f"Outbound: Synchronization with {peer_ip} finished after: {status}, sending new sync request")
     node.sleep()
     while node.db_lock.locked():
         if node.IS_STOPPING:
@@ -132,12 +132,12 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                     # send block height, receive block height
                     send(s, "blockheight")
 
-                    node.logger.app_log.info(f"Outbound: Sending block height to compare: {node.hdd_block}")
+                    node.logger.app_log.debug(f"Outbound: Sending block height to compare: {node.hdd_block}")
                     # append zeroes to get static length
                     send(s, node.hdd_block)
 
                     received_block_height = receive(s)  # receive node's block height
-                    node.logger.app_log.info(
+                    node.logger.app_log.debug(
                         f"Outbound: Node {peer_ip} is at block height: {received_block_height}")
 
                     if int(received_block_height) < node.hdd_block:
@@ -199,7 +199,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
 
                     elif int(received_block_height) >= node.hdd_block:
                         if int(received_block_height) == node.hdd_block:
-                            node.logger.consensus_log.info(f"Outbound: We have the same block as {peer_ip} ({received_block_height}), hash will be verified")
+                            node.logger.consensus_log.debug(f"Outbound: We have the same block as {peer_ip} ({received_block_height}), hash will be verified")
                         else:
                             node.logger.consensus_log.info(f"Outbound: We have a lower block ({node.hdd_block}) than {peer_ip} ({received_block_height}), hash will be verified")
 

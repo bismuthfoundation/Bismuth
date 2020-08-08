@@ -354,7 +354,7 @@ class Peers:
                     self.peers_log.warning(f"{peer_ip} received block too old ({consensus_blockheight}) for consensus")
                     return
 
-            self.peers_log.info(f"Updating {peer_ip} in consensus")
+            self.peers_log.debug(f"Updating {peer_ip} in consensus")
             self.peer_opinion_dict[peer_ip] = consensus_blockheight
 
             self.consensus = most_common_dict(self.peer_opinion_dict)

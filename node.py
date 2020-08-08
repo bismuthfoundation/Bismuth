@@ -111,7 +111,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                 data = receive(self.request)
 
-                node.logger.app_log.info(
+                node.logger.app_log.debug(
                     f"Inbound: Received: {data} from {peer_ip}")  # will add custom ports later
 
                 if data.startswith('regtest_'):
@@ -147,7 +147,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == 'mempool':
                     # receive theirs
                     segments = receive(self.request)
-                    node.logger.mempool_log.info(mp.MEMPOOL.merge(segments, peer_ip, db_handler, size_bypass=False))
+                    node.logger.mempool_log.debug(mp.MEMPOOL.merge(segments, peer_ip, db_handler, size_bypass=False))
                     # improvement possible - pass peer_ip from worker
                     # receive theirs
                     if mp.MEMPOOL.sendable(peer_ip):
@@ -173,7 +173,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     send(self.request, peers_send)
                     while node.db_lock.locked():
                         node.sleep()
-                    node.logger.peers_log.info("Inbound: Sending sync request")
+                    node.logger.peers_log.debug("Inbound: Sending sync request")
 
                     send(self.request, "sync")
 
@@ -244,7 +244,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                         elif received_block_height <= node.hdd_block:
                             if received_block_height == node.hdd_block:
-                                node.logger.consensus_log.info(
+                                node.logger.consensus_log.debug(
                                     f"Inbound: We have the same height as {peer_ip} ({received_block_height}), hash will be verified")
                             else:
                                 node.logger.consensus_log.info(
@@ -254,9 +254,9 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                             # send all our followup hashes
                             if data == "*":
                                 # connection lost, no need to go on, that was banning the node like it forked.
-                                node.logger.peers_log.info(f"Inbound: {peer_ip} dropped connection")
+                                node.logger.peers_log.debug(f"Inbound: {peer_ip} dropped connection")
                                 break
-                            node.logger.consensus_log.info(f"Inbound: Will seek the following block: {data}")
+                            node.logger.consensus_log.debug(f"Inbound: Will seek the following block: {data}")
 
                             client_block = db_handler.block_height_from_hash(data)
                             if client_block is None:
@@ -782,7 +782,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     timer_operation = ttime()  # reset timer
                 # node.sleep()
                 # sleep(float(node.config.pause))  # prevent cpu overload
-                node.logger.app_log.info(f"Server loop finished for {peer_ip}")
+                node.logger.app_log.debug(f"Server loop finished for {peer_ip}")
 
             except Exception as e:
                 node.logger.app_log.info(f"Inbound: Lost connection to {peer_ip} because {e}")

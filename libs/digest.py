@@ -415,7 +415,7 @@ def process_blocks(blocks: list, node: "Node", db_handler: "DbHandler", block_in
                                                         + node.last_block_hash).encode("utf-8")).hexdigest()
             del block_instance.transaction_list_converted[:]
 
-            node.logger.digest_log.info(f"Calculated block sha_hash: {block_instance.block_hash}")
+            node.logger.digest_log.debug(f"Calculated block sha_hash: {block_instance.block_hash}")
             # node.logger.digest_log.info("Nonce: {}".format(nonce))
 
             # check if we already have the sha_hash
