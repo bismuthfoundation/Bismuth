@@ -65,7 +65,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
             s.setproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
         # s.setblocking(0)
         s.connect((host, port))
-        node.logger.app_log.info(f"Outbound: Connected to {this_client}")
+        node.logger.app_log.debug(f"Outbound: Connected to {this_client}")
         client_instance_worker.connected = True
 
         # communication starter
@@ -73,7 +73,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
         send(s, node.config.version)
         data = receive(s)
         if data == "ok":
-            node.logger.app_log.info(f"Outbound: Node protocol version of {this_client} matches our client")
+            node.logger.app_log.debug(f"Outbound: Node protocol version of {this_client} matches our client")
         else:
             raise ValueError(f"Outbound: Node protocol version of {this_client} mismatch")
         send(s, "getversion")
@@ -85,7 +85,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
         # /communication starter
 
     except Exception as e:
-        node.logger.app_log.info(f"Could not connect to {this_client}: {e}")
+        node.logger.app_log.debug(f"Could not connect to {this_client}: {e}")
         return  # can return here, because no lists are affected yet
 
     node.peers.store_mainnet(host, peer_version)
@@ -98,8 +98,8 @@ def client_worker(host: str, port: int, node: "Node") -> None:
 
     if this_client not in node.peers.connection_pool:
         node.peers.append_client(this_client)
-        node.logger.app_log.info(f"Connected to {this_client}")
-        node.logger.app_log.info(f"Current active pool: {node.peers.connection_pool}")
+        node.logger.app_log.info(f"Connected to {this_client} - {len(node.peers.connection_pool)} in pool")
+        node.logger.app_log.debug(f"Current active pool: {node.peers.connection_pool}")
 
     if node.peers.is_banned(host) or node.IS_STOPPING:
         return
@@ -176,7 +176,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                                     node.logger.app_log.warning(f"Outbound: Egress disabled for {peer_ip}")
                                     node.sleep()  # reduce CPU usage
                                 else:
-                                    node.logger.app_log.info(f"Outbound: Node {peer_ip} has the latest block")
+                                    node.logger.app_log.debug(f"Outbound: Node {peer_ip} has the latest block")
                                     # TODO: this is unlikely to happen due to conditions above, consider removing
                                 send(s, "nonewblk")
 
@@ -293,7 +293,9 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                     segments = receive(s)
 
                     # Egg: was do we bypass size there?
-                    node.logger.app_log.info(mp.MEMPOOL.merge(segments, peer_ip, db_handler, size_bypass=True))
+                    info = mp.MEMPOOL.merge(segments, peer_ip, db_handler, size_bypass=True)
+                    if len(info):
+                        node.logger.app_log.debug(info)
 
                     # receive theirs
                     # Tell the mempool we just send our pool to a peer

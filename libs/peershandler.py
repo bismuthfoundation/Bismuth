@@ -434,7 +434,7 @@ class Peers:
             tries = 3
         self.tried[host_port] = (tries, time() + delay)
         # Temp
-        self.peers_log.info(f"Set timeout {delay} try {tries} for {host_port}")
+        self.peers_log.debug(f"Set timeout {delay} try {tries} for {host_port}")
 
     def del_try(self, host: str, port=None) -> None:
         """
@@ -552,5 +552,5 @@ class Peers:
         self.status_log.debug(f"Tried peers: {self.tried}")
         self.status_log.debug(f"Peers: List of Outbound connections: {self.connection_pool}")
         if self.consensus:  # once the consensus is filled
-            self.status_log.info(f"Consensus height: {self.consensus} = {self.consensus_percentage}% - {len(self.peer_opinion_dict)} Nodes ")
+            self.status_log.info(f"Consensus height: {self.consensus} = {self.consensus_percentage:0.2f}% - {len(self.peer_opinion_dict)} Nodes ")
             self.status_log.debug(f"Last block opinion: {self.peer_opinion_dict}")

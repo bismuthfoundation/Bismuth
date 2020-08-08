@@ -64,7 +64,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             pass
         else:
             try:
-                node.logger.app_log.info(f"Free capacity for {peer_ip} unavailable, disconnected")
+                node.logger.app_log.debug(f"Free capacity for {peer_ip} unavailable, disconnected")
                 self.request.close()
                 # if you raise here, you kill the whole server
             except Exception as e:
@@ -137,7 +137,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         send(self.request, "notok")
                         return
                     else:
-                        node.logger.peers_log.info(f"Inbound: Protocol version matched with {peer_ip}: {data}")
+                        node.logger.peers_log.debug(f"Inbound: Protocol version matched with {peer_ip}: {data}")
                         send(self.request, "ok")
                         node.peers.store_mainnet(peer_ip, data)
 
@@ -228,7 +228,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 elif data == "blockheight":
                     try:
                         received_block_height = int(receive(self.request))  # receive client's last block height
-                        node.logger.peers_log.info(
+                        node.logger.peers_log.debug(
                             f"Inbound: Received block height {received_block_height} from {peer_ip} ")
                         consensus_blockheight = received_block_height  # str int to remove leading zeros
                         node.peers.consensus_add(peer_ip, consensus_blockheight, self.request, node.hdd_block)
@@ -272,13 +272,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                     break
 
                             else:
-                                node.logger.consensus_log.info(f"Inbound: Client is at block {client_block}")
+                                node.logger.consensus_log.debug(f"Inbound: Client is at block {client_block}")
                                 # now check if we have any newer
                                 if node.hdd_hash == data or not node.config.egress:
                                     if node.config.egress:
-                                        node.logger.consensus_log.info(f"Inbound: Client {peer_ip} has the latest block")
+                                        node.logger.consensus_log.debug(f"Inbound: Client {peer_ip} has the latest block")
                                     else:
-                                        node.logger.consensus_log.info(f"Inbound: Egress disabled for {peer_ip}")
+                                        node.logger.consensus_log.debug(f"Inbound: Egress disabled for {peer_ip}")
                                     node.sleep()  # reduce CPU usage
                                     send(self.request, "nonewblk")
 
@@ -832,7 +832,7 @@ if __name__ == "__main__":
     logger = Logger()  # is that class really useful?
     enable_pretty_logging()
     app_log = log.log("node.log", config.debug_level, config.terminal_output)
-    status_log = log.status_log("node.log", "INFO", True)
+    status_log = log.generic_log("node.log", "INFO", logger_name="status")
     logger.set_app_log(app_log, status_log=status_log)
     logger.app_log.warning("Configuration settings loaded")
     # Pre-node tweaks

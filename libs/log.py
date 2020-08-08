@@ -59,7 +59,7 @@ def log(log_file, level_input="WARNING", terminal_output=False):
     return app_log
 
 
-def status_log(log_file, level_input="INFO", terminal_output=False):
+def generic_log(log_file, level_input="INFO", logger_name="app"):
     level = logging.INFO
     if level_input == "DEBUG":
         level = logging.DEBUG
@@ -77,7 +77,7 @@ def status_log(log_file, level_input="INFO", terminal_output=False):
                                      backupCount=2, encoding="utf-8", delay=0)
     my_handler.setFormatter(log_formatter)
     my_handler.setLevel(level)
-    status_log = logging.getLogger('status')
+    status_log = logging.getLogger(f'{logger_name}_log')
     status_log.setLevel(level)
     status_log.addHandler(my_handler)
 

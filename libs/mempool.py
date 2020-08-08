@@ -518,7 +518,7 @@ class Mempool:
         global REFUSE_OLDER_THAN
         # Easy cases of empty or invalid data
         if not data:
-            return ["Mempool from {} was empty".format(peer_ip)]
+            return []  # ["Mempool from {} was empty".format(peer_ip)]
         mempool_result = []
         if data == '*':
             raise ValueError("Connection lost")
