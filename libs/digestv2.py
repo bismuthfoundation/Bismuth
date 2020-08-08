@@ -409,12 +409,12 @@ def process_blocks(blocks: Block, node: "Node", db_handler: "DbHandler", peer_ip
             # sleep(1)
             node.difficulty = diff
 
-            node.logger.app_log.info(f"Time to generate block {node.last_block + 1}: {'%.2f' % diff[2]}", "Digest")
-            node.logger.app_log.info(f"Current difficulty: {diff[3]}", "Digest")
-            node.logger.app_log.info(f"Current blocktime: {diff[4]}", "Digest")
-            node.logger.app_log.info(f"Current hashrate: {diff[5]}", "Digest")
-            node.logger.app_log.info(f"Difficulty adjustment: {diff[6]}", "Digest")
-            node.logger.app_log.info(f"Difficulty: {diff[0]} {diff[1]}", "Digest")
+            node.logger.status_log.info(f"Time to generate block {node.last_block + 1}: {'%.2f' % diff[2]}", "Digest")
+            node.logger.status_log.info(f"Current difficulty: {diff[3]}", "Digest")
+            node.logger.status_log.info(f"Current blocktime: {diff[4]}", "Digest")
+            node.logger.status_log.info(f"Current hashrate: {diff[5]}", "Digest")
+            node.logger.status_log.info(f"Difficulty adjustment: {diff[6]}", "Digest")
+            node.logger.status_log.info(f"Difficulty: {diff[0]} {diff[1]}", "Digest")
 
             block_hash = hashlib.sha224((str(block_instance.transaction_list_converted)
                                                         + node.last_block_hash).encode("utf-8")).hexdigest()
@@ -563,7 +563,7 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
         # since we raise, it will also drop the connection, it's fine since he's banned.
     if not node.db_lock.locked():
         node.db_lock.acquire()
-        node.logger.app_log.info(f"Database lock acquired", "Digest")
+        node.logger.app_log.debug(f"Database lock acquired", "Digest")
         while mp.MEMPOOL.lock.locked():
             sleep(0.1)
             node.logger.app_log.info(f"Chain: Waiting for mempool to unlock {peer_ip}", "Digest")
@@ -601,7 +601,7 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
             # in regnet, this copies again the last block...
             db_handler.db_to_drive(node)
             node.db_lock.release()
-            node.logger.app_log.info(f"Database lock released", "Digest")
+            node.logger.app_log.debug(f"Database lock released", "Digest")
             delta_t = ttime() - start_time_block
             node.plugin_manager.execute_action_hook('digestblock',
                                                     {'failed': failed_cause,
@@ -611,5 +611,5 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
                                                      "txs": block_instance.tx_count})
 
     else:
-        node.logger.app_log.warning(f"Chain: Skipping processing from {peer_ip}, someone delivered data faster", "Digest")
+        node.logger.app_log.warning(f"Chain: Skipping processing from {peer_ip}, someone delivered data faster")
         node.plugin_manager.execute_action_hook('digestblock', {'failed': "skipped", 'ip': peer_ip})

@@ -284,7 +284,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
                                 else:
                                     blocks_fetched = db_handler.blocksync(client_block)
-                                    node.logger.consensus_log.info(f"Inbound: Selected {blocks_fetched}")
+                                    node.logger.consensus_log.debug(f"Inbound: Selected {blocks_fetched}")
                                     send(self.request, "blocksfnd")
                                     confirmation = receive(self.request)
                                     if confirmation == "blockscf":
@@ -785,8 +785,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 node.logger.app_log.info(f"Server loop finished for {peer_ip}")
 
             except Exception as e:
-                node.logger.app_log.info(f"Inbound: Lost connection to {peer_ip}")
-                node.logger.app_log.info(f"Inbound: {e}")
+                node.logger.app_log.info(f"Inbound: Lost connection to {peer_ip} because {e}")
                 # remove from consensus (connection from them)
                 node.peers.consensus_remove(peer_ip)
                 # remove from consensus (connection from them)
@@ -833,7 +832,8 @@ if __name__ == "__main__":
     logger = Logger()  # is that class really useful?
     enable_pretty_logging()
     app_log = log.log("node.log", config.debug_level, config.terminal_output)
-    logger.set_app_log(app_log)
+    status_log = log.status_log("node.log", "INFO", True)
+    logger.set_app_log(app_log, status_log=status_log)
     logger.app_log.warning("Configuration settings loaded")
     # Pre-node tweaks
     # upgrade wallet location after nuitka-required "files" folder introduction

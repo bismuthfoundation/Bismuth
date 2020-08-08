@@ -19,7 +19,7 @@ def filter_status(record):
 
 
 def log(log_file, level_input="WARNING", terminal_output=False):
-    level = logging.NOTSET
+    level = logging.WARNING
     if level_input == "DEBUG":
         level = logging.DEBUG
     if level_input == "INFO":
@@ -57,3 +57,29 @@ def log(log_file, level_input="WARNING", terminal_output=False):
     app_log.addHandler(ch)
     """
     return app_log
+
+
+def status_log(log_file, level_input="INFO", terminal_output=False):
+    level = logging.INFO
+    if level_input == "DEBUG":
+        level = logging.DEBUG
+    if level_input == "INFO":
+        level = logging.INFO
+    if level_input == "WARNING":
+        level = logging.WARNING
+    if level_input == "ERROR":
+        level = logging.ERROR
+    if level_input == "CRITICAL":
+        level = logging.CRITICAL
+
+    log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
+    my_handler = RotatingFileHandler(log_file, mode='a', maxBytes=5 * 1024 * 1024,
+                                     backupCount=2, encoding="utf-8", delay=0)
+    my_handler.setFormatter(log_formatter)
+    my_handler.setLevel(level)
+    status_log = logging.getLogger('status')
+    status_log.setLevel(level)
+    status_log.addHandler(my_handler)
+
+
+    return status_log

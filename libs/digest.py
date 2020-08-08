@@ -119,7 +119,7 @@ def transaction_validate(node: "Node", tx: TransactionLegacy):
                                              openfield=tx.received_openfield
                                              ).to_buffer_for_signing()
     if buffer != buffer2:
-        node.logger.app_log.error("Buffer mismatch", "Digest")
+        node.logger.digest_log.error("Buffer mismatch")
         print(buffer)
         print(buffer2)
         sys.exit()
@@ -408,12 +408,12 @@ def process_blocks(blocks: list, node: "Node", db_handler: "DbHandler", block_in
             # sleep(1)
             node.difficulty = diff
 
-            node.logger.app_log.warning(f"Time to generate block {node.last_block + 1}: {'%.2f' % diff[2]}")
-            node.logger.app_log.warning(f"Current difficulty: {diff[3]}")
-            node.logger.app_log.warning(f"Current blocktime: {diff[4]}")
-            node.logger.app_log.warning(f"Current hashrate: {diff[5]}")
-            node.logger.app_log.warning(f"Difficulty adjustment: {diff[6]}")
-            node.logger.app_log.warning(f"Difficulty: {diff[0]} {diff[1]}")
+            node.logger.status_log.info(f"Time to generate block {node.last_block + 1}: {'%.2f' % diff[2]}")
+            node.logger.status_log.info(f"Current difficulty: {diff[3]}")
+            node.logger.status_log.info(f"Current blocktime: {diff[4]}")
+            node.logger.status_log.info(f"Current hashrate: {diff[5]}")
+            node.logger.status_log.info(f"Difficulty adjustment: {diff[6]}")
+            node.logger.status_log.info(f"Difficulty: {diff[0]} {diff[1]}")
 
             block_instance.block_hash = hashlib.sha224((str(block_instance.transaction_list_converted)
                                                         + node.last_block_hash).encode("utf-8")).hexdigest()
@@ -565,7 +565,7 @@ def digest_block(node: "Node", block_data: list, sdef, peer_ip: str, db_handler:
     if not node.db_lock.locked():
 
         node.db_lock.acquire()
-        node.logger.app_log.warning(f"Database lock acquired")
+        node.logger.app_log.debug(f"Database lock acquired")
 
         while mp.MEMPOOL.lock.locked():
             sleep(0.1)
@@ -607,7 +607,7 @@ def digest_block(node: "Node", block_data: list, sdef, peer_ip: str, db_handler:
             db_handler.db_to_drive(node)
 
             node.db_lock.release()
-            node.logger.app_log.warning(f"Database lock released")
+            node.logger.app_log.debug(f"Database lock released")
 
             delta_t = ttime() - block_instance.start_time_block
             # node.logger.app_log.warning("Block: {}: {} digestion completed in {}s."
