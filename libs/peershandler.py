@@ -30,7 +30,7 @@ class Peers:
     __slots__ = ('app_log', 'config', 'logstats', 'node', 'peersync_lock', 'startup_time', 'reset_time', 'warning_list',
                  'stats', 'connection_pool', 'peer_opinion_dict', 'consensus_percentage', 'consensus',
                  'tried', 'peer_dict', 'peerfile', 'suggested_peerfile', 'banlist', 'whitelist', 'ban_threshold',
-                 'ip_to_mainnet', 'peers', 'accept_peers', 'peerlist_updated')
+                 'ip_to_mainnet', 'peers', 'accept_peers', 'peerlist_updated', 'peers_log')
 
     def __init__(self, node: "Node", logstats: bool =True):
         self.app_log = node.logger.app_log
