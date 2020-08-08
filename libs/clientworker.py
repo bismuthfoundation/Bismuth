@@ -199,11 +199,11 @@ def client_worker(host: str, port: int, node: "Node") -> None:
 
                     elif int(received_block_height) >= node.hdd_block:
                         if int(received_block_height) == node.hdd_block:
-                            node.logger.app_log.info(f"Outbound: We have the same block as {peer_ip} ({received_block_height}), hash will be verified")
+                            node.logger.consensus_log.info(f"Outbound: We have the same block as {peer_ip} ({received_block_height}), hash will be verified")
                         else:
-                            node.logger.app_log.warning(f"Outbound: We have a lower block ({node.hdd_block}) than {peer_ip} ({received_block_height}), hash will be verified")
+                            node.logger.consensus_log.info(f"Outbound: We have a lower block ({node.hdd_block}) than {peer_ip} ({received_block_height}), hash will be verified")
 
-                        node.logger.app_log.info(f"Outbound: block_hash to send: {node.hdd_hash}")
+                        node.logger.consensus_log.debug(f"Outbound: block_hash to send: {node.hdd_hash}")
                         send(s, node.hdd_hash)
 
                         #ensure_good_peer_version(host)
@@ -239,26 +239,26 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                 sendsync(s, peer_ip, "Block not found", node)
 
             elif data == "blocksfnd":
-                node.logger.app_log.info(f"Outbound: Node {peer_ip} has the block(s)")  # node should start sending txs in this step
+                node.logger.consensus_log.info(f"Outbound: Node {peer_ip} has the block(s)")  # node should start sending txs in this step
                 # node.logger.app_log.info("Inbound: Combined segments: " + segments)
                 # print peer_ip
                 if node.db_lock.locked():
-                    node.logger.app_log.warning(f"Skipping sync from {peer_ip}, syncing already in progress")
+                    node.logger.consensus_log.info(f"Skipping sync from {peer_ip}, syncing already in progress")
 
                 else:
                     if int(node.last_block_timestamp) < (ttime() - 600):
                         block_req = node.peers.consensus_most_common
-                        node.logger.app_log.warning("Most common block rule triggered")
+                        node.logger.consensus_log.info("Most common block rule triggered")
 
                     else:
                         block_req = node.peers.consensus_max
-                        node.logger.app_log.warning("Longest chain rule triggered")
+                        node.logger.consensus_log.info("Longest chain rule triggered")
 
                     #ensure_good_peer_version(host)
 
                     if int(received_block_height) >= block_req and int(received_block_height) > node.last_block:
                         try:  # they claim to have the longest chain, things must go smooth or ban
-                            node.logger.app_log.warning(f"Confirming to sync from {peer_ip}")
+                            node.logger.consensus_log.info(f"Confirming to sync from {peer_ip}")
                             send(s, "blockscf")
                             segments = receive(s)
                             #ensure_good_peer_version(host)
@@ -273,7 +273,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                             # receive theirs
                     else:
                         send(s, "blocksrj")
-                        node.logger.app_log.warning(f"Inbound: Distant peer {peer_ip} is at {received_block_height}, should be at least {max(block_req,node.last_block+1)}")
+                        node.logger.consensus_log.warning(f"Inbound: Distant peer {peer_ip} is at {received_block_height}, should be at least {max(block_req,node.last_block+1)}")
 
                 sendsync(s, peer_ip, "Block found", node)
 
@@ -319,7 +319,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
 
             # remove from active pool
             node.peers.remove_client(this_client)
-            node.logger.app_log.warning(f"Outbound: Disconnected from {this_client}: {e}")
+            # node.logger.peers_log.info(f"Outbound: Disconnected from {this_client}: {e}")
             # remove from active pool
 
             # remove from consensus 2
@@ -337,8 +337,8 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                 if "Socket EOF" not in str(e) and "Broken pipe" not in str(e) and "Socket POLLHUP" not in str(e) and "Bad file descriptor" not in str(e):  # don't pollute debug with closed pipes
                     raise  # major debug client
 
-            node.logger.app_log.info(f"Ending thread, because {e}")
+            # node.logger.app_log.info(f"Ending thread, because {e}")
             return
 
     if not node.peers.version_allowed(host, node.config.version_allow):
-        node.logger.app_log.warning(f"Outbound: Ending thread, because {host} has too old a version: {node.peers.ip_to_mainnet[host]}")
+        node.logger.peers_log.info(f"Outbound: Ending thread, because {host} has too old a version: {node.peers.ip_to_mainnet[host]}")

@@ -126,7 +126,7 @@ def transaction_validate(node: "Node", tx: TransactionLegacy):
     # Will raise if error - also includes reconstruction of address from pubkey to make sure it matches
     SignerFactory.verify_bis_signature(tx.received_signature_enc, tx.received_public_key_b64encoded, buffer,
                                        tx.received_address)
-    node.logger.app_log.info(f"Valid signature from {tx.received_address} "
+    node.logger.digest_log.info(f"Valid signature from {tx.received_address} "
                              f"to {tx.received_recipient} amount {tx.received_amount}")
 
 
@@ -230,8 +230,6 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: list, blo
                             fee_calculate(db_openfield, db_operation,
                                           node.last_block)))  # exclude the mining tx from fees
 
-            # node.logger.app_log.info("Fee: " + str(fee))
-
             # decide reward
             if tx_index == block_instance.tx_count - 1:
                 db_amount = 0  # prevent spending from another address, because mining txs allow delegation
@@ -270,8 +268,8 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: list, blo
 
             # append, but do not insert to ledger before whole block is validated,
             # note that it takes already validated values (decimals, length)
-            node.logger.app_log.info(f"Chain: Appending transaction back to block with "
-                                     f"{len(block_transactions)} transactions in it")
+            node.logger.digest_log.info(f"Chain: Appending transaction back to block with "
+                                        f"{len(block_transactions)} transactions in it")
             block_transactions.append((str(block_instance.block_height_new), str(db_timestamp), str(db_address),
                                        str(db_recipient), str(db_amount), str(db_signature),
                                        str(db_public_key_b64encoded), str(block_instance.block_hash), str(fee),
@@ -408,20 +406,17 @@ def process_blocks(blocks: list, node: "Node", db_handler: "DbHandler", block_in
             # sleep(1)
             node.difficulty = diff
 
-            node.logger.status_log.info(f"Time to generate block {node.last_block + 1}: {'%.2f' % diff[2]}")
-            node.logger.status_log.info(f"Current difficulty: {diff[3]}")
-            node.logger.status_log.info(f"Current blocktime: {diff[4]}")
-            node.logger.status_log.info(f"Current hashrate: {diff[5]}")
-            node.logger.status_log.info(f"Difficulty adjustment: {diff[6]}")
-            node.logger.status_log.info(f"Difficulty: {diff[0]} {diff[1]}")
+            node.logger.status_log.info(f"Time to generate block {node.last_block + 1}: {diff[2]:0.2f}s "
+                                        f"- Blocktime {diff[4]:0.2f}s - Hashrate {(diff[5]/1e12):0.2f} TH/s ")
+            node.logger.status_log.info(f"Current diff {diff[3]:0.2f} - New diff  {diff[0]:0.2f} {diff[1]:0.2f}")
+            node.logger.status_log.debug(f"Current diff {diff[3]} - New diff  {diff[0]} {diff[1]} - Adj {diff[6]}")
 
             block_instance.block_hash = hashlib.sha224((str(block_instance.transaction_list_converted)
                                                         + node.last_block_hash).encode("utf-8")).hexdigest()
             del block_instance.transaction_list_converted[:]
 
-            # node.logger.app_log.info("Last block sha_hash: {}".format(block_hash))
-            node.logger.app_log.info(f"Calculated block sha_hash: {block_instance.block_hash}")
-            # node.logger.app_log.info("Nonce: {}".format(nonce))
+            node.logger.digest_log.info(f"Calculated block sha_hash: {block_instance.block_hash}")
+            # node.logger.digest_log.info("Nonce: {}".format(nonce))
 
             # check if we already have the sha_hash
             dummy = db_handler.block_height_from_hash(block_instance.block_hash)
@@ -445,7 +440,7 @@ def process_blocks(blocks: list, node: "Node", db_handler: "DbHandler", block_in
                                                       tx.q_received_timestamp,
                                                       node.last_block_timestamp,
                                                       peer_ip=peer_ip,
-                                                      app_log=node.logger.app_log)
+                                                      app_log=node.logger.digest_log)
             elif node.is_testnet:
                 diff_save = mining_heavy3.check_block(block_instance.block_height_new,
                                                       miner_tx.miner_address,
@@ -456,7 +451,7 @@ def process_blocks(blocks: list, node: "Node", db_handler: "DbHandler", block_in
                                                       tx.q_received_timestamp,
                                                       node.last_block_timestamp,
                                                       peer_ip=peer_ip,
-                                                      app_log=node.logger.app_log)
+                                                      app_log=node.logger.digest_log)
             else:
                 # it's regnet then, will use a specific fake method here.
                 diff_save = mining_heavy3.check_block(block_instance.block_height_new,
@@ -468,7 +463,7 @@ def process_blocks(blocks: list, node: "Node", db_handler: "DbHandler", block_in
                                                       tx.q_received_timestamp,
                                                       node.last_block_timestamp,
                                                       peer_ip=peer_ip,
-                                                      app_log=node.logger.app_log)
+                                                      app_log=node.logger.digest_log)
 
             process_transactions(node=node, db_handler=db_handler, block=block, block_instance=block_instance,
                                  miner_tx=miner_tx, block_transactions=block_transactions)
@@ -517,7 +512,7 @@ def process_blocks(blocks: list, node: "Node", db_handler: "DbHandler", block_in
 
             # node.logger.app_log.warning("Block: {}: {} valid and saved from {}"
             # .format(block_instance.block_height_new, block_hash[:10], peer_ip))
-            node.logger.app_log.warning(f"Valid block: {block_instance.block_height_new}: "
+            node.logger.digest_log.info(f"Valid block: {block_instance.block_height_new}: "
                                         f"{block_instance.block_hash[:10]} with {len(block)} txs, "
                                         f"digestion from {peer_ip} completed in "
                                         f"{(ttime() - block_instance.start_time_block):0.2f}s.")
@@ -571,10 +566,10 @@ def digest_block(node: "Node", block_data: list, sdef, peer_ip: str, db_handler:
             sleep(0.1)
             node.logger.app_log.info(f"Chain: Waiting for mempool to unlock {peer_ip}")
 
-        node.logger.app_log.warning(f"Chain: Digesting started from {peer_ip}")
+        node.logger.digest_log.info(f"Chain: Digesting started from {peer_ip}")
 
         block_size = len(str(block_data)) / 1000000
-        node.logger.app_log.warning(f"Chain: Block size: {block_size} MB")
+        node.logger.digest_log.info(f"Chain: Block size: {block_size} MB")
 
         try:
             # print(block_data)  # Temp debug
@@ -586,8 +581,8 @@ def digest_block(node: "Node", block_data: list, sdef, peer_ip: str, db_handler:
             return node.last_block_hash
 
         except Exception as e:
-            node.logger.app_log.warning(f"Chain processing failed: {e}")
-            node.logger.app_log.info(f"Received data dump: {block_data}")
+            node.logger.digest_log.warning(f"Chain processing failed: {e}")
+            node.logger.digest_log.debug(f"Received data dump: {block_data}")
             block_instance.failed_cause = str(e)
             # get actual data from database on exception
             node.last_block = db_handler.last_mining_transaction().to_dict(legacy=True)['block_height']
@@ -620,5 +615,5 @@ def digest_block(node: "Node", block_data: list, sdef, peer_ip: str, db_handler:
                                                      "txs": block_instance.tx_count})
 
     else:
-        node.logger.app_log.warning(f"Chain: Skipping processing from {peer_ip}, someone delivered data faster")
+        node.logger.digest_log.warning(f"Chain: Skipping processing from {peer_ip}, someone delivered data faster")
         node.plugin_manager.execute_action_hook('digestblock', {'failed': "skipped", 'ip': peer_ip})

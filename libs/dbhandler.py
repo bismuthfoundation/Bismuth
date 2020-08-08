@@ -850,7 +850,7 @@ class DbHandler:
                 node.hdd_hash = node.last_block_hash
                 self.logger.app_log.warning(f"Chain: Regnet simulated move to HDD")
                 return
-            self.logger.app_log.warning(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
+            self.logger.app_log.info(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
 
             self._execute_param(self.c, "SELECT * FROM transactions WHERE block_height > ? "
                                                    "OR block_height < ? ORDER BY block_height ASC",
@@ -873,7 +873,7 @@ class DbHandler:
             node.hdd_block = node.last_block
             node.hdd_hash = node.last_block_hash
 
-            self.logger.app_log.warning(f"Chain: {len(result1)} txs moved to HDD")
+            self.logger.status_log.info(f"Chain: {len(result1)} txs moved to HDD, up to {node.last_block}")
         except Exception as e:
             self.logger.app_log.warning(f"Chain: Exception Moving new data to HDD: {e}")
             # app_log.warning("Ledger digestion ended")  # dup with more informative digest_block notice.

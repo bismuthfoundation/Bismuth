@@ -37,7 +37,7 @@ from libs.config import Config
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.23-evo"  # Experimental db-evolution branch
+VERSION = "5.0.24-evo"  # Experimental db-evolution branch
 
 
 appname = "Bismuth"
@@ -132,7 +132,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                 if data == 'version':
                     data = receive(self.request)
                     if data not in node.config.version_allow:
-                        node.logger.peers_log.warning(
+                        node.logger.peers_log.info(
                             f"Protocol version mismatch: {data}, should be {node.config.version_allow}")
                         send(self.request, "notok")
                         return
@@ -247,14 +247,14 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                 node.logger.consensus_log.info(
                                     f"Inbound: We have the same height as {peer_ip} ({received_block_height}), hash will be verified")
                             else:
-                                node.logger.consensus_log.warning(
+                                node.logger.consensus_log.info(
                                     f"Inbound: We have higher ({node.hdd_block}) block height than {peer_ip} ({received_block_height}), hash will be verified")
 
                             data = receive(self.request)  # receive client's last block_hash
                             # send all our followup hashes
                             if data == "*":
                                 # connection lost, no need to go on, that was banning the node like it forked.
-                                node.logger.peers_log.warning(f"Inbound: {peer_ip} dropped connection")
+                                node.logger.peers_log.info(f"Inbound: {peer_ip} dropped connection")
                                 break
                             node.logger.consensus_log.info(f"Inbound: Will seek the following block: {data}")
 
@@ -278,7 +278,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                     if node.config.egress:
                                         node.logger.consensus_log.info(f"Inbound: Client {peer_ip} has the latest block")
                                     else:
-                                        node.logger.consensus_log.warning(f"Inbound: Egress disabled for {peer_ip}")
+                                        node.logger.consensus_log.info(f"Inbound: Egress disabled for {peer_ip}")
                                     node.sleep()  # reduce CPU usage
                                     send(self.request, "nonewblk")
 

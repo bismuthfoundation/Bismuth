@@ -41,7 +41,7 @@ class NodeBackgroundThread (threading.Thread):
                 if not self.node.is_regnet:
                     # regnet never tries to connect
                     self.node.peers.client_loop(self.node)
-                self.node.logger.status_log.info(f"Threads at {threading.active_count()} / {self.node.config.thread_limit} - {len(self.node.syncing)/3} Syncing nodes.")
+                self.node.logger.status_log.info(f"** Status: Threads at {threading.active_count()} / {self.node.config.thread_limit} - {len(self.node.syncing)} Syncing nodes.")
                 self.node.logger.status_log.debug(f"Syncing nodes: {self.node.syncing}")
 
                 # Status display for Peers related info
@@ -51,7 +51,7 @@ class NodeBackgroundThread (threading.Thread):
                 if self.node.last_block_ago:
                     self.node.last_block_ago = time() - int(self.node.last_block_timestamp)
                     self.node.logger.status_log.info(f"Last block {self.node.last_block} was generated "
-                                                f"{'%.2f' % (self.node.last_block_ago / 60) } minutes ago")
+                                                f"{'%.2f' % (self.node.last_block_ago / 60) } minutes ago - End Status **")
                 # status Hook
                 uptime = int(time() - self.node.startup_time)
                 status = {"protocolversion": self.node.config.version,

@@ -382,7 +382,7 @@ class Mempool:
                 self.peers_sent = {peer: self.peers_sent[peer] for peer in self.peers_sent if
                                    self.peers_sent[peer] > limit}
             live = set(self.peers_sent.keys() - set(frozen))
-            self.status_log.info("MEMPOOL Live/Frozen Count {}".format(len(live), len(frozen)))
+            self.status_log.info("MEMPOOL Live/Frozen Count {}/{}".format(len(live), len(frozen)))
             self.status_log.debug("MEMPOOL Live = {}".format(", ".join(live)))
             self.status_log.debug("MEMPOOL Frozen = {}".format(", ".join(frozen)))
             status = self._fetchall(SQL_STATUS)
