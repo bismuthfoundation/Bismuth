@@ -41,8 +41,7 @@ class NodeBackgroundThread (threading.Thread):
                 if not self.node.is_regnet:
                     # regnet never tries to connect
                     self.node.peers.client_loop(self.node)
-                self.node.logger.status_log.info(f"Threads at {threading.active_count()} / {self.node.config.thread_limit}")
-                self.node.logger.status_log.info(f"Syncing nodes: {len(self.node.syncing)}/3")
+                self.node.logger.status_log.info(f"Threads at {threading.active_count()} / {self.node.config.thread_limit} - {len(self.node.syncing)/3} Syncing nodes.")
                 self.node.logger.status_log.debug(f"Syncing nodes: {self.node.syncing}")
 
                 # Status display for Peers related info

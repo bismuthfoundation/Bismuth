@@ -375,8 +375,6 @@ class Mempool:
         try:
             limit = time.time()
             frozen = [peer for peer in self.peers_sent if self.peers_sent[peer] > limit]
-            self.status_log.info("MEMPOOL Frozen Count {}".format(len(frozen)))
-            self.status_log.debug("MEMPOOL Frozen = {}".format(", ".join(frozen)))
             # print(limit, self.peers_sent, frozen)
             # Cleanup old nodes not synced since 15 min
             limit = limit - 15 * 60
@@ -384,12 +382,12 @@ class Mempool:
                 self.peers_sent = {peer: self.peers_sent[peer] for peer in self.peers_sent if
                                    self.peers_sent[peer] > limit}
             live = set(self.peers_sent.keys() - set(frozen))
-            self.status_log.info("MEMPOOL Live Count {}".format(len(live)))
-            self.status_log.debug(
-                "MEMPOOL Live = {}".format(", ".join(live)))
+            self.status_log.info("MEMPOOL Live/Frozen Count {}".format(len(live), len(frozen)))
+            self.status_log.debug("MEMPOOL Live = {}".format(", ".join(live)))
+            self.status_log.debug("MEMPOOL Frozen = {}".format(", ".join(frozen)))
             status = self._fetchall(SQL_STATUS)
             count, open_len, senders, recipients = status[0]
-            self.status_log.warning(
+            self.status_log.info(
                 "MEMPOOL {} Txs from {} senders to {} distinct recipients. Openfield len {}".
                     format(count, senders, recipients, open_len))
             return status[0]

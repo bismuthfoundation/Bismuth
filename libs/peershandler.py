@@ -515,7 +515,7 @@ class Peers:
                 self.reset_tried()
                 self.reset_time = time()
 
-            self.status_log.info("Testing peers")
+            self.status_log.debug("Testing peers")
             self.peer_dict.update(self.peers_get(self.peerfile))
 
             # TODO: this is not OK. client_loop is called every 30 sec and should NOT contain any lengthy calls.
@@ -533,21 +533,24 @@ class Peers:
     def print_status_log(self) -> None:
         """Prints the peers part of the node status"""
         # TODO: Aggregate to use less lines
+        banlist_len = 0
+        whitelist_len = 0
+
         if self.banlist:
-            self.status_log.info(f"Peers: Banlist Count: {len(self.banlist)}")
+            # self.status_log.info(f"Peers: Banlist Count: {len(self.banlist)}")
+            banlist_len = len(self.banlist)
             self.status_log.debug(f"Peers: Banlist: {self.banlist}")
         if self.whitelist:
-            self.status_log.info(f"Peers: Whitelist Count: {len(self.whitelist)}")
+            # self.status_log.info(f"Peers: Whitelist Count: {len(self.whitelist)}")
+            whitelist_len = len(self.whitelist)
             self.status_log.debug(f"Peers: Whitelist: {self.whitelist}")
 
-        self.status_log.info(f"Known Peers count: {len(self.peer_dict)}")
+        self.status_log.info(f"Peers count: {len(self.peer_dict)} - banlist {banlist_len} - whitelist {whitelist_len}")
         self.status_log.debug(f"Known Peers: {self.peer_dict}")
 
-        self.status_log.info(f"Tried PeersCount: {len(self.tried)}")
+        self.status_log.info(f"Tried PeersCount: {len(self.tried)} - outbound {len(self.connection_pool)}")
         self.status_log.debug(f"Tried peers: {self.tried}")
-        self.status_log.info(f"Peers: Number of Outbound connections: {len(self.connection_pool)}")
         self.status_log.debug(f"Peers: List of Outbound connections: {self.connection_pool}")
         if self.consensus:  # once the consensus is filled
-            self.status_log.info(f"Consensus height: {self.consensus} = {self.consensus_percentage}%")
+            self.status_log.info(f"Consensus height: {self.consensus} = {self.consensus_percentage}% - {len(self.peer_opinion_dict)} Nodes ")
             self.status_log.debug(f"Last block opinion: {self.peer_opinion_dict}")
-            self.status_log.info(f"Total number of nodes: {len(self.peer_opinion_dict)}")
