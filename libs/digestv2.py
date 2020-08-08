@@ -119,8 +119,8 @@ def transaction_validate(node: "Node", tx: "TransactionLegacy"):
     # Will raise if error - also includes reconstruction of address from pubkey to make sure it matches
     SignerFactory.verify_bis_signature(tx.received_signature_enc, tx.received_public_key_b64encoded, buffer,
                                        tx.received_address)
-    node.logger.app_log.info(f"Valid signature from {tx.received_address} "
-                             f"to {tx.received_recipient} amount {tx.received_amount}", "Digest")
+    node.logger.digest_log.info(f"Valid signature from {tx.received_address} "
+                             f"to {tx.received_recipient} amount {tx.received_amount}")
 
 
 def sort_transactions(block: list, tx: "TransactionLegacy", block_instance: Block, miner_tx: "MinerTransactionLegacy", node: "Node"):
@@ -266,8 +266,8 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: list, blo
 
             # append, but do not insert to ledger before whole block is validated,
             # note that it takes already validated values (decimals, length)
-            node.logger.app_log.info(f"Chain: Appending transaction back to block with "
-                                     f"{len(block_transactions)} transactions in it", "Digest")
+            node.logger.digest_log.info(f"Chain: Appending transaction back to block with "
+                                     f"{len(block_transactions)} transactions in it")
             block_transactions.append((str(block_instance.block_height_new), str(db_timestamp), str(db_address),
                                        str(db_recipient), str(db_amount), str(db_signature),
                                        str(db_public_key_b64encoded), str(block_instance.block_hash), str(fee),
@@ -281,7 +281,7 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: list, blo
                 pass
 
     except Exception as e:
-        print("Process_transactions: {}".format(e))
+        node.logger.digest_log.warning("Process_transactions: {}".format(e))
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print(exc_type, fname, exc_tb.tb_lineno)
@@ -356,7 +356,7 @@ def process_blocks(blocks: Block, node: "Node", db_handler: "DbHandler", peer_ip
 
         for block in blocks:  # "blocks" is either one block in a list or a list of blocks
             if node.IS_STOPPING:
-                node.logger.app_log.warning("Process_blocks aborted, node is stopping", "Digest", exc_info=node.config.debug)
+                node.logger.app_log.warning("Process_blocks aborted, node is stopping", exc_info=node.config.debug)
                 return
             # Reworked process: we exit as soon as we find an error, no need to process further tests.
             # Then the exception handler takes place.
@@ -409,19 +409,19 @@ def process_blocks(blocks: Block, node: "Node", db_handler: "DbHandler", peer_ip
             # sleep(1)
             node.difficulty = diff
 
-            node.logger.status_log.info(f"Time to generate block {node.last_block + 1}: {'%.2f' % diff[2]}", "Digest")
-            node.logger.status_log.info(f"Current difficulty: {diff[3]}", "Digest")
-            node.logger.status_log.info(f"Current blocktime: {diff[4]}", "Digest")
-            node.logger.status_log.info(f"Current hashrate: {diff[5]}", "Digest")
-            node.logger.status_log.info(f"Difficulty adjustment: {diff[6]}", "Digest")
-            node.logger.status_log.info(f"Difficulty: {diff[0]} {diff[1]}", "Digest")
+            node.logger.digest_log.info(f"Time to generate block {node.last_block + 1}: {'%.2f' % diff[2]}")
+            node.logger.digest_log.info(f"Current difficulty: {diff[3]}")
+            node.logger.digest_log.info(f"Current blocktime: {diff[4]}")
+            node.logger.digest_log.info(f"Current hashrate: {diff[5]}")
+            node.logger.digest_log.info(f"Difficulty adjustment: {diff[6]}")
+            node.logger.digest_log.info(f"Difficulty: {diff[0]} {diff[1]}")
 
             block_hash = hashlib.sha224((str(block_instance.transaction_list_converted)
                                                         + node.last_block_hash).encode("utf-8")).hexdigest()
             del block_instance.transaction_list_converted[:]
 
             # node.logger.app_log.info("Last block sha_hash: {}".format(block_hash))
-            node.logger.app_log.info(f"Calculated block sha_hash: {block_instance.block_hash}", "Digest")
+            node.logger.digest_log.info(f"Calculated block sha_hash: {block_instance.block_hash}")
             # node.logger.app_log.info("Nonce: {}".format(nonce))
 
             # check if we already have the sha_hash
@@ -518,10 +518,10 @@ def process_blocks(blocks: Block, node: "Node", db_handler: "DbHandler", peer_ip
 
             # node.logger.app_log.warning("Block: {}: {} valid and saved from {}"
             # .format(block_instance.block_height_new, block_hash[:10], peer_ip))
-            node.logger.app_log.warning(f"Valid block: {block_height_new}: "
+            node.logger.digest_log.info(f"Valid block: {block_height_new}: "
                                         f"{block_instance.block_hash[:10]} with {len(block)} txs, "
                                         f"digestion from {peer_ip} completed in "
-                                        f"{(ttime() - start_time_block):0.2f}s.", "Digest")
+                                        f"{(ttime() - start_time_block):0.2f}s.")
 
             if block_instance.tokens_operation_present:
                 db_handler.tokens_update()
@@ -545,7 +545,7 @@ def process_blocks(blocks: Block, node: "Node", db_handler: "DbHandler", peer_ip
             # NEW: returns new block sha_hash
     except Exception as e:
         # Left for edge cases debug
-        node.logger.app_log.warning("process_blocks (v2): {}".format(e), "Digest", exc_info=1)
+        node.logger.digest_log.warning("process_blocks (v2): {}".format(e), exc_info=1)
         raise
 
 
@@ -563,17 +563,17 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
         # since we raise, it will also drop the connection, it's fine since he's banned.
     if not node.db_lock.locked():
         node.db_lock.acquire()
-        node.logger.app_log.debug(f"Database lock acquired", "Digest")
+        node.logger.app_log.debug(f"Database lock acquired")
         while mp.MEMPOOL.lock.locked():
             sleep(0.1)
-            node.logger.app_log.info(f"Chain: Waiting for mempool to unlock {peer_ip}", "Digest")
+            node.logger.digest_log.warning(f"Chain: Waiting for mempool to unlock {peer_ip}")
             # We wait for mempool to unlock, but don't lock it...
-        node.logger.app_log.info(f"Chain: Digesting started from {peer_ip}", "Digest")
+        node.logger.digest_log.info(f"Chain: Digesting started from {peer_ip}")
         block_size = len(str(block_data)) / 1000000
-        node.logger.app_log.info(f"Chain: Blocks count: {len(block_data)}", "Digest")
-        node.logger.app_log.info(f"Chain: Block size: {block_size} MB", "Digest")
+        node.logger.digest_log.info(f"Chain: Blocks count: {len(block_data)}")
+        node.logger.digest_log.info(f"Chain: Block size: {block_size} MB")
         try:
-            node.logger.app_log.error(f"Chain: Digesting V2 WIP", "Digest")
+            node.logger.app_log.info(f"Chain: Digesting V2 WIP")
             sys.exit()
 
             block = Block.from_legacy_block_data(block_data, first_level_checks=True)
@@ -581,11 +581,11 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
             process_blocks(block, node=node, db_handler=db_handler, peer_ip=peer_ip)
             # This saves the block to the db when in regnet mode. what in other modes?
             node.checkpoint_set()  # sets node.checkpoint, no db interaction.
-            node.logger.app_log.info(f"Chain: Digesting from {peer_ip}", "Digest")
+            node.logger.digest_log.info(f"Chain: Digesting from {peer_ip}")
             return node.last_block_hash
         except Exception as e:
-            node.logger.app_log.warning(f"Chain processing failed: {e}", "Digest")
-            node.logger.app_log.debug(f"Received data dump: {block_data}", "Digest")
+            node.logger.digest_log.warning(f"Chain processing failed: {e}")
+            node.logger.digest_log.debug(f"Received data dump: {block_data}")
             failed_cause = str(e)
             # get actual data from database on exception
             node.last_block = db_handler.last_mining_transaction().to_dict(legacy=True)['block_height']
@@ -601,7 +601,7 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
             # in regnet, this copies again the last block...
             db_handler.db_to_drive(node)
             node.db_lock.release()
-            node.logger.app_log.debug(f"Database lock released", "Digest")
+            node.logger.app_log.debug(f"Database lock released")
             delta_t = ttime() - start_time_block
             node.plugin_manager.execute_action_hook('digestblock',
                                                     {'failed': failed_cause,
@@ -611,5 +611,5 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
                                                      "txs": block_instance.tx_count})
 
     else:
-        node.logger.app_log.warning(f"Chain: Skipping processing from {peer_ip}, someone delivered data faster")
+        node.logger.digest_log.warning(f"Chain: Skipping processing from {peer_ip}, someone delivered data faster")
         node.plugin_manager.execute_action_hook('digestblock', {'failed': "skipped", 'ip': peer_ip})

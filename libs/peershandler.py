@@ -532,6 +532,7 @@ class Peers:
 
     def print_status_log(self) -> None:
         """Prints the peers part of the node status"""
+        # TODO: Aggregate to use less lines
         if self.banlist:
             self.status_log.info(f"Peers: Banlist Count: {len(self.banlist)}")
             self.status_log.debug(f"Peers: Banlist: {self.banlist}")
@@ -548,5 +549,5 @@ class Peers:
         self.status_log.debug(f"Peers: List of Outbound connections: {self.connection_pool}")
         if self.consensus:  # once the consensus is filled
             self.status_log.info(f"Consensus height: {self.consensus} = {self.consensus_percentage}%")
-            self.status_log.info(f"Last block opinion: {self.peer_opinion_dict}")
+            self.status_log.debug(f"Last block opinion: {self.peer_opinion_dict}")
             self.status_log.info(f"Total number of nodes: {len(self.peer_opinion_dict)}")
