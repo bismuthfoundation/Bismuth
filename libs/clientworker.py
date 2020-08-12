@@ -114,7 +114,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
 
             if data == "peers":
                 subdata = receive(s)  # dict of "ip":"port"
-                node.peers.peersync(subdata)
+                node.peers.peersync(subdata, host)
 
             elif data == "sync":
                 if not ttime() <= timer_operation + timeout_operation:
@@ -183,7 +183,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                             else:
                                 blocks_fetched = db_handler.blocksync(client_block)
 
-                                node.logger.app_log.info(f"Outbound: Selected {blocks_fetched}")
+                                node.logger.app_log.debug(f"Outbound: Selected {blocks_fetched}")  # Verbose dump
 
                                 send(s, "blocksfnd")
 
@@ -329,7 +329,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
             # remove from consensus 2
 
             node.logger.app_log.info(f"Connection to {this_client} terminated due to {e}")
-            node.logger.app_log.info(f"---thread {threading.currentThread()} ended---")
+            node.logger.app_log.debug(f"---thread {threading.currentThread()} ended---")
 
             # properly end the connection
             s.close()

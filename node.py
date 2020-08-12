@@ -173,7 +173,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     send(self.request, peers_send)
                     while node.db_lock.locked():
                         node.sleep()
-                    node.logger.peers_log.debug("Inbound: Sending sync request")
+                    node.logger.peers_log.debug("Inbound: Sending sync request to {peer_ip}")
 
                     send(self.request, "sync")
 
@@ -194,17 +194,17 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         if node.last_block_timestamp < ttime() - 600:
                             # block_req = most_common(consensus_blockheight_list)
                             block_req = node.peers.consensus_most_common
-                            node.logger.consensus_log.info("Most common block rule triggered")
+                            node.logger.consensus_log.info(f"Most common block rule triggered by {peer_ip}")
                         else:
                             # block_req = max(consensus_blockheight_list)
                             block_req = node.peers.consensus_max
-                            node.logger.consensus_log.info("Longest chain rule triggered")
+                            node.logger.consensus_log.info(f"Longest chain rule triggered by {peer_ip}")
                         # Nothing guarantees "received_block_height" has been defined before or is up to date.
                         # Should for a pristine client, but can't make sure.
                         # TODO Egg: Add some state here in the flow, at least a flag.
                         if int(received_block_height) >= block_req and int(received_block_height) > node.last_block:
                             try:  # they claim to have the longest chain, things must go smooth or ban
-                                node.logger.consensus_log.warning(f"Confirming to sync from {peer_ip}")
+                                node.logger.consensus_log.info(f"Confirming to sync from {peer_ip}")
                                 node.plugin_manager.execute_action_hook('sync', {'what': 'syncing_from', 'ip': peer_ip})
                                 send(self.request, "blockscf")
                                 segments = receive(self.request)
@@ -235,7 +235,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         send(self.request, node.hdd_block)
                         # send own block height
                         if received_block_height > node.hdd_block:
-                            node.logger.consensus_log.warning("Inbound: Client {} has higher block {} vs ours {}"
+                            node.logger.consensus_log.info("Inbound: Client {} has higher block {} vs ours {}"
                                                         .format(peer_ip, received_block_height, node.hdd_block))
                             node.logger.consensus_log.info(f"Inbound: block_hash to send: {node.hdd_hash}")
                             send(self.request, node.hdd_hash)
@@ -272,7 +272,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                     break
 
                             else:
-                                node.logger.consensus_log.debug(f"Inbound: Client is at block {client_block}")
+                                node.logger.consensus_log.debug(f"Inbound: Client {peer_ip} is at block {client_block}")
                                 # now check if we have any newer
                                 if node.hdd_hash == data or not node.config.egress:
                                     if node.config.egress:
@@ -288,11 +288,11 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                     send(self.request, "blocksfnd")
                                     confirmation = receive(self.request)
                                     if confirmation == "blockscf":
-                                        node.logger.peers_log.info("Inbound: Client confirmed they want to sync from us")
+                                        node.logger.peers_log.info(f"Inbound: Client {peer_ip} confirmed they want to sync from us")
                                         send(self.request, blocks_fetched)
                                     elif confirmation == "blocksrj":
                                         node.logger.peers_log.info(
-                                            "Inbound: Client rejected to sync from us because we don't have the latest block")
+                                            f"Inbound: Client {peer_ip} rejected to sync from us because we don't have the latest block")
 
                     except Exception as e:
                         node.logger.consensus_log.warning(f"Inbound: Sync failed {e}")
@@ -307,11 +307,18 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     block_hash_delete = receive(self.request)
                     # TODO Egg: Same as above, some state to keep here, consensus_blockheight may be undefined or not up to date.
                     if consensus_blockheight == node.peers.consensus_max:
-                        node.blocknf(block_hash_delete, peer_ip, db_handler)
+                        res = node.blocknf(block_hash_delete, peer_ip, db_handler)
                         if node.peers.warning(self.request, peer_ip, "Rollback", 2):
                             node.logger.peers_log.warning(f"{peer_ip} banned")
                             break
-                    node.logger.consensus_log.info("Inbound: Deletion complete, sending sync request")
+                        if res:
+                            node.logger.consensus_log.info("Inbound: Deletion complete, sending sync request")
+                        else:
+                            node.logger.consensus_log.info("Inbound: Deletion skipped, sending sync request")
+                    else:
+                        node.logger.consensus_log.info(f"Inbound: consensus {consensus_blockheight} "
+                                                       f"not max {node.peers.consensus_max}, "
+                                                       f"ignoring rollback, sending sync request")
                     while node.db_lock.locked():
                         node.sleep()
                     send(self.request, "sync")
@@ -760,7 +767,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         data = receive(self.request)
                         # peersync expects a dict encoded as json string, not a straight dict
                         try:
-                            res = node.peers.peersync(data)
+                            res = node.peers.peersync(data, peer_ip)
                         except:
                             node.logger.app_log.warning(f"{peer_ip} sent invalid peers list")
                             raise

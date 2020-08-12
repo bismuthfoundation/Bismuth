@@ -147,11 +147,11 @@ class Peers:
                         self.peers_log.debug(f"Inbound: Peer {ip}:{port} saved to peers")
                         self.peerlist_updated = True
                     else:
-                        self.peers_log.debug("Distant peer already in peers")
+                        self.peers_log.debug("Distant peer {ip}:{port} already in peers")
 
                 except Exception as e:
-                    # exception for a single peer
-                    self.peers_log.info(f"Inbound: Distant peer not connectible ({e})")
+                    # exception for a single peer - This is not an error, it's ok to have unreachable peers.
+                    self.peers_log.debug(f"Inbound: Distant peer {ip}:{port} not connectible ({e})")
 
             if self.peerlist_updated:
                 self.peers_log.info(f"{file} peerlist updated ({len(peers_pairs)}) total")  # the whole dict is saved
@@ -159,7 +159,7 @@ class Peers:
                     json.dump(peers_pairs, peer_file)
                 shutil.move(f"{file}.tmp",file)
             else:
-                self.peers_log.info(f"{file} peerlist update skipped, no changes")
+                self.peers_log.debug(f"{file} peerlist update skipped, no changes")
 
         except Exception as e:
             # Exception for the file itself.
@@ -291,16 +291,17 @@ class Peers:
             result = json_dict
         return result
 
-    def peersync(self, subdata: str) -> int:
+    def peersync(self, subdata: str, host: str="") -> int:
         """Got a peers list from a peer, process. From worker().
         returns the number of added peers, -1 if it was locked or not accepting new peers
-        subdata is a dict, { 'ip': 'port'}"""
+        subdata is a dict, { 'ip': 'port'}
+        host is only used for logging."""
         # early exit to reduce future levels
         if not self.config.accept_peers:
             return -1
         if self.peersync_lock.locked():
             # TODO: means we will lose those peers forever.
-            # TODO: buffer, and keep track of recently tested peers.
+            # Not critical in practice, but better buffer and keep track of recently tested peers.
             self.peers_log.debug("Outbound: Peer sync occupied")
             return -1
         # Temp fix: subdata is typed str, but we have a dict sometimes.
@@ -315,7 +316,7 @@ class Peers:
                 subdata = self.dict_validate(subdata)
                 data_dict = json.loads(subdata)
 
-                self.peers_log.info(f"Received {len(data_dict)} peers.")
+                self.peers_log.info(f"Received {len(data_dict)} peers from {host}.")
                 # Simplified the log, every peers then has a ok or ko status anyway.
                 for ip, port in data_dict.items():
                     if ip not in self.peer_dict:
@@ -333,7 +334,7 @@ class Peers:
                                 self.peer_dict[ip] = port
                                 self.peers_log.debug(f"Inbound: Peer {ip}:{port} saved to local peers")
                         except:
-                            self.peers_log.debug("Not connectible")
+                            self.peers_log.debug(f" {ip}:{port} is not connectible")
                     else:
                         self.peers_log.debug(f"Outbound: {ip}:{port} is not a new peer")
             except Exception as e:

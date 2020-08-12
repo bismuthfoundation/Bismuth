@@ -31,9 +31,9 @@ def log(log_file, level_input="WARNING", terminal_output=False):
     if level_input == "CRITICAL":
         level = logging.CRITICAL
 
-    log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
-    my_handler = RotatingFileHandler(log_file, mode='a', maxBytes=5 * 1024 * 1024,
-                                     backupCount=2, encoding="utf-8", delay=0)
+    log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(module)s:%(lineno)d %(message)s')
+    my_handler = RotatingFileHandler(log_file, mode='a', maxBytes=10 * 1024 * 1024,
+                                     backupCount=3, encoding="utf-8", delay=0)
     my_handler.setFormatter(log_formatter)
     my_handler.setLevel(level)
     app_log = logging.getLogger('root')
@@ -72,14 +72,14 @@ def generic_log(log_file, level_input="INFO", logger_name="app"):
     if level_input == "CRITICAL":
         level = logging.CRITICAL
 
-    log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
-    my_handler = RotatingFileHandler(log_file, mode='a', maxBytes=5 * 1024 * 1024,
-                                     backupCount=2, encoding="utf-8", delay=0)
+    # log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
+    log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(module)s:%(lineno)d %(message)s')
+    my_handler = RotatingFileHandler(log_file, mode='a', maxBytes=10 * 1024 * 1024,
+                                     backupCount=3, encoding="utf-8", delay=0)
     my_handler.setFormatter(log_formatter)
     my_handler.setLevel(level)
     status_log = logging.getLogger(f'{logger_name}_log')
     status_log.setLevel(level)
     status_log.addHandler(my_handler)
-
 
     return status_log

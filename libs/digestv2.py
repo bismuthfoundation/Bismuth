@@ -119,7 +119,7 @@ def transaction_validate(node: "Node", tx: "TransactionLegacy"):
     # Will raise if error - also includes reconstruction of address from pubkey to make sure it matches
     SignerFactory.verify_bis_signature(tx.received_signature_enc, tx.received_public_key_b64encoded, buffer,
                                        tx.received_address)
-    node.logger.digest_log.info(f"Valid signature from {tx.received_address} "
+    node.logger.digest_log.debug(f"Valid signature from {tx.received_address} "
                              f"to {tx.received_recipient} amount {tx.received_amount}")
 
 
