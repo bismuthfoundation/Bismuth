@@ -780,9 +780,10 @@ class DbHandler:
         return backup_data
 
     def rollback_under(self, block_height: int) -> None:
-        # EGG: TEMP
-        self.logger.app_log.error(f"rollback_under {block_height} - STOPPED - Temp Debug")
-        sys.exit()
+        # EGG: TEMP debug for int-db only
+        if not self.legacy_db:
+            self.logger.app_log.error(f"rollback_under {block_height} - STOPPED - Temp Debug")
+            sys.exit()
         self.h.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
                        (block_height, -block_height,))
         self.commit(self.hdd)

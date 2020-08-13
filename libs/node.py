@@ -527,7 +527,7 @@ class Node:
                     print(block_max_ram)
                     reason = "We moved away from the block to rollback, skipping"
                     skip = True
-                    sys.exit()  # Temp debug
+                    # sys.exit()  # Temp debug
 
                 elif hyperblocks and self.last_block_ago > 30000:  # more than 5000 minutes/target blocks away
                     reason = f"{peer_ip} is running on hyperblocks and our last block is too old, skipping"
