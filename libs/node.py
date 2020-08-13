@@ -541,17 +541,21 @@ class Node:
                     # roll back hdd too
                     db_handler.rollback_under(db_block_height)
                     # /roll back hdd too
+                    self.logger.app_log.warning(f"rolled back under {db_block_height}")
 
                     # rollback indices
                     db_handler.tokens_rollback(db_block_height)
                     db_handler.aliases_rollback(db_block_height)
                     # /rollback indices
+                    self.logger.app_log.warning(f"rolled back tokens and aliases under {db_block_height}")
 
                     self.last_block_timestamp = db_handler.last_block_timestamp()
                     self.last_block_hash = db_handler.last_block_hash()
-                    self.last_block = db_block_height - 1
-                    self.hdd_hash = db_handler.last_block_hash()
-                    self.hdd_block = db_block_height - 1
+                    self.last_block = db_handler.block_height_max()  # db_block_height - 1
+                    self.hdd_hash = self.last_block_hash  # db_handler.last_block_hash()
+                    self.hdd_block = self.last_block  # db_block_height - 1
+                    self.logger.app_log.warning(f"Current top block after rollback {self.last_block} ({self.last_block_hash})")
+
                     db_handler.tokens_update()
 
                 return not skip
