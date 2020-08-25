@@ -563,6 +563,9 @@ class DbHandler:
 
     def ledger_balance3(self, address: str, cache: Union[dict, None]=None) -> Decimal:
         """Cached balance from hyper - used by digest, cache is local to one block         """
+        if not self.legacy_db:
+            self.logger.status_log.error("ledger_balance3_int but legacy db!")
+            sys.exit()
         # Important: keep this as c (ram hyperblock access)
         # Many heavy blocks are pool payouts, same address.
         # Cache pre_balance instead of recalc for every tx
@@ -584,6 +587,30 @@ class DbHandler:
             return cache[address]
         else:
             return quantize_eight(credit_ledger - debit_ledger)
+
+    def ledger_balance3_int(self, address: str, cache: Union[dict, None]=None) -> int:
+        """Cached balance from hyper - used by digest, cache is local to one block         """
+        if self.legacy_db:
+            self.logger.status_log.error("ledger_balance3_int but legacy db!")
+            sys.exit()
+        # Important: keep this as c (ram hyperblock access)
+        # Many heavy blocks are pool payouts, same address.
+        # Cache pre_balance instead of recalc for every tx
+        if cache is not None and address in cache:
+            return cache[address]
+        self._execute_param(self.c, "SELECT sum(amount + reward) FROM transactions WHERE recipient = ?", (address, ))
+        entries = self.c.fetchone()
+        print("EE", entries)
+        credit_ledger = entries[0]
+        self._execute_param(self.c, "SELECT sum(amount + fee) FROM transactions WHERE address = ?", (address,))
+        entries = self.c.fetchone()
+        print("EE", entries)
+        debit_ledger = entries[0]
+        if cache is not None:
+            cache[address] = credit_ledger - debit_ledger
+            return cache[address]
+        else:
+            return credit_ledger - debit_ledger
 
     # ---- Lookup queries ---- #
 
@@ -802,9 +829,19 @@ class DbHandler:
         self.logger.dev_log.warning("rollback_to is deprecated, use rollback_under")
         self.rollback_under(block_height)
 
+    def to_db_v2(self, block_array, diff_save) -> None:
+        # TODO EGG_EVO: many possible traps and params there, to be examined later on.
+        # print("** to_db")
+        self.logger.status_log.error("TODO: dbhandler.to_db_v2()")
+        return
+
+
     def to_db(self, block_array, diff_save, block_transactions) -> None:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
         # print("** to_db")
+        if not self.legacy_db:
+            self.logger.status_log.error("TODO: dbhandler.to_db()")
+            return
         self._execute_param(self.c, SQL_TO_MISC,
                             (block_array.block_height_new, diff_save))
         self.commit(self.conn)
@@ -823,6 +860,9 @@ class DbHandler:
 
     def db_to_drive(self, node: "Node") -> None:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
+        if not self.legacy_db:
+            self.logger.status_log.error("TODO: dbhandler.db_to_drive()")
+            return
         def transactions_to_h(data):
             for x in data:  # we want to save to ledger db
                 self._execute_param(self.h, SQL_TO_TRANSACTIONS,
@@ -887,6 +927,15 @@ class DbHandler:
                             (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Development Reward", str(node.config.genesis),
                                   str(mining_reward), "0", "0", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
+
+    def dev_reward_v2(self, node: "Node", block:"Block", mirror_hash: bytes) -> None:
+        self.logger.status_log.error("TODO: dbhandler.dev_reward_v2()")
+        return
+
+    def hn_reward_v2(self, node, block: Block, mirror_hash: bytes):
+        self.logger.status_log.error("TODO: dbhandler.hn_reward_v2()")
+        return
+
 
     def hn_reward(self, node, block_array, miner_tx, mirror_hash):
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.

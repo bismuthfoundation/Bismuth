@@ -549,6 +549,11 @@ def digest_block(node: "Node", block_data: list, sdef, peer_ip: str, db_handler:
     block_data is legacy unstructured data, with floats and no bin.
     block_data may contain more than one block.
     """
+    if not node.config.legacy_db:
+        raise ValueError("V2 DB but calling digest_block!!")
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print(exc_type, fname, exc_tb.tb_lineno)
     if node.peers.is_banned(peer_ip):
         # no need to loose any time with banned peers
         raise ValueError("Cannot accept blocks from a banned peer")
@@ -566,10 +571,8 @@ def digest_block(node: "Node", block_data: list, sdef, peer_ip: str, db_handler:
             sleep(0.1)
             node.logger.app_log.info(f"Chain: Waiting for mempool to unlock {peer_ip}")
 
-        node.logger.digest_log.info(f"Chain: Digesting started from {peer_ip}")
-
         block_size = len(str(block_data)) / 1000000
-        node.logger.digest_log.info(f"Chain: Block size: {block_size} MB")
+        node.logger.digest_log.info(f"Chain: Digesting started from {peer_ip} - {len(block_data)} Blocks - {block_size} MB")
 
         try:
             # print(block_data)  # Temp debug

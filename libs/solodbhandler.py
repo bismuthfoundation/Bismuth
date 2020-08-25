@@ -271,7 +271,7 @@ class SoloDbHandler:
         return res.fetchall()
 
     @timeit
-    def get_blocks(self, block_height: int=0, limit: int=10) -> Block:
+    def get_blocks(self, block_height: int=0, limit: int=10) -> TransactionsList:
         """
         Returns a List of blocks, from block_height included and up to limit blocks max.
         :param block_height:
@@ -280,7 +280,10 @@ class SoloDbHandler:
         """
         # EGG_EVO: This sql request is the same in both cases (int/float), but...
         # Also send mirror blocks.
-        self._ledger_cursor.execute("SELECT * FROM transactions WHERE abs(block_height) >= ? AND abs(block_height) <= ? ORDER BY block_height, reward, timestamp", (block_height, block_height + limit))
+        self._ledger_cursor.execute("SELECT * FROM transactions WHERE abs(block_height) >= ? "
+                                    "AND abs(block_height) <= ? "
+                                    "ORDER BY block_height, reward, timestamp",
+                                    (block_height, block_height + limit))
         blocks = self._ledger_cursor.fetchall()
         # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
         # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
@@ -288,10 +291,7 @@ class SoloDbHandler:
         if self.legacy_db:
             transaction_list = [Transaction.from_legacy(entry) for entry in blocks]
         else:
-            # from_v2 is TODO EGG_EVO - to add to BismuthCore. Not needed for legacy -> V2 conversion.
-            print("Transaction.from_v2 not supported yet")
-            sys.exit()
-            #transaction_list = [Transaction.from_v2(entry) for entry in blocks]
+            transaction_list = [Transaction.from_v2(entry) for entry in blocks]
         return TransactionsList(transaction_list)
 
     @timeit

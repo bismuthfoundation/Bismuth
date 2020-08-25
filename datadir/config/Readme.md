@@ -8,3 +8,13 @@ Shipped with distro
 
 - config_custom.txt  
 User overrides.
+
+
+node.py is to be run with an optional dir as first and only parameter.  
+This parameter is the datadir directory to use.
+
+No dir will use default ./datadir location, with legacy db
+"regnet" as dir will use ./datadir location, with regnet mode.
+"V2" as dir will use ./datadir location, with V2 db mode.
+
+Future versions will auto detect and convert to use V2 db unkless told otherwise.
