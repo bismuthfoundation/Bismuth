@@ -100,3 +100,4 @@ if __name__ == "__main__":
 
     logger.status_log.info("Clean Stop")
     logger.status_log.warning("Please copy clean index.db from legacy to v2")
+    print("Clean Stop. Please copy clean index.db from legacy to v2")

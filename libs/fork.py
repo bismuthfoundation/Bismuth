@@ -25,7 +25,7 @@ class Fork:
         self.PASSED = False
         self.PASSED_TESTNET = False
         self.REWARD_MAX = 6.0
-        self.REWARD_MAX_INT = Transaction.f8_to_int(self.REWARD_MAX)
+        self.REWARD_MAX_INT = Transaction.f8_to_int(f"{self.REWARD_MAX:0.8f}")
 
         #self.POW_FORK = 1168860 #HACK
         #self.versions_remove = [] #HACK

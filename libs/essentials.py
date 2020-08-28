@@ -129,8 +129,9 @@ def keys_check(app_log, keyfile_name: str) -> None:
         os.rename("privkey_encrypted.der", "privkey.der")
     """
     if os.path.isfile(keyfile_name) is True:
-        app_log.warning("{} found".format(keyfile_name))
+        app_log.info("{} found".format(keyfile_name))
     else:
+        app_log.warning("No wallet found, generating new RSA keypair...")
         # generate key pair and an address
         key = RSA.generate(4096)
         # public_key = key.publickey()

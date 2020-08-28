@@ -15,7 +15,7 @@ from shutil import copy
 from math import floor
 
 from libs import mining_heavy3, regnet
-from bismuthcore.helpers import just_int_from, download_file
+from bismuthcore.helpers import just_int_from, download_file, py_version
 from libs.essentials import keys_check, keys_load_new  # To be handled by polysign
 from libs.difficulty import difficulty  # where does this belongs? check usages
 
@@ -46,7 +46,7 @@ class Node:
     def __init__(self, digest_block, config: Config=None, app_version: str="", logger=None, keys=None, run_checks=True):
         # TODO EGG: digest_block will need to be integrated in this class.
         # current hack necessary to avoid circular references.
-        self.py_version = int(str(sys.version_info.major) + str(sys.version_info.minor) + str(sys.version_info.micro))
+        self.py_version = py_version()
         self.linux = "Linux" in platform.system()
         # temp
         self.digest_block = digest_block
@@ -112,7 +112,7 @@ class Node:
         """
         Adjust node properties depending on mainnet, testnet or regnet config
         """
-        self.logger.app_log.warning("Node init: Entering Net Type Setup")
+        self.logger.status_log.info("Node init: Entering Net Type Setup")
         if "testnet" in self.config.version:
             self.is_testnet = True
             self.is_mainnet = False
@@ -144,7 +144,7 @@ class Node:
                 with tarfile.open(self.config.get_file_path("testnet", "test.tar.gz")) as tar:
                     tar.extractall(self.config.get_file_path("testnet", ""))
             else:
-                print("Not redownloading test db")
+                self.logger.status_log.info("Not redownloading test db")
 
         elif "regnet" in self.config.version:
             self.is_regnet = True
@@ -168,7 +168,7 @@ class Node:
             regnet.init(self, self.logger.app_log)
             mining_heavy3.is_regnet = True
         else:
-            self.logger.app_log.warning("Mainnet Mode")
+            self.logger.status_log.info("Mainnet Mode")
             # Allow only 21 and up
             if self.config.version != 'mainnet0021':
                 self.config.version = 'mainnet0021'  # Force in code.
@@ -257,7 +257,7 @@ class Node:
             redownload = True
         try:
             ledger_schema = solo_handler.transactions_schema()
-            print(ledger_schema, len(ledger_schema))
+            # print(ledger_schema, len(ledger_schema))
             if len(ledger_schema) != 12:
                 # EGG_EVO: Kept this test for the time being, but will need more complete and distinctive test
                 # depending on the db type
@@ -305,7 +305,7 @@ class Node:
 
     def _recompress_ledger_prepare(self, rebuild: bool=False) -> None:
         """Aggregates transactions and compress old ledger entries into hyper blocks"""
-        self.logger.status_log.info(f"Recompressing, please be patient...")
+        self.logger.status_log.info(f"Recompressing, this takes significant time: please be patient.")
 
         files_remove = [self.config.ledger_path + '.temp', self.config.ledger_path + '.temp-shm',
                         self.config.ledger_path + '.temp-wal']
@@ -319,7 +319,7 @@ class Node:
             # Force rebuild if there is no hyper.
             rebuild = True
         if rebuild:
-            self.logger.status_log.info(f"Hyperblocks will be rebuilt")
+            self.logger.status_log.info(f"Hyperblocks will be rebuilt...")
             copy(self.config.ledger_path, self.config.ledger_path + '.temp')
         else:
             copy(self.config.hyper_path, self.config.ledger_path + '.temp')
@@ -335,7 +335,13 @@ class Node:
         # Now gather all active addresses
         self.logger.status_log.info(f"Gathering addresses...")
         unique_addressess = solo_handler.distinct_hyper_recipients(depth_specific)
-        for address in unique_addressess:
+        self.logger.status_log.info(f"Hyperfying addresses...")
+        total = len(unique_addressess)
+        prev = 0
+        for index, address in enumerate(unique_addressess):
+            if index*100//total > prev + 2:
+                prev = index*100//total
+                self.logger.status_log.info(f"{prev}%...")
             solo_handler.update_hyper_balance_at_height(address, depth_specific)
         """
         
@@ -383,7 +389,7 @@ class Node:
         the more the tx, the slower.
 
         """
-
+        self.logger.status_log.info(f"Done, committing.")
         solo_handler.hyper_commit()
         solo_handler.cleanup_hypo(depth_specific)
         solo_handler.close()
@@ -435,7 +441,7 @@ class Node:
         self._initial_files_checks()
         solo_handler = SoloDbHandler(config=self.config, logger=self.logger)  # This instance will only live for the scope of single_user_checks(),
         # why it's not a property of the Node instance and it passed to individual checks.
-        print("single_user_checks - Checking schema")
+        self.logger.status_log.debug("single_user_checks - Checking schema")
         self._check_db_schema(solo_handler)
         # print("Checking Heights")
         self._ledger_check_heights(solo_handler)
@@ -448,7 +454,7 @@ class Node:
             self._recompress_ledger(solo_handler)  # Warning: this will close the solo instance!
             solo_handler = SoloDbHandler(config=self.config, logger=self.logger)
 
-        solo_handler.add_indices()
+        solo_handler.add_indices(full=True)  # full adds all indices, else only minimal one.
         if not self.is_regnet:
             solo_handler.sequencing_check()
             if self.config.verify:

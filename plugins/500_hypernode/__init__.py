@@ -172,7 +172,9 @@ def action_init(params):
     except:
         pass
     # Init colored lists while we are in solo mode
+    print("Init colored")
     init_colored()
+    print("Init colored done")
     # sys.exit()
     try:
         ip_cache_filename = MANAGER.config.get_file_path("live", "ipresolv.conf")

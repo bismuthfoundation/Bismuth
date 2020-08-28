@@ -45,11 +45,22 @@ V2_LEDGER_CREATE = ('CREATE TABLE IF NOT EXISTS "transactions" (`block_height` I
                     )
 
 # EGG_EVO: why text? move as int as well?
+"""
 V2_MISC_CREATE = ('CREATE TABLE IF NOT EXISTS "misc" ('
                   '`block_height` INTEGER, `difficulty` TEXT)',
 
                   'CREATE INDEX IF NOT EXISTS "Misc Block Height Index" on misc(block_height)'
                  )
+"""
+# EGG_EVO: why text? move as int as well?
+V2_MISC_CREATE = ('CREATE TABLE IF NOT EXISTS "misc" ('
+                  '`block_height` INTEGER PRIMARY KEY, `difficulty` TEXT)', )
+
+
+CREATE_TXID4_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS TXID4_Index ON transactions(substr(signature,1,4))"
+
+# TODO: dup with clean v2
+CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS 'Misc Block Height Index' on misc(block_height)"
 
 """
  1 704 000 blocks (inc mirror), 
@@ -87,8 +98,8 @@ V2_INDICES_CREATE = ("CREATE INDEX IF NOT EXISTS `Timestamp Index` ON `transacti
                      "CREATE INDEX IF NOT EXISTS `Fee Index` ON `transactions` (`fee`)",
                      "CREATE INDEX IF NOT EXISTS `Block Hash Index` ON `transactions` (`block_hash`)",
                      "CREATE INDEX IF NOT EXISTS `Amount Index` ON `transactions` (`amount`)",
-                     "CREATE INDEX IF NOT EXISTS `Address Index` ON `transactions` (`address`)",
-                     "CREATE INDEX IF NOT EXISTS `Operation Index` ON `transactions` (`operation`)",
+                     "CREATE INDEX IF NOT EXISTS `Address Index` ON `transactions` (`address`)",        # ledger, colored
+                     "CREATE INDEX IF NOT EXISTS `Operation Index` ON `transactions` (`operation`)",    # ledger, colored
                      "CREATE INDEX IF NOT EXISTS `Signature Index` ON `transactions` (`signature`)",  # or partial
                      )
 
@@ -164,7 +175,7 @@ class SoloDbHandler:
             self._hyper_db.execute('PRAGMA case_sensitive_like = 1;')
             self._hyper_cursor = self._hyper_db.cursor()
         else:
-            print("No Hyper")
+            # print("No Hyper")
             self._hyper_db = None
             self._hyper_cursor = None
 
@@ -232,25 +243,49 @@ class SoloDbHandler:
         except Exception as e:
             print(e)
 
-    def add_indices(self):
+    def add_indices(self, full: bool=False):
         """Add potential missing indices. - it's more of an automated upgrade path"""
-        CREATE_TXID4_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS TXID4_Index ON transactions(substr(signature,1,4))"
-        CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS 'Misc Block Height Index' on misc(block_height)"
-        self.logger.app_log.warning("Checking and creating indices")
+        self.logger.status_log.info("Checking and creating indices")
         # ledger db
         if not self.config.old_sqlite:
             self._ledger_cursor.execute(CREATE_TXID4_INDEX_IF_NOT_EXISTS)
         else:
-            self.logger.app_log.warning("Setting old_sqlite is True, lookups will be slower.")
+            self.logger.status_log.warning("Setting old_sqlite is True, lookups will be slower.")
+        if self.legacy_db:
             self._ledger_cursor.execute(CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
         self._ledger_db.commit()
+
+        if full:
+            self.logger.status_log.info("Creating ledger full indices...")
+            for sql in V2_INDICES_CREATE:
+                self._ledger_cursor.execute(sql)
+                self._ledger_db.commit()
+        else:
+            self.logger.status_log.warning("Creating ledger minimal indices...")
+            for sql in V2_MINIMAL_INDICES_CREATE:
+                self._ledger_cursor.execute(sql)
+                self._ledger_db.commit()
+
         # hyper db
+        self.logger.status_log.info("Creating hyper indices...")
         if not self.config.old_sqlite:
             self._hyper_cursor.execute(CREATE_TXID4_INDEX_IF_NOT_EXISTS)
+        if self.legacy_db:
             self._hyper_cursor.execute(CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
         self._hyper_db.commit()
+        if full:
+            self.logger.status_log.info("Creating hyper full indices...")
+            for sql in V2_INDICES_CREATE:
+                self._hyper_cursor.execute(sql)
+                self._hyper_db.commit()
+        else:
+            self.logger.status_log.warning("Creating hyper minimal indices...")
+            for sql in V2_MINIMAL_INDICES_CREATE:
+                self._hyper_cursor.execute(sql)
+                self._hyper_db.commit()
+
         # RAM or hyper db is not created yet at this point.
-        self.logger.app_log.warning("Finished creating indices")
+        self.logger.status_log.info("Finished creating indices")
 
     def transactions_schema(self) -> list:
         """Returns the structure of the "transactions" table from the ledger db"""
@@ -258,9 +293,9 @@ class SoloDbHandler:
 
     def table_schema(self, table_name: str="transactions", db_name: str="ledger") -> list:
         """Returns the structure of the "transactions" table from the ledger db"""
-        print("table_schema", table_name, db_name)
+        # print("table_schema", table_name, db_name)
         if db_name == "ledger":
-            print("ledger cursor", self._ledger_cursor)
+            # print("ledger cursor", self._ledger_cursor)
             res = self._ledger_cursor.execute("PRAGMA table_info('{}')".format(table_name))
         elif db_name == "hyper":
             res = self._hyper_cursor.execute("PRAGMA table_info('{}')".format(table_name))
@@ -411,13 +446,13 @@ class SoloDbHandler:
             self._hyper_cursor.execute(sql)
             self._hyper_db.commit()
 
-    def distinct_hyper_recipients(self, depth_specific: int) -> Iterator[str]:
+    def distinct_hyper_recipients(self, depth_specific: int) -> Tuple[str]:
         """Returns all recipients from hyper, at the given depth"""
         self._hyper_cursor.execute(
             "SELECT distinct(recipient) FROM transactions WHERE (block_height < ? AND block_height > ?)",
             (depth_specific, -depth_specific,))  # new addresses will be ignored until depth passed
         res = self._hyper_cursor.fetchall()
-        return (item[0] for item in res)
+        return tuple((str(item[0]) for item in res))
 
     def update_hyper_balance_at_height_legacy(self, address: str, depth_specific: int) -> Decimal:
         """Used for hyper compression. Returns balance at given height and updates hyper."""
@@ -425,7 +460,8 @@ class SoloDbHandler:
         # solo handler will embed a dedicated flag and use a dynamic method here
         credit = Decimal("0")
         for entry in self._hyper_cursor.execute(
-                "SELECT amount,reward FROM transactions WHERE recipient = ? AND (block_height < ? AND block_height > ?);",
+                "SELECT amount,reward FROM transactions WHERE recipient = ? "
+                "AND (block_height < ? AND block_height > ?);",
                 (address, depth_specific, -depth_specific)):
             try:
                 credit = quantize_eight(credit) + quantize_eight(entry[0]) + quantize_eight(entry[1])
@@ -455,14 +491,13 @@ class SoloDbHandler:
 
         return end_balance
 
-    def update_hyper_balance_at_height(self, address: str, depth_specific: int) -> Decimal:
+    def update_hyper_balance_at_height(self, address: str, depth_specific: int) -> Union[Decimal, int]:
         """Used for hyper compression. Returns balance at given height and updates hyper."""
-        # EGG_EVO: This method will have to be aware of the DB type, since balance calc will use different queries
-        # solo handler will embed a dedicated flag and use a dynamic method here
+        # EGG_EVO: This method is aware of the DB type, since balance calc uses different queries
         if self.legacy_db:
             return self.update_hyper_balance_at_height_legacy(address, depth_specific)
 
-        self.logger.app_log.warning(f"Update Hyper Balance v2 for {address}")
+        self.logger.app_log.debug(f"Update Hyper Balance v2 for {address}")
         res = self._hyper_cursor.execute(
                 "SELECT sum(amount + reward) FROM transactions WHERE recipient = ? AND (block_height < ? AND block_height > ?)",
                 (address, depth_specific, -depth_specific))
@@ -490,13 +525,18 @@ class SoloDbHandler:
 
     def cleanup_hypo(self, depth_specific: int) -> None:
         """Cleanup after hyper recompression  at depth_specific - Not db type dependant"""
+        # TODO: check we have the correct indices at this stage, this is the longuest step.
+        # print(f"DELETE FROM transactions WHERE address != 'Hyperblock' AND block_height < {depth_specific} AND block_height > {-depth_specific} ...")
+        self.logger.status_log.info(f"Cleaning up hyper transactions......")
         self._hyper_cursor.execute(
-            "DELETE FROM transactions WHERE address != 'Hyperblock' AND (block_height < ? AND block_height > ?);",
-            (depth_specific, -depth_specific,))
-        self._hyper_cursor.execute("DELETE FROM misc WHERE (block_height < ? AND block_height > ?);",
-                                   (depth_specific, -depth_specific,))  # remove diff calc
+            "DELETE FROM transactions WHERE address != 'Hyperblock' AND block_height < ? AND block_height > ?",
+            (depth_specific, -depth_specific))
+        # print(f"DELETE FROM misc WHERE block_height < {depth_specific} AND block_height > {-depth_specific} ...")
+        self.logger.status_log.info(f"Cleaning up hyper misc...")
+        self._hyper_cursor.execute("DELETE FROM misc WHERE block_height < ? AND block_height > ?",
+                                   (depth_specific, -depth_specific))  # remove diff calc
         self._hyper_db.commit()
-        self.logger.app_log.warning("Defragmenting hyper...")
+        self.logger.status_log.info("Defragmenting hyper...")
         self._hyper_cursor.execute("VACUUM")  # Can take some time
 
     def db_to_ram(self, source_db: str, dest_ram_db: str) -> sqlite3.Connection:
@@ -567,11 +607,10 @@ class SoloDbHandler:
             y_init = row[0]
             if y < 1:
                 y = y_init
-                print(y)
+                # print(y)
             if row[0] != y:
                 self.logger.status_log.warning(
                     f"Chain Index sequencing error at: {row[0]}. {row[0]} instead of {y}")
-                sys.exit()
                 self.rollback(y)
                 self.logger.status_log.info(
                     f"Due to a sequencing issue at block {y}, chain has been rolled back and will be resynchronized")

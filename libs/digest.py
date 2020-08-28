@@ -495,20 +495,20 @@ def process_blocks(blocks: list, node: "Node", db_handler: "DbHandler", block_in
             db_handler.to_db(block_instance, diff_save, block_transactions)
             # In regtest mode, at least, this saves the generated block to the regmod.db.
 
-            # new mirror sha_hash
-            db_handler._execute(db_handler.c, "SELECT * FROM transactions "
-                                              "WHERE block_height = (SELECT max(block_height) FROM transactions)")
-            # Was trying to simplify, but it's the latest mirror sha_hash.
-            # not the latest block, nor the mirror of the latest block.
-            # c._execute("SELECT * FROM transactions WHERE block_height = ?", (block_instance.block_height_new -1,))
-            tx_list_to_hash = db_handler.c.fetchall()
-            # TODO EGG_EVO: This is a mistake. Uses a specific low level and proprietary encoding format (str of a tuple from a db with non specified numeric format)
-            # To Simplify. Like, only hash the - bin - tx signatures, ensures untamper just the same, faster and no question on the format.
-            # Since mirror hash are not part of consensus, no incidence.
-            block_instance.mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).hexdigest()
-            # /new mirror sha_hash
-
-            rewards(node=node, block_instance=block_instance, db_handler=db_handler, miner_tx=miner_tx)
+            if block_instance.block_height_new % 10 == 0:
+                # new mirror sha_hash - only calc when needed, not every block
+                db_handler._execute(db_handler.c, "SELECT * FROM transactions "
+                                                  "WHERE block_height = (SELECT max(block_height) FROM transactions)")
+                # Was trying to simplify, but it's the latest mirror sha_hash.
+                # not the latest block, nor the mirror of the latest block.
+                # c._execute("SELECT * FROM transactions WHERE block_height = ?", (block_instance.block_height_new -1,))
+                tx_list_to_hash = db_handler.c.fetchall()
+                # TODO EGG_EVO: This is a mistake. Uses a specific low level and proprietary encoding format (str of a tuple from a db with non specified numeric format)
+                # To Simplify. Like, only hash the - bin - tx signatures, ensures untamper just the same, faster and no question on the format.
+                # Since mirror hash are not part of consensus, no incidence.
+                block_instance.mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).hexdigest()
+                # /new mirror sha_hash
+                rewards(node=node, block_instance=block_instance, db_handler=db_handler, miner_tx=miner_tx)
 
             # node.logger.app_log.warning("Block: {}: {} valid and saved from {}"
             # .format(block_instance.block_height_new, block_hash[:10], peer_ip))

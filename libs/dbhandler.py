@@ -4,15 +4,17 @@ Sqlite3 Database handler module for Bismuth nodes
 
 from time import sleep
 import sqlite3
+import os
 import sys
 import re
 # import essentials
 from decimal import Decimal
+from sqlite3 import Binary
 from bismuthcore.compat import quantize_eight
 from bismuthcore.transaction import Transaction
 from bismuthcore.block import Block
 from bismuthcore.transactionslist import TransactionsList
-from bismuthcore.helpers import fee_calculate
+from bismuthcore.helpers import fee_calculate, K1E8
 import functools
 from libs.fork import Fork
 from libs.helpers import blake2bhash_generate
@@ -29,6 +31,8 @@ __version__ = "1.0.8"
 
 ALIAS_REGEXP = r'^alias='
 SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+# Same but safer this way
+SQL_TO_TRANSACTIONS_V2 = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
 SQL_TO_MISC = "INSERT INTO misc VALUES (?,?)"
 
 
@@ -109,7 +113,9 @@ class DbHandler:
         :param alias:
         :return:
         """
-        self._execute_param(self.index_cursor, "SELECT address FROM aliases WHERE alias = ? ORDER BY block_height ASC LIMIT 1;", (alias,))
+        self._execute_param(self.index_cursor, "SELECT address FROM aliases WHERE alias = ? "
+                                               "ORDER BY block_height ASC LIMIT 1",
+                            (alias, ))
         try:
             address_fetch = self.index_cursor.fetchone()[0]
         except:
@@ -124,7 +130,9 @@ class DbHandler:
         :return:
         """
         address_fetch = False
-        self._execute_param(self.index_cursor, "SELECT address FROM aliases WHERE alias = ? ORDER BY block_height ASC LIMIT 1;", (alias,))
+        self._execute_param(self.index_cursor, "SELECT address FROM aliases WHERE alias = ? "
+                                               "ORDER BY block_height ASC LIMIT 1",
+                            (alias, ))
         try:
             address_fetch = self.index_cursor.fetchone()[0] is not None
         except:
@@ -132,7 +140,8 @@ class DbHandler:
         return address_fetch
 
     def aliasget(self, alias_address: str) -> List[List[str]]:
-        self._execute_param(self.index_cursor, "SELECT alias FROM aliases WHERE address = ? ", (alias_address,))
+        self._execute_param(self.index_cursor, "SELECT alias FROM aliases WHERE address = ? ",
+                            (alias_address, ))
         result = self.index_cursor.fetchall()
         if not result:
             result = [[alias_address]]
@@ -142,7 +151,8 @@ class DbHandler:
         results = []
         for alias_address in aliases_request:
             self._execute_param(self.index_cursor, (
-                "SELECT alias FROM aliases WHERE address = ? ORDER BY block_height ASC LIMIT 1"), (alias_address,))
+                "SELECT alias FROM aliases WHERE address = ? ORDER BY block_height ASC LIMIT 1"),
+                                (alias_address, ))
             try:
                 result = self.index_cursor.fetchall()[0][0]
             except:
@@ -161,16 +171,16 @@ class DbHandler:
         returns None
         """
         try:
-            self._execute_param(self.index_cursor, "DELETE FROM aliases WHERE block_height >= ?;", (height,))
+            self._execute_param(self.index_cursor, "DELETE FROM aliases WHERE block_height >= ?;", (height, ))
             self.commit(self.index)
 
-            self.logger.app_log.warning(f"Rolled back the alias index below {(height)}")
+            self.logger.status_log.warning(f"Rolled back the alias index below {height}")
         except Exception as e:
-            self.logger.app_log.warning(f"Failed to roll back the alias index below {(height)} due to {e}")
+            self.logger.status_log.warning(f"Failed to roll back the alias index below {height} due to {e}")
 
     def aliases_update(self):
         """Updates the aliases index"""
-        self._execute(self.index_cursor, "SELECT block_height FROM aliases ORDER BY block_height DESC LIMIT 1;")
+        self._execute(self.index_cursor, "SELECT block_height FROM aliases ORDER BY block_height DESC LIMIT 1")
         try:
             alias_last_block = int(self.index_cursor.fetchone()[0])
         except:
@@ -179,25 +189,25 @@ class DbHandler:
         # If many blocks passed by since, every call to update will have to parse large data (with like% query).
         # We could have an anchor table in index .db , with real anchor from last check.
         # to be dropped in case of rollback ofc.
-        self.logger.app_log.warning("Alias anchor block: {}".format(alias_last_block))
-        self.h.execute(
-            "SELECT block_height, address, openfield FROM transactions "
-            "WHERE openfield LIKE ? AND block_height >= ? ORDER BY block_height ASC, timestamp ASC;",
-            ("alias=%", alias_last_block))
+        self.logger.status_log.info("Alias anchor block: {}".format(alias_last_block))
+        self.h.execute("SELECT block_height, address, openfield FROM transactions "
+                       "WHERE openfield LIKE ? AND block_height >= ? "
+                       "ORDER BY block_height ASC, timestamp ASC",
+                       ("alias=%", alias_last_block))
         # include the anchor block in case indexation stopped there
         result = self.h.fetchall()
         for openfield in result:
             alias = re.sub(ALIAS_REGEXP, "", openfield[2])  # Remove leading "alias="
             # Egg: since the query filters on openfield beginning with "alias=", a [6:] may be as simple.
-            self.logger.app_log.warning(f"Processing alias registration: {alias}")
+            self.logger.status_log.info(f"Processing alias registration: {alias}")
             try:
-                self.index_cursor.execute("SELECT * from aliases WHERE alias = ?", (alias,))
+                self.index_cursor.execute("SELECT * from aliases WHERE alias = ?", (alias, ))
                 dummy = self.index_cursor.fetchall()[0]  # check for uniqueness
-                self.logger.app_log.warning(f"Alias already registered: {alias}")
+                self.logger.status_log.warning(f"Alias already registered: {alias} - Ignored.")
             except:
                 self.index_cursor.execute("INSERT INTO aliases VALUES (?,?,?)", (openfield[0], openfield[1], alias))
                 self.index.commit()
-                self.logger.app_log.warning(f"Added alias to the database: {alias} from block {openfield[0]}")
+                self.logger.status_log.info(f"Added alias to the database: {alias} from block {openfield[0]}")
 
     # ==== Tokens ==== #
 
@@ -207,7 +217,8 @@ class DbHandler:
         :param tokens_address:
         :return:
         """
-        self.index_cursor.execute("SELECT DISTINCT token FROM tokens WHERE address OR recipient = ?", (tokens_address,))
+        self.index_cursor.execute("SELECT DISTINCT token FROM tokens WHERE address OR recipient = ?",
+                                  (tokens_address, ))
         result = self.index_cursor.fetchall()
         return result
 
@@ -221,17 +232,17 @@ class DbHandler:
         returns None
         """
         try:
-            self._execute_param(self.index_cursor, "DELETE FROM tokens WHERE block_height >= ?;", (height,))
+            self._execute_param(self.index_cursor, "DELETE FROM tokens WHERE block_height >= ?", (height, ))
             self.commit(self.index)
 
-            self.logger.app_log.warning(f"Rolled back the token index below {(height)}")
+            self.logger.status_log.info(f"Rolled back the token index below {height}")
         except Exception as e:
-            self.logger.app_log.warning(f"Failed to roll back the token index below {(height)} due to {e}")
+            self.logger.status_log.warning(f"Failed to roll back the token index below {height} due to {e}")
 
     def tokens_update(self):
         # TODO: move at init/Single user stage, not every run - Move into plugin as well
-        self.index_cursor.execute(
-            "CREATE TABLE IF NOT EXISTS tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)")
+        self.index_cursor.execute("CREATE TABLE IF NOT EXISTS tokens "
+                                  "(block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)")
         self.index.commit()
 
         self.index_cursor.execute("SELECT block_height FROM tokens ORDER BY block_height DESC LIMIT 1;")
@@ -239,54 +250,51 @@ class DbHandler:
             token_last_block = int(self.index_cursor.fetchone()[0])
         except:
             token_last_block = 0
-        self.logger.app_log.warning("Token anchor block: {}".format(token_last_block))
-        self.c.execute(
-            "SELECT block_height, timestamp, address, recipient, signature, operation, openfield FROM transactions "
-            "WHERE block_height >= ? AND operation = ? AND reward = 0 ORDER BY block_height ASC;",
-            (token_last_block, "token:issue"))
+        self.logger.status_log.info("Token anchor block: {}".format(token_last_block))
+        self.c.execute("SELECT block_height, timestamp, address, recipient, signature, operation, openfield "
+                       "FROM transactions "
+                       "WHERE block_height >= ? AND operation = ? AND reward = 0 ORDER BY block_height ASC;",
+                       (token_last_block, "token:issue"))
         results = self.c.fetchall()
-        self.logger.app_log.warning(results)
+        # self.logger.status_log.warning(results)
         tokens_processed = []
 
         for x in results:
             try:
                 token_name = x[6].split(":")[0].lower().strip()
                 try:
-                    self.index_cursor.execute("SELECT * from tokens WHERE token = ?", (token_name,))
+                    self.index_cursor.execute("SELECT * from tokens WHERE token = ?", (token_name, ))
                     dummy = self.index_cursor.fetchall()[0]  # check for uniqueness
-                    self.logger.app_log.warning("Token issuance already processed: {}".format(token_name, ))
+                    self.logger.status_log.warning("Token issuance already processed: {} - Ignored.".format(token_name, ))
                 except:
                     if token_name not in tokens_processed:
                         block_height = x[0]
-                        self.logger.app_log.warning("Block height {}".format(block_height))
                         timestamp = x[1]
-                        self.logger.app_log.warning("Timestamp {}".format(timestamp))
                         tokens_processed.append(token_name)
-                        self.logger.app_log.warning("Token: {}".format(token_name))
                         issued_by = x[3]
-                        self.logger.app_log.warning("Issued by: {}".format(issued_by))
                         txid = x[4][:56]
-                        self.logger.app_log.warning("Txid: {}".format(txid))
                         total = x[6].split(":")[1]
                         # EGG Note: Maybe force this to be positive int?
-                        self.logger.app_log.warning("Total amount: {}".format(total))
                         self.index_cursor.execute("INSERT INTO tokens VALUES (?,?,?,?,?,?,?)",
                                                   (block_height, timestamp, token_name, "issued",
                                                    issued_by, txid, total))
+                        self.logger.status_log.info(f"Block height {block_height} - Timestamp {timestamp} - Txid {txid}")
+                        self.logger.status_log.warning(f"New Token: {token_name} - Issued by: {issued_by} - Total amount: {total}")
+
                         if self.plugin_manager:
                             self.plugin_manager.execute_action_hook('token_issue',
                                                                     {'token': token_name, 'issuer': issued_by,
                                                                      'txid': txid, 'total': total})
                     else:
-                        self.logger.app_log.warning("This token is already registered: {}".format(x[1]))
-            except:
-                self.logger.app_log.warning("Error parsing")
+                        self.logger.status_log.warning("This token is already registered: {} - Ignored.".format(x[1]))
+            except Exception as e:
+                self.logger.app_log.warning(f"Error {e} parsing token registration")
 
         self.index.commit()
         self.c.execute(
             "SELECT operation, openfield FROM transactions "
             "WHERE (block_height >= ? OR block_height <= ?) AND operation = ? and reward = 0 ORDER BY block_height ASC",
-            (token_last_block, -token_last_block, "token:transfer",))  # includes mirror blocks
+            (token_last_block, -token_last_block, "token:transfer", ))  # includes mirror blocks
         openfield_transfers = self.c.fetchall()
         # print(openfield_transfers)
         tokens_transferred = []
@@ -295,37 +303,32 @@ class DbHandler:
             if token_name not in tokens_transferred:
                 tokens_transferred.append(token_name)
         if tokens_transferred:
-            self.logger.app_log.warning("Token transferred: {}".format(tokens_transferred))
+            self.logger.status_log.info("Token transferred: {}".format(tokens_transferred))
         for token in tokens_transferred:
             try:
-                self.logger.app_log.warning("processing {}".format(token))
+                self.logger.status_log.info("processing {}".format(token))
                 self.c.execute(
                     "SELECT block_height, timestamp, address, recipient, signature, operation, openfield "
                     "FROM transactions WHERE (block_height >= ? OR block_height <= ?) "
                     "AND operation = ? AND openfield LIKE ? AND reward = 0 ORDER BY block_height ASC;",
-                    (token_last_block, -token_last_block, "token:transfer", token + ':%',))
+                    (token_last_block, -token_last_block, "token:transfer", token + ':%', ))
                 results2 = self.c.fetchall()
-                self.logger.app_log.warning(results2)
+                # self.logger.app_log.warning(results2)
                 for r in results2:
                     block_height = r[0]
-                    self.logger.app_log.warning("Block height {}".format(block_height))
                     timestamp = r[1]
-                    self.logger.app_log.warning("Timestamp {}".format(timestamp))
                     token = r[6].split(":")[0]
-                    self.logger.app_log.warning("Token {} operation".format(token))
                     sender = r[2]
-                    self.logger.app_log.warning("Transfer from {}".format(sender))
                     recipient = r[3]
-                    self.logger.app_log.warning("Transfer to {}".format(recipient))
                     txid = r[4][:56]
                     if txid == "0":
                         txid = blake2bhash_generate(r)
-                    self.logger.app_log.warning("Txid: {}".format(txid))
                     try:
                         transfer_amount = int(r[6].split(":")[1])
                     except:
                         transfer_amount = 0
-                    self.logger.app_log.warning("Transfer amount {}".format(transfer_amount))
+
+                    self.logger.status_log.info(f"Block height {block_height} - Timestamp {timestamp} - Txid {txid}")
                     # calculate balances
                     self.index_cursor.execute(
                         "SELECT sum(amount) FROM tokens WHERE recipient = ? AND block_height < ? AND token = ?",
@@ -334,7 +337,6 @@ class DbHandler:
                         credit_sender = int(self.index_cursor.fetchone()[0])
                     except:
                         credit_sender = 0
-                    self.logger.app_log.warning("Sender's credit {}".format(credit_sender))
                     self.index_cursor.execute(
                         "SELECT sum(amount) FROM tokens WHERE address = ? AND block_height <= ? AND token = ?",
                         (sender, block_height, token,))
@@ -342,16 +344,17 @@ class DbHandler:
                         debit_sender = int(self.index_cursor.fetchone()[0])
                     except:
                         debit_sender = 0
-                    self.logger.app_log.warning("Sender's debit: {}".format(debit_sender))
+                    #self.logger.app_log.warning("Sender's debit: {}".format(debit_sender))
                     # /calculate balances
 
                     balance_sender = credit_sender - debit_sender
-                    self.logger.app_log.warning("Sender's balance {}".format(balance_sender))
+                    self.logger.status_log.info(f"Token '{token}'': Transfer {transfer_amount} from {sender} to {recipient}. Sender's balance {balance_sender}")
+                    #self.logger.app_log.warning("Sender's balance {}".format(balance_sender))
                     try:
                         self.index_cursor.execute("SELECT txid from tokens WHERE txid = ?", (txid,))
                         dummy = self.index_cursor.fetchone()  # check for uniqueness
                         if dummy:
-                            self.logger.app_log.warning("Token operation already processed: {} {}".format(token, txid))
+                            self.logger.status_log.warning("Token operation already processed: {} {} - Ignored.".format(token, txid))
                         else:
                             if (balance_sender - transfer_amount >= 0) and (transfer_amount > 0):
                                 self.index_cursor.execute("INSERT INTO tokens VALUES (?,?,?,?,?,?,?)",
@@ -365,15 +368,15 @@ class DbHandler:
 
                             else:
                                 # save block height and txid so that we do not have to process the invalid transactions again
-                                self.logger.app_log.warning("Invalid transaction by {}".format(sender))
+                                self.logger.status_log.warning("Invalid transaction by {}".format(sender))
                                 self.index_cursor.execute("INSERT INTO tokens VALUES (?,?,?,?,?,?,?)",
                                                           (block_height, "", "", "", "", txid, ""))
                     except Exception as e:
-                        self.logger.app_log.warning("Exception {}".format(e))
+                        self.logger.status_log.warning("Exception {} transfering token.".format(e))
 
-                    self.logger.app_log.warning("Processing of {} finished".format(token))
-            except:
-                self.logger.app_log.warning("Error parsing")
+                    self.logger.status_log.info("Processing of {} finished".format(token))
+            except Exception as e:
+                self.logger.app_log.warning(f"Error {e} parsing token op")
 
             self.index.commit()
 
@@ -405,10 +408,10 @@ class DbHandler:
                       "SELECT block_hash FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1")
         last_hash = self.c.fetchone()[0]
         # if new db, convert bin to hex
-        if self.legacy_db:
-            return last_hash
-        else:
-            return last_hash.hex()  # v2
+        if not self.legacy_db:
+            last_hash = last_hash.hex()
+        self.logger.status_log.warning(f"Temp: last_block_hash {last_hash}")
+        return last_hash
 
     def last_block_timestamp(self, back: int=0) -> Union[float, None]:
         """
@@ -440,7 +443,10 @@ class DbHandler:
         :return:
         """
         try:
-            self._execute_param(self.h, "SELECT openfield FROM transactions WHERE address = ? AND operation = ? ORDER BY block_height DESC LIMIT 1", (genesis, "annver",))
+            self._execute_param(self.h,
+                                "SELECT openfield FROM transactions WHERE address = ? AND operation = ? "
+                                "ORDER BY block_height DESC LIMIT 1",
+                                (genesis, "annver"))
             result = self.h.fetchone()[0]
         except:
             result = "?"
@@ -449,7 +455,10 @@ class DbHandler:
     def annget(self, genesis: str) -> str:
         # Returns the current ann string for the given genesis address
         try:
-            self._execute_param(self.h, "SELECT openfield FROM transactions WHERE address = ? AND operation = ? ORDER BY block_height DESC LIMIT 1", (genesis, "ann",))
+            self._execute_param(self.h,
+                                "SELECT openfield FROM transactions WHERE address = ? AND operation = ? "
+                                "ORDER BY block_height DESC LIMIT 1",
+                                (genesis, "ann"))
             result = self.h.fetchone()[0]
         except:
             result = "No announcement"
@@ -572,13 +581,16 @@ class DbHandler:
         if cache is not None and address in cache:
             return cache[address]
         credit_ledger = Decimal(0)
-        self._execute_param(self.c, "SELECT amount, reward FROM transactions WHERE recipient = ?;",
-                                  (address,))
+        self._execute_param(self.c,
+                            "SELECT amount, reward FROM transactions WHERE recipient = ?",
+                            (address, ))
         entries = self.c.fetchall()
         for entry in entries:
             credit_ledger += quantize_eight(entry[0]) + quantize_eight(entry[1])
         debit_ledger = Decimal(0)
-        self._execute_param(self.c, "SELECT amount, fee FROM transactions WHERE address = ?;", (address,))
+        self._execute_param(self.c,
+                            "SELECT amount, fee FROM transactions WHERE address = ?",
+                            (address, ))
         entries = self.c.fetchall()
         for entry in entries:
             debit_ledger += quantize_eight(entry[0]) + quantize_eight(entry[1])
@@ -600,12 +612,12 @@ class DbHandler:
             return cache[address]
         self._execute_param(self.c, "SELECT sum(amount + reward) FROM transactions WHERE recipient = ?", (address, ))
         entries = self.c.fetchone()
-        print("EE", entries)
-        credit_ledger = entries[0]
-        self._execute_param(self.c, "SELECT sum(amount + fee) FROM transactions WHERE address = ?", (address,))
+        # print("EE", entries)
+        credit_ledger = 0 if entries[0] is None else entries[0]
+        self._execute_param(self.c, "SELECT sum(amount + fee) FROM transactions WHERE address = ?", (address, ))
         entries = self.c.fetchone()
-        print("EE", entries)
-        debit_ledger = entries[0]
+        # print("EE", entries)
+        debit_ledger = 0 if entries[0] is None else entries[0]
         if cache is not None:
             cache[address] = credit_ledger - debit_ledger
             return cache[address]
@@ -616,19 +628,35 @@ class DbHandler:
 
     def block_height_from_hash(self, hex_hash: str) -> int:
         """Lookup a block height from its hash."""
-        # EGG_EVO: hash is currently supposed to be into hex format.
-        # To be tweaked to allow either bin or hex and convert or not depending on the underlying db.
+        # provided hash is supposed to be in hex format.
+        # tweaked to allow either bin or hex and convert or not depending on the underlying db.
         try:
-            self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?", (hex_hash,))
+            if self.legacy_db:
+                self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?", (hex_hash, ))
+            else:
+                self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?", (Binary(bytes.fromhex(hex_hash)), ))
             result = self.h.fetchone()[0]
         except:
             result = None
         return result
 
+    def block_height_from_binhash(self, hash: bytes) -> int:
+        """Lookup a block height from its hash."""
+        # provided hash is supposed to be binary.
+        try:
+            self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?", (Binary(hash), ))
+            result = self.h.fetchone()[0]
+        except:
+            result = None
+        return result
+
+
     def pubkeyget(self, address: str) -> str:
         # TODO: make sure address, when it comes from the network or user input, is sanitized and validated.
         # Not to be added here, for perf reasons, but in the top layers.
-        self._execute_param(self.c, "SELECT public_key FROM transactions WHERE address = ? and reward = 0 LIMIT 1", (address,))
+        self._execute_param(self.c,
+                            "SELECT public_key FROM transactions WHERE address = ? and reward = 0 LIMIT 1",
+                            (address, ))
         # Note: this returns the first it finds. Could be dependent of the local db. *if* one address was to have several different pubkeys (I don't see how)
         # could be problematic.
         # EGG_EVO: if new db, convert bin to hex
@@ -656,8 +684,11 @@ class DbHandler:
         # EGG_EVO: So this is a new alternate format to potentially take into account into BismuthCore
         # But this is only used to feed a peer, over the network.
         # So maybe we better have handle it by hand here.
-        while sys.getsizeof(
-                str(blocks_fetched)) < 500000:  # limited size based on txs in blocks
+        if not self.legacy_db:
+            self.logger.status_log.error("blocksync but legacy db! - WIP")
+            sys.exit()
+
+        while sys.getsizeof(str(blocks_fetched)) < 500000:  # limited size based on txs in blocks
             """
             self._execute_param(self.h, (
                 "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),
@@ -665,8 +696,10 @@ class DbHandler:
             """
             # Simplify request
             block_height += 1
-            self._execute_param(self.h, (
-                "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE block_height = ?"), (block_height,))
+            self._execute_param(self.h,
+                                "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield "
+                                "FROM transactions WHERE block_height = ?",
+                                (block_height, ))
             result = self.h.fetchall()
             if not result:
                 break
@@ -680,17 +713,14 @@ class DbHandler:
         :return:
         """
         # EGG_EVO: This sql request is the same in both cases (int/float), but...
-        self._execute_param(self.h, "SELECT * FROM transactions WHERE block_height = ?", (block_height,))
+        self._execute_param(self.h, "SELECT * FROM transactions WHERE block_height = ?", (block_height, ))
         block_desired_result = self.h.fetchall()
-        # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
-        # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
+        # from_legacy only is valid for legacy db, so here we need to add context dependent code.
         # Transaction objects - themselves - are db agnostic.
         if self.legacy_db:
             transaction_list = [Transaction.from_legacy(entry) for entry in block_desired_result]
         else:
-            # from_v2 is TODO EGG_EVO - to add to BismuthCore. Not needed for legacy -> V2 conversion.
-            print("get_address_range Transaction.from_v2 not supported yet")
-            sys.exit()
+            transaction_list = [Transaction.from_v2(entry) for entry in block_desired_result]
         return Block(transaction_list)
 
     def get_block_hash_for_height(self, block_height: int) -> str:
@@ -710,7 +740,7 @@ class DbHandler:
             return ''
 
     def get_difficulty_for_height(self, block_height: int) -> float:
-        return float(self._fetchone(self.h, "SELECT difficulty FROM misc WHERE block_height = ?", (block_height)))
+        return float(self._fetchone(self.h, "SELECT difficulty FROM misc WHERE block_height = ?", (block_height, )))
 
     def get_block_from_hash(self, hex_hash: str) -> Block:
         """
@@ -759,11 +789,11 @@ class DbHandler:
         # EGG_EVO will need convert and alt sql for bin storage
         if self.old_sqlite:
             self._execute_param(self.c, "SELECT timestamp FROM transactions WHERE signature = ?1",
-                                (encoded_signature,))
+                                (encoded_signature, ))
         else:
             self._execute_param(self.c, "SELECT timestamp FROM transactions "
                                         "WHERE substr(signature,1,4) = substr(?1,1,4) AND signature = ?1",
-                                (encoded_signature,))
+                                (encoded_signature, ))
         return bool(self.c.fetchone())
 
     # ====  TODO: check usage of these methods ==== Update: 1 occ. was moved to solo handler, process the other one.
@@ -793,15 +823,15 @@ class DbHandler:
         # which expects legacy format.
         #
         # "backup higher blocks than given, takes data from c, which normally means RAM"
-        self._execute_param(self.c, "SELECT * FROM transactions WHERE block_height >= ?;", (block_height,))
+        self._execute_param(self.c, "SELECT * FROM transactions WHERE block_height >= ?", (block_height, ))
         backup_data = self.c.fetchall()
 
         self._execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
                             (block_height, -block_height))  # this belongs to rollback_under
         self.commit(self.conn)
 
-        self._execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;",
-                            (block_height,))  # this belongs to rollback_under
+        self._execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?",
+                            (block_height, ))  # this belongs to rollback_under
         self.commit(self.conn)
 
         return backup_data
@@ -812,39 +842,48 @@ class DbHandler:
             self.logger.app_log.error(f"rollback_under {block_height} - STOPPED - Temp Debug")
             sys.exit()
         self.h.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
-                       (block_height, -block_height,))
+                       (block_height, -block_height))
         self.commit(self.hdd)
 
-        self.h.execute("DELETE FROM misc WHERE block_height >= ?", (block_height,))
+        self.h.execute("DELETE FROM misc WHERE block_height >= ?", (block_height, ))
         self.commit(self.hdd)
 
         self.h2.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
-                        (block_height, -block_height,))
+                        (block_height, -block_height))
         self.commit(self.hdd2)
 
-        self.h2.execute("DELETE FROM misc WHERE block_height >= ?", (block_height,))
+        self.h2.execute("DELETE FROM misc WHERE block_height >= ?", (block_height, ))
         self.commit(self.hdd2)
 
     def rollback_to(self, block_height: int) -> None:
         self.logger.dev_log.warning("rollback_to is deprecated, use rollback_under")
         self.rollback_under(block_height)
 
-    def to_db_v2(self, block_array, diff_save) -> None:
+    def to_db_v2(self, block: Block, diff_save: int) -> None:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
         # print("** to_db")
-        self.logger.status_log.error("TODO: dbhandler.to_db_v2()")
-        return
-
+        # self.logger.status_log.error("TODO: dbhandler.to_db_v2()")
+        try:
+            self._execute_param(self.c, SQL_TO_MISC, (block.height, diff_save))
+            self.commit(self.conn)
+        except Exception as e:
+            self.logger.digest_log.error(f"dbhandler.to_db_v2 error {e} writing to misc")
+        for transaction in block.transactions:
+            self._execute_param(self.c, SQL_TO_TRANSACTIONS_V2, transaction.to_bin_tuple(sqlite_encode=True))
+        self.commit(self.conn)
 
     def to_db(self, block_array, diff_save, block_transactions) -> None:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
         # print("** to_db")
         if not self.legacy_db:
-            self.logger.status_log.error("TODO: dbhandler.to_db()")
+            self.logger.status_log.error("dbhandler.to_db() but V2 DB !!!")
             return
-        self._execute_param(self.c, SQL_TO_MISC,
-                            (block_array.block_height_new, diff_save))
-        self.commit(self.conn)
+        try:
+            self._execute_param(self.c, SQL_TO_MISC,
+                                (block_array.block_height_new, diff_save))
+            self.commit(self.conn)
+        except Exception as e:
+            self.logger.digest_log.error(f"dbhandler.to_db error {e} writing to misc")
 
         # db_handler.execute_many(db_handler.c, SQL_TO_TRANSACTIONS, block_transactions)
 
@@ -855,14 +894,14 @@ class DbHandler:
                                  str(transaction2[3]), str(transaction2[4]), str(transaction2[5]),
                                  str(transaction2[6]), str(transaction2[7]), str(transaction2[8]),
                                  str(transaction2[9]), str(transaction2[10]), str(transaction2[11])))
-            # secure commit for slow nodes
-            self.commit(self.conn)
+        # secure commit for slow nodes
+        self.commit(self.conn)
 
     def db_to_drive(self, node: "Node") -> None:
-        # TODO EGG_EVO: many possible traps and params there, to be examined later on.
         if not self.legacy_db:
-            self.logger.status_log.error("TODO: dbhandler.db_to_drive()")
+            self.logger.status_log.error("dbhandler.db_to_drive() but v2 db")
             return
+
         def transactions_to_h(data):
             for x in data:  # we want to save to ledger db
                 self._execute_param(self.h, SQL_TO_TRANSACTIONS,
@@ -893,8 +932,9 @@ class DbHandler:
                 return
             self.logger.app_log.info(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
 
-            self._execute_param(self.c, "SELECT * FROM transactions WHERE block_height > ? "
-                                                   "OR block_height < ? ORDER BY block_height ASC",
+            self._execute_param(self.c,
+                                "SELECT * FROM transactions WHERE block_height > ? "
+                                "OR block_height < ? ORDER BY block_height ASC",
                                 (node.hdd_block, -node.hdd_block))
 
             result1 = self.c.fetchall()
@@ -919,45 +959,134 @@ class DbHandler:
             self.logger.app_log.warning(f"Chain: Exception Moving new data to HDD: {e}")
             # app_log.warning("Ledger digestion ended")  # dup with more informative digest_block notice.
 
+    def db_to_drive_v2(self, node: "Node") -> None:
+        """Renamed and copied to v2, but almost no code changed.
+        Can be optimized however"""
+
+        def transactions_to_h(data):
+            for x in data:  # we want to save to ledger db
+                # print("aa", x)
+                try:
+                    self._execute_param(self.h, SQL_TO_TRANSACTIONS,
+                                    (x[0], x[1], x[2], x[3], x[4],
+                                     Binary(x[5]), Binary(x[6]), Binary(x[7]),
+                                     x[8], x[9], x[10], x[11]))
+                except:
+                    print("aaa", x)
+                    raise
+            self.commit(self.hdd)
+
+        def misc_to_h(data):
+            for x in data:  # we want to save to ledger db from RAM/hyper db depending on ram conf
+                self._execute_param(self.h, SQL_TO_MISC, (x[0], x[1]))
+            self.commit(self.hdd)
+
+        def transactions_to_h2(data):
+            for x in data:
+                self._execute_param(self.h2, SQL_TO_TRANSACTIONS,
+                                    (x[0], x[1], x[2], x[3], x[4],
+                                     Binary(x[5]), Binary(x[6]), Binary(x[7]),
+                                     x[8], x[9], x[10], x[11]))
+            self.commit(self.hdd2)
+
+        def misc_to_h2(data):
+            for x in data:
+                self._execute_param(self.h2, SQL_TO_MISC, (x[0], x[1]))
+            self.commit(self.hdd2)
+
+        try:
+            if node.is_regnet:
+                node.hdd_block = node.last_block
+                node.hdd_hash = node.last_block_hash
+                self.logger.app_log.warning(f"Chain: Regnet simulated move to HDD")
+                return
+            self.logger.digest_log.info(f"Chain v2: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
+
+            self._execute_param(self.c,
+                                "SELECT * FROM transactions WHERE block_height > ? "
+                                "OR block_height < ? ORDER BY block_height ASC",
+                                (node.hdd_block, -node.hdd_block))
+            result1 = self.c.fetchall()
+
+            transactions_to_h(result1)
+
+            if node.config.ram:  # we want to save to hyper db from RAM/hyper db depending on ram conf
+                transactions_to_h2(result1)
+
+            self._execute_param(self.c, "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
+                                (node.hdd_block,))
+            result2 = self.c.fetchall()
+
+            misc_to_h(result2)
+            if node.config.ram:  # we want to save to hyper db from RAM
+                misc_to_h2(result2)
+
+            node.hdd_block = node.last_block
+            node.hdd_hash = node.last_block_hash
+            self.logger.status_log.info(f"Chain: {len(result1)} txs moved to HDD, up to {node.last_block}")
+        except Exception as e:
+            self.logger.app_log.warning(f"Chain: Exception Moving new data to HDD: {e}")
+            # app_log.warning("Ledger digestion ended")  # dup with more informative digest_block notice.
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+
     # ====  Rewards ====
 
     def dev_reward(self, node: "Node", block_array, miner_tx, mining_reward, mirror_hash) -> None:
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
+        if not self.legacy_db:
+            self.logger.status_log.error("dbhandler.dev_reward, but v2")
+            return
         self._execute_param(self.c, SQL_TO_TRANSACTIONS,
-                            (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Development Reward", str(node.config.genesis),
-                                  str(mining_reward), "0", "0", mirror_hash, "0", "0", "0", "0"))
+                            (-block_array.block_height_new, str(miner_tx.q_block_timestamp),
+                             "Development Reward", node.config.genesis,
+                             str(mining_reward), "0", "0", mirror_hash, 0, 0, "0", "0"))
         self.commit(self.conn)
 
-    def dev_reward_v2(self, node: "Node", block:"Block", mirror_hash: bytes) -> None:
-        self.logger.status_log.error("TODO: dbhandler.dev_reward_v2()")
-        return
+    def dev_reward_v2(self, node: "Node", block: "Block", mirror_hash: bytes) -> None:
+        mining_reward = block.miner_tx.reward
+        self._execute_param(self.c, SQL_TO_TRANSACTIONS,
+                            (-block.height, str(block.miner_tx.timestamp),
+                             "Development Reward", node.config.genesis,
+                             mining_reward, b"", b"", mirror_hash, 0, 0, "0", "0"))
+        self.commit(self.conn)
 
     def hn_reward_v2(self, node, block: Block, mirror_hash: bytes):
-        self.logger.status_log.error("TODO: dbhandler.hn_reward_v2()")
-        return
-
+        fork = Fork(node.config)
+        reward_sum = 24 * K1E8
+        if node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET:
+            reward_sum -= (node.last_block + 5 - fork.POW_FORK_TESTNET) * K1E8 // 300000
+        elif node.is_mainnet and node.last_block >= fork.POW_FORK:
+            reward_sum -= (node.last_block + 5 - fork.POW_FORK) * K1E8 // 300000
+        if reward_sum < K1E8 // 2:
+            reward_sum = K1E8 // 2
+        self._execute_param(self.c, SQL_TO_TRANSACTIONS,
+                            (-block.height, str(block.miner_tx.timestamp), "Hypernode Payouts",
+                             "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16",
+                             reward_sum, b"", b"", mirror_hash, "0", "0", "0", "0"))
+        self.commit(self.conn)
 
     def hn_reward(self, node, block_array, miner_tx, mirror_hash):
         # TODO EGG_EVO: many possible traps and params there, to be examined later on.
+        if not self.legacy_db:
+            self.logger.status_log.error("dbhandler.hn_reward, but v2")
+            return
+        # This part could be factorized to bismuthcore, but dependency from fork() makes it difficult.
         fork = Fork(node.config)
-
+        reward_sum = 24
         if node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET:
-            reward_sum = 24 - 10 * (node.last_block + 5 - fork.POW_FORK_TESTNET) / 3000000
-
+            reward_sum -= (node.last_block + 5 - fork.POW_FORK_TESTNET) / 300000
         elif node.is_mainnet and node.last_block >= fork.POW_FORK:
-            reward_sum = 24 - 10*(node.last_block + 5 - fork.POW_FORK)/3000000
-        else:
-            reward_sum = 24
-
+            reward_sum -= (node.last_block + 5 - fork.POW_FORK) / 300000
         if reward_sum < 0.5:
             reward_sum = 0.5
-
         reward_sum = '{:.8f}'.format(reward_sum)
 
         self._execute_param(self.c, SQL_TO_TRANSACTIONS,
                             (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Hypernode Payouts",
-                            "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16",
-                            reward_sum, "0", "0", mirror_hash, "0", "0", "0", "0"))
+                             "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16",
+                             reward_sum, "0", "0", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
 
     # ====  Core helpers that should not be called from the outside ====
@@ -1023,12 +1152,12 @@ class DbHandler:
             self._execute_param(cursor, query, param)
         return cursor.fetchall()
 
-    def fetchone(self, cursor, query: str, param: list=None) -> Union[None, str, int, float, bool]:
+    def fetchone(self, cursor, query: str, param: Union[list, tuple, None]=None) -> Union[None, str, int, float, bool]:
         print("DbHandler.fetchone() has to be converted")
         # Do NOT auto convert, risk of confusion with sqlite core fetchone.
         return self._fetchone(cursor, query, param)
 
-    def _fetchone(self, cursor, query: str, param: list=None) -> Union[None, str, int, float, bool]:
+    def _fetchone(self, cursor, query: str, param: Union[list, tuple, None]=None) -> Union[None, str, int, float, bool]:
         """Helper to simplify calling code, _execute and fetch in a single line instead of 2"""
         # EGG_EVO: convert to a private method as well.
         if param is None:

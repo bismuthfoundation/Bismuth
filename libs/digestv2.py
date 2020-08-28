@@ -131,9 +131,9 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: Block):
                 reward: int = 0
                 fee = fee_calculate_int(transaction.openfield, transaction.operation, node.last_block)
                 if fee != transaction.fee:
-                    node.logger.digest_log.warning(f"{block.height}:{transaction.address} Tx fee do not match calc: {Transaction.int_to_f8(transaction.fee)}/{Transaction.int_to_f8(fee)}")
+                    node.logger.digest_log.debug(f"{block.height}:{transaction.address} Tx fee do not match calc: {Transaction.int_to_f8(transaction.fee)}/{Transaction.int_to_f8(fee)}")
                     transaction.fee = fee
-                    raise ValueError("TempRE1")
+                    # raise ValueError("TempRE1")
 
                     # Fee is not part of signature
                 fees_block.append(fee)
@@ -277,7 +277,8 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
             node.logger.status_log.info(f"Current diff {diff[3]:0.2f} - New diff  {diff[0]:0.2f} {diff[1]:0.2f}")
             node.logger.status_log.debug(f"Current diff {diff[3]} - New diff  {diff[0]} {diff[1]} - Adj {diff[6]}")
 
-            block_hash = hashlib.sha224((str(block.tx_list_for_hash()) + node.last_block_hash).encode("utf-8")).hexdigest()
+            block_hash_bin = hashlib.sha224((str(block.tx_list_for_hash()) + node.last_block_hash).encode("utf-8")).digest()
+            block_hash = block_hash_bin.hex()
             # del block_instance.transaction_list_converted[:]
 
             # node.logger.app_log.info("Last block sha_hash: {}".format(block_hash))
@@ -285,7 +286,7 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
             # node.logger.app_log.info("Nonce: {}".format(nonce))
 
             # check if we already have that sha_hash
-            dummy = db_handler.block_height_from_hash(block_hash)
+            dummy = db_handler.block_height_from_binhash(block_hash_bin)
 
             # db_handler._execute_param(db_handler.h,
             # "SELECT block_height FROM transactions WHERE block_hash = ?", (block_instance.block_hash,))
@@ -293,7 +294,7 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
 
             if dummy:
                 raise ValueError(
-                    f"Skipping digestion of block {block_hash[:10]} from {peer_ip}, "
+                    f"Skipping digestion of block {block_hash.hex()[:10]} from {peer_ip}, "
                     f"because we already have it on block_height {dummy[0]}")
 
             if node.is_mainnet:
@@ -337,6 +338,9 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
             node.last_block_hash = block_hash
             # end for block
 
+            # At that point, block is valid and will be saved. set its hash in all transactions before saving
+            block.set_hash(block_hash_bin)
+
             # save current diff (before the new block)
 
             # quantized vars have to be converted, since Decimal is not json serializable...
@@ -370,11 +374,11 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
                 # c._execute("SELECT * FROM transactions WHERE block_height = ?", (block_instance.block_height_new -1,))
                 tx_list_to_hash = db_handler.c.fetchall()
                 # TODO EGG_EVO: This is a mistake. Uses a specific low level and proprietary encoding format (str of a tuple from a db with non specified numeric format)
-                # To Simplify. Like, only hash the - bin - tx signatures, ensures untamper just the same, faster and no question on the format.
+                # To Simplify. Like, only hash the - bin - tx signatures or just block hash that already is a hash of tx list, ensures untamper just the same, faster and no question on the format.
                 # Since mirror hash are not part of consensus, no incidence.
                 # /new mirror sha_hash
-                mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).hexdigest()  # Is that used somewhere or just recorded??
-                rewards(node=node, block_instance=block, mirror_hash=mirror_hash, db_handler=db_handler)
+                mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).digest()  # Is that used somewhere or just recorded??
+                rewards(node=node, block=block, mirror_hash=mirror_hash, db_handler=db_handler)
 
             # node.logger.app_log.warning("Block: {}: {} valid and saved from {}"
             # .format(block_instance.block_height_new, block_hash[:10], peer_ip))
@@ -451,20 +455,22 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
             # get actual data from database on exception
             node.last_block = db_handler.last_mining_transaction().block_height
             node.last_block_hash = db_handler.last_block_hash()
-            node.logger.digest_log.warning(f"Chain processing failed: {e} - Expected block {node.last_block+1}")
+            node.logger.digest_log.warning(f"Chain processing failed {node.last_block+1}: {e}")
             # node.logger.digest_log.info(f"Received data dump 0: {block_data[0]}")
             node.logger.digest_log.debug(f"Received data dump: {block_data}")
             failed_cause = str(e)
+            """
             # Temp debug
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
+            """
             if node.peers.warning(sdef, peer_ip, "Rejected block", 2):
                 raise ValueError(f"{peer_ip} banned")
             raise ValueError("Chain: digestion aborted")
         finally:
             # in regnet, this copies again the last block...
-            db_handler.db_to_drive(node)
+            db_handler.db_to_drive_v2(node)
             node.db_lock.release()
             node.logger.app_log.debug(f"Database lock released")
             delta_t = ttime() - start_time_block

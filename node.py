@@ -29,6 +29,7 @@ from libs.digest import digest_block
 from libs.digestv2 import digest_block_v2
 from bismuthcore.helpers import sanitize_address
 from bismuthcore.transaction import Transaction
+from bismuthcore.helpers import py_version
 from libs import keys, client, mempool as mp, regnet, log, essentials
 from libs.nodebackgroundthread import NodeBackgroundThread
 from libs.logger import Logger
@@ -37,7 +38,7 @@ from libs.config import Config
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.25-evo"  # Experimental db-evolution branch
+VERSION = "5.0.26-evo"  # Experimental db-evolution branch
 
 
 appname = "Bismuth"
@@ -237,6 +238,13 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         if received_block_height > node.hdd_block:
                             node.logger.consensus_log.info("Inbound: Client {} has higher block {} vs ours {}"
                                                         .format(peer_ip, received_block_height, node.hdd_block))
+                            """
+                            print("aa", node.hdd_hash, node.hdd_block)
+                            if not node.hdd_hash:
+                                node.hdd_hash = db_handler.last_block_hash()
+                                node.hdd_block = db_handler.block_height_max()
+                                print("aa fixed", node.hdd_hash, node.hdd_block)
+                            """
                             node.logger.consensus_log.info(f"Inbound: block_hash to send: {node.hdd_hash}")
                             send(self.request, node.hdd_hash)
                             # receive their latest sha_hash
@@ -841,7 +849,8 @@ if __name__ == "__main__":
     app_log = log.log("node.log", config.debug_level, config.terminal_output)
     status_log = log.generic_log("node.log", "INFO", logger_name="status")
     logger.set_app_log(app_log, status_log=status_log)
-    logger.app_log.warning("Configuration settings loaded")
+    logger.status_log.info(f"Python version: {py_version()}")
+    logger.status_log.info("Configuration settings loaded")
     # Pre-node tweaks
     # upgrade wallet location after nuitka-required "files" folder introduction
     wallet_file_name = config.get_wallet_path()
@@ -858,7 +867,7 @@ if __name__ == "__main__":
     else:
         node = Node(digest_block_v2, config, app_version=VERSION, logger=logger, keys=keys.Keys())
 
-    node.logger.app_log.warning(f"Python version: {node.py_version}")
+    # exit()  # Temp test, stops after solo user mode
 
     try:
         # get the potential extra command prefixes from plugin
@@ -915,7 +924,7 @@ if __name__ == "__main__":
         if node.IS_STOPPING:
             if not node.db_lock.locked():
                 node.logger.status_log.warning("Securely disconnected main processes, "
-                                            "subprocess termination in progress.")
+                                               "subprocess termination in progress.")
                 break
         sleep(0.5)
-    node.logger.status_log.info("Clean Stop")
+    node.logger.status_log.info("Clean Stop.")
