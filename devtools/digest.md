@@ -42,3 +42,11 @@ digest_block()
     calc_mirror_rewards()
 ```
 
+# Notes
+
+Why do we store block hash with every tx, and not just with the coinbase tx?  
+Eval the space gain.
+
+# Future improvements
+
+- pubkey cache/index, outside of ledger (data availability issue vs extra computation to provide blocks)
