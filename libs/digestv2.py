@@ -263,7 +263,7 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
             block.validate_mid()
             block.validate_heavy()
 
-            node.logger.status_log.error(f"Should check tx signatures on block {block_height_new} from {peer_ip}")
+            # DONE: node.logger.status_log.error(f"Should check tx signatures on block {block_height_new} from {peer_ip}")
             # check_signature_on_block(block=block, node=node, db_handler=db_handler, peer_ip=peer_ip, block_instance=block_instance)
 
             # calculate current difficulty (is done for each block in block array, not super easy to isolate)

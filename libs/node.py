@@ -302,6 +302,7 @@ class Node:
         else:
             self.logger.status_log.info("Compressing ledger to Hyperblocks")
             self.recompress = True
+        # solo_handler.rollback(1850000)  # Temp for debug
 
     def _recompress_ledger_prepare(self, rebuild: bool=False) -> None:
         """Aggregates transactions and compress old ledger entries into hyper blocks"""
@@ -459,6 +460,8 @@ class Node:
             solo_handler.sequencing_check()
             if self.config.verify:
                 solo_handler.verify()
+
+        # New check: whether or not we recompressed, make sure balances in hyper are right
 
         self._ram_init(solo_handler)  # Save this one for the end (time consuming if something goes wrong)
         #
