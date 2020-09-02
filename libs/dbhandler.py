@@ -684,26 +684,30 @@ class DbHandler:
         # EGG_EVO: So this is a new alternate format to potentially take into account into BismuthCore
         # But this is only used to feed a peer, over the network.
         # So maybe we better have handle it by hand here.
+        # Update: in fact, same format as what is hashed. Done, see Transaction.to_tuple_for_block_hash
+        # TODO: to be tested with regnet or testnet, make sure the format is right.
         if not self.legacy_db:
             self.logger.status_log.error("blocksync but legacy db! - WIP")
             sys.exit()
 
         while sys.getsizeof(str(blocks_fetched)) < 500000:  # limited size based on txs in blocks
-            """
-            self._execute_param(self.h, (
-                "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),
-                                (str(int(block)), str(int(block + 1)),))
-            """
-            # Simplify request
             block_height += 1
-            self._execute_param(self.h,
-                                "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield "
-                                "FROM transactions WHERE block_height = ?",
-                                (block_height, ))
-            result = self.h.fetchall()
-            if not result:
-                break
-            blocks_fetched.extend([result])
+            if self.legacy_db:
+                self._execute_param(self.h,
+                                    "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield "
+                                    "FROM transactions WHERE block_height = ?",
+                                    (block_height, ))
+                result = self.h.fetchall()
+                if not result:
+                    break
+                blocks_fetched.extend([result])
+            else:
+                block = self.get_block(block_height)
+                if len(block.transactions) == 0:
+                    break
+                # Possible optimization: keep a cache of recent blocks there, into network format.
+                # Clear cache on rollback.
+                blocks_fetched.extend([block.tx_list_for_hash()])
         return blocks_fetched
 
     def get_block(self, block_height: int) -> Block:
