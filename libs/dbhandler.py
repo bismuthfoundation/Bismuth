@@ -686,9 +686,6 @@ class DbHandler:
         # So maybe we better have handle it by hand here.
         # Update: in fact, same format as what is hashed. Done, see Transaction.to_tuple_for_block_hash
         # TODO: to be tested with regnet or testnet, make sure the format is right.
-        if not self.legacy_db:
-            self.logger.status_log.error("blocksync but legacy db! - WIP")
-            sys.exit()
 
         while sys.getsizeof(str(blocks_fetched)) < 500000:  # limited size based on txs in blocks
             block_height += 1
