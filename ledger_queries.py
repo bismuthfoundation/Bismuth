@@ -50,11 +50,13 @@ SQL_REGS_FROM_TO = (
     "ORDER BY block_height ASC"
 )
 
+"""
 SQL_QUICK_BALANCE_CREDITS = "SELECT sum(amount+reward) FROM transactions WHERE recipient = ? AND block_height <= ?"
 
 SQL_QUICK_BALANCE_DEBITS = (
     "SELECT sum(amount+fee) FROM transactions WHERE address = ? AND block_height <= ?"
 )
+"""
 
 SQL_QUICK_BALANCE_ALL = (
     "SELECT sum(a.amount+a.reward)-debit FROM transactions as a , "
