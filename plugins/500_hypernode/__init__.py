@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 # from warnings import resetwarnings
 
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 
 MANAGER: "PluginManager" = None
@@ -50,6 +50,7 @@ MAX_ROUND_SLOTS = 19
 END_ROUND_SLOTS = 1
 ROUND_TIME_SEC = POS_SLOT_TIME_SEC * (MAX_ROUND_SLOTS + END_ROUND_SLOTS)
 
+# This is DB version agnostic.
 SQL_GET_COLOR_LIST = (
     "SELECT openfield FROM transactions WHERE address = ? and operation = ? "
     "ORDER BY block_height DESC LIMIT 1"
@@ -128,7 +129,7 @@ def init_colored():
             except Exception as e:
                 print(e)
     finally:
-        # Failsafe if we can't read from chain
+        # Fail safe if we can't read from chain
         if "cloud" not in COLORED:
             COLORED["cloud"] = ["amazon"]
         if "white" not in COLORED:
@@ -185,7 +186,7 @@ def action_init(params):
     if len(DESC) < 1:
         DESC = json.loads(CACHE)
     get_db()  # Init global DB
-    # TODO: Since we create it at init, we could just use the LEDBER_DB global everywhere, without more checks.
+    # Since we create it at init, we could just use the LEDBER_DB global everywhere, without more checks.
 
 
 def get_db():
@@ -193,6 +194,10 @@ def get_db():
     if not LEDGER_DB:
         LEDGER_DB = sqlite3.connect(LEDGER_PATH, timeout=10, check_same_thread=False)
         # TODO: additional checks here for indices or pragmas
+        if MANAGER.config.legacy_db:
+            print("Using Legacy DB Queries")
+        else:
+            print("Using V2 DB Queries")
     return LEDGER_DB
 
 
@@ -208,6 +213,8 @@ def action_fullblock(full_block):
     """
     global COLORED
     for tx in full_block["transactions"]:
+        # We can do that because we only deal with operation and openfield.
+        # Hopefully both are encoded the same on legacy as well as on V2 DB
         if tx[3] == POW_CONTROL_ADDRESS:
             # This is ours
             operation = str(tx[10])
@@ -292,7 +299,7 @@ def HN_reg_check_weight(socket_handler, params):
     )
     try:
         db = get_db()
-        data = LedgerQueries.reg_check_weight(db, params[0], int(params[1]))
+        data = LedgerQueries.reg_check_weight(db, params[0], int(params[1]), legacy=MANAGER.config.legacy_db)
     except Exception as e:
         MANAGER.app_log.warning("HN_reg_check_weight exception {}".format(e))
         data = -1
@@ -309,7 +316,7 @@ def HN_quick_check_balance(socket_handler, params):
     )
     try:
         db = get_db()
-        data = LedgerQueries.quick_check_balance(db, params[0], int(params[1]))
+        data = LedgerQueries.quick_check_balance(db, params[0], int(params[1]), legacy=MANAGER.config.legacy_db)
     except Exception as e:
         MANAGER.app_log.warning("HN_quick_check_balance exception {}".format(e))
         data = -1
@@ -397,7 +404,7 @@ def HN_reg_check_weights(socket_handler, params):
         timestamp = float(params[1])
         pow_height = LedgerQueries.get_block_before_ts(db, timestamp)
         for address in addresses:
-            weight = LedgerQueries.reg_check_weight(db, address, pow_height)
+            weight = LedgerQueries.reg_check_weight(db, address, pow_height, legacy=MANAGER.config.legacy_db)
             result[address] = weight
     except Exception as e:
         MANAGER.app_log.warning("HN_reg_check_weights exception {}".format(e))
@@ -456,8 +463,6 @@ def validate_pow_address(address: str) -> Union[None, bool]:
     :param address:
     :return: True if address is valid, raise a ValueError exception if not.
     """
-    # TODO!: To evolve with more addresses
-    # if re.match("[abcdef0123456789]{56}", address):
     if SignerFactory.address_is_valid(address):
         return True
     raise ValueError("Bis Address format error: {}".format(address))
@@ -614,7 +619,7 @@ def HN_reg_round(socket_handler, params: list) -> None:
                         # Requires a db query, runs last - Will raise if not enough.
                         # print("w1", time())
                         weight = LedgerQueries.reg_check_weight(
-                            get_db(), address, block_height
+                            get_db(), address, block_height, legacy=MANAGER.config.legacy_db
                         )
                         # print("w2", time())
                         active = True  # by default

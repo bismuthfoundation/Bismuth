@@ -21,8 +21,10 @@ from time import sleep, time
 
 # from typing import Union
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
+
+K1E8 = 100000000
 
 SQL_BLOCK_HEIGHT_PRECEDING_TS_SLOW = (
     "SELECT block_height FROM transactions WHERE timestamp <= ? "
@@ -153,7 +155,7 @@ class LedgerQueries:
         return list(data)
 
     @classmethod
-    def reg_check_weight(cls, db, address: str, height: int) -> int:
+    def reg_check_weight(cls, db, address: str, height: int, legacy: bool=True) -> int:
         """
         Calc rough estimate (not up to 1e-8) of the balance of an account at a certain point in the past.
         Raise if not enough for an HN, or return the matching Weight.
@@ -163,6 +165,7 @@ class LedgerQueries:
         :param db: db cursor
         :param address:
         :param height:
+        :param legacy:
         :return: weight (1, 2 or 3)
         """
         res = cls.fetchone(
@@ -171,6 +174,8 @@ class LedgerQueries:
         # print(address, height, res)
         try:
             balance = res[0]
+            if not legacy:
+                balance = balance / K1E8
             weight = math.floor(balance / 10000)
             if weight > 3:
                 weight = 3
@@ -179,7 +184,7 @@ class LedgerQueries:
         return weight
 
     @classmethod
-    def quick_check_balance(cls, db, address: str, height: int) -> int:
+    def quick_check_balance(cls, db, address: str, height: int, legacy: bool=True) -> int:
         """
         Calc rough estimate (not up to 1e-8) of the balance of an account at a certain point in the past.
         Raise if not enough for an HN, or return the matching Weight.
@@ -189,6 +194,7 @@ class LedgerQueries:
         :param db: db cursor
         :param address:
         :param height:
+        :param legacy:
         :return: balance
         """
         try:
@@ -196,6 +202,8 @@ class LedgerQueries:
                 db, SQL_QUICK_BALANCE_ALL_MIRROR, (address, height, address, height)
             )
             balance = res[0]
+            if not legacy:
+                balance = balance / K1E8
         except:
             balance = 0
         return balance
@@ -206,6 +214,8 @@ class LedgerQueries:
         Returns the last PoW block height preceding the given timestamp.
         If check_after, also checks that the pow chain has a later block.
         If not, just checks that the timestamp of last block is not older than 20 min.
+
+        DB version insensible.
 
         :param a_timestamp:
         :return: block_height preceding the given TS
@@ -230,7 +240,7 @@ class LedgerQueries:
     @classmethod
     def get_last_block_ts(cls, db) -> float:
         """
-        Returns the latest PoW block timestamp
+        Returns the latest PoW block timestamp. DB Version insensible.
         """
         try:
             res = cls.fetchone(db, SQL_LAST_BLOCK_TS)
@@ -243,7 +253,7 @@ class LedgerQueries:
     @classmethod
     def get_ts_of_block(cls, db, block_height: int) -> float:
         """
-        Returns the timestamp of given POW block height
+        Returns the timestamp of given POW block height. Insensible to DB version
         """
         try:
             res = cls.fetchone(db, SQL_TS_OF_BLOCK, (block_height,))
@@ -255,5 +265,6 @@ class LedgerQueries:
 
     @classmethod
     def get_hn_regs_from_to(cls, db, from_pow: int, to_pow: int):
+        """Insensible to DB Version"""
         res = cls.fetchall(db, SQL_REGS_FROM_TO, (from_pow, to_pow))
         return res
