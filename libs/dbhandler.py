@@ -573,7 +573,7 @@ class DbHandler:
     def ledger_balance3(self, address: str, cache: Union[dict, None]=None) -> Decimal:
         """Cached balance from hyper - used by digest, cache is local to one block         """
         if not self.legacy_db:
-            self.logger.status_log.error("ledger_balance3_int but legacy db!")
+            self.logger.status_log.error("ledger_balance3 but not legacy db!")
             sys.exit()
         # Important: keep this as c (ram hyperblock access)
         # Many heavy blocks are pool payouts, same address.

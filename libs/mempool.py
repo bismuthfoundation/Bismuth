@@ -17,7 +17,7 @@ from polysign.signerfactory import SignerFactory
 
 from libs import essentials
 from bismuthcore.compat import quantize_two, quantize_eight
-from bismuthcore.helpers import fee_calculate
+from bismuthcore.helpers import fee_calculate, DECIMAL_1E8
 from bismuthcore.transaction import Transaction
 
 from typing import TYPE_CHECKING
@@ -25,9 +25,10 @@ if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
     from libs.node import Node
 
-g__version__ = "0.0.8j"
+g__version__ = "0.0.8k"
 
 """
+0.0.8k - Bugfix
 0.0.8j - Logging
 0.0.7h - Moves to libs and more type hints
 0.0.5g - Add default param to mergedts for compatibility
@@ -731,7 +732,11 @@ class Mempool:
                         balance = credit - debit - fees + rewards - quantize_eight(mempool_amount)                        
                         balance_pre = credit - debit_ledger - fees + rewards
                         """
-                        balance_pre = db_handler.ledger_balance3(mempool_address)
+                        if self.config.legacy_db:
+                            balance_pre = db_handler.ledger_balance3(mempool_address)
+                        else:
+                            balance_pre = db_handler.ledger_balance3_int(mempool_address)  # This is an int
+                            balance_pre = Decimal(balance_pre) / DECIMAL_1E8  # todo: move to bismuthcore.helpers
                         balance = balance_pre - debit_mempool - quantize_eight(mempool_amount)
 
                         fee = fee_calculate(mempool_openfield, mempool_operation, last_block)
