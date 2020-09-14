@@ -227,6 +227,7 @@ class SoloDbHandler:
                     return True
             elif ledger_schema[4][2] == 'INTEGER':
                 print("V2 ledger")
+                return True
             else:
                 print("Unknown ledger")
             misc_schema = self.table_schema('misc')
@@ -454,6 +455,31 @@ class SoloDbHandler:
         res = self._hyper_cursor.fetchall()
         return tuple((str(item[0]) for item in res))
 
+    def balance_at_height_legacy(self, address: str, depth_specific: int, hyper: bool=True) -> Decimal:
+        credit = Decimal("0")
+        db = self._hyper_cursor if hyper else self._ledger_cursor
+        for entry in db.execute(
+                "SELECT amount,reward FROM transactions WHERE recipient = ? "
+                "AND (block_height < ? AND block_height > ?);",
+                (address, depth_specific, -depth_specific)):
+            try:
+                credit = quantize_eight(credit) + quantize_eight(entry[0]) + quantize_eight(entry[1])
+                credit = 0 if credit is None else credit
+            except Exception:
+                credit = 0
+
+        debit = Decimal("0")
+        for entry in db.execute(
+                "SELECT amount,fee FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?);",
+                (address, depth_specific, -depth_specific)):
+            try:
+                debit = quantize_eight(debit) + quantize_eight(entry[0]) + quantize_eight(entry[1])
+                debit = 0 if debit is None else debit
+            except Exception:
+                debit = 0
+        end_balance = quantize_eight(credit - debit)
+        return end_balance
+
     def update_hyper_balance_at_height_legacy(self, address: str, depth_specific: int) -> Decimal:
         """Used for hyper compression. Returns balance at given height and updates hyper."""
         # EGG_EVO: This method will have to be aware of the DB type, since balance calc will use different queries
@@ -489,6 +515,25 @@ class SoloDbHandler:
                 depth_specific - 1, timestamp, "Hyperblock", address, str(end_balance), "0", "0", "0", "0",
                 "0", "0", "0"))
 
+        return end_balance
+
+    def balance_at_height(self, address: str, depth_specific: int, hyper: bool=True) -> Union[Decimal, int]:
+        if self.legacy_db:
+            return self.balance_at_height_legacy(address, depth_specific, hyper)
+        db = self._hyper_cursor if hyper else self._ledger_cursor
+        res = db.execute(
+                "SELECT sum(amount + reward) FROM transactions WHERE recipient = ? AND (block_height < ? AND block_height > ?)",
+                (address, depth_specific, -depth_specific))
+        credit = res.fetchone()[0]
+        if credit is None:
+            credit = 0
+        res = db.execute(
+            "SELECT sum(amount + fee) FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?);",
+            (address, depth_specific, -depth_specific))
+        debit = res.fetchone()[0]
+        if debit is None:
+            debit = 0
+        end_balance = int(credit) - int(debit)
         return end_balance
 
     def update_hyper_balance_at_height(self, address: str, depth_specific: int) -> Union[Decimal, int]:
