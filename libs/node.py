@@ -460,6 +460,14 @@ class Node:
             solo_handler.sequencing_check()
             if self.config.verify:
                 solo_handler.verify()
+            if self.config.hyper_check:
+                ok = solo_handler.hyper_check_balances()
+                if not ok:
+                    self.logger.status_log.error("hyper_check_balances Failed")
+                    sys.exit()
+                # Temp debug
+                self.logger.status_log.error("hyper_check_balances temp exit")
+                sys.exit()
 
         # New check: whether or not we recompressed, make sure balances in hyper are right
 

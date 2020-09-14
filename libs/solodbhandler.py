@@ -372,6 +372,11 @@ class SoloDbHandler:
         self._hyper_cursor.execute("SELECT max(block_height) FROM transactions")
         return int(self._hyper_cursor.fetchone()[0])
 
+    def block_height_base_hyper(self) -> int:
+        self._hyper_cursor.execute("select min(block_height) from transactions "
+                                   "where address='Hyperblock' and block_height>0")
+        return int(self._hyper_cursor.fetchone()[0])
+
     def block_height_max_diff_hyper(self) -> int:
         self._hyper_cursor.execute("SELECT max(block_height) FROM misc")
         return int(self._hyper_cursor.fetchone()[0])
@@ -448,35 +453,48 @@ class SoloDbHandler:
             self._hyper_db.commit()
 
     def distinct_hyper_recipients(self, depth_specific: int) -> Tuple[str]:
-        """Returns all recipients from hyper, at the given depth"""
+        """Returns all recipients from hyper, at the given depth
+        Note depth is a block height. Query executes on provided height -1"""
         self._hyper_cursor.execute(
             "SELECT distinct(recipient) FROM transactions WHERE (block_height < ? AND block_height > ?)",
             (depth_specific, -depth_specific,))  # new addresses will be ignored until depth passed
         res = self._hyper_cursor.fetchall()
         return tuple((str(item[0]) for item in res))
 
-    def balance_at_height_legacy(self, address: str, depth_specific: int, hyper: bool=True) -> Decimal:
+    def distinct_ledger_recipients(self, depth_specific: int) -> Tuple[str]:
+        """Returns all recipients from ledger, at the given depth
+        Note depth is a block height. Query executes on provided height -1"""
+        self._ledger_cursor.execute(
+            "SELECT distinct(recipient) FROM transactions WHERE (block_height < ? AND block_height > ?)",
+            (depth_specific, -depth_specific,))  # new addresses will be ignored until depth passed
+        res = self._ledger_cursor.fetchall()
+        return tuple((str(item[0]) for item in res))
+
+    def balance_at_height_legacy(self, address: str, depth_specific: int, hyper: bool=True,
+                                 include_credit: bool=True, include_debit: bool=True) -> Decimal:
         credit = Decimal("0")
         db = self._hyper_cursor if hyper else self._ledger_cursor
-        for entry in db.execute(
-                "SELECT amount,reward FROM transactions WHERE recipient = ? "
-                "AND (block_height < ? AND block_height > ?);",
-                (address, depth_specific, -depth_specific)):
-            try:
-                credit = quantize_eight(credit) + quantize_eight(entry[0]) + quantize_eight(entry[1])
-                credit = 0 if credit is None else credit
-            except Exception:
-                credit = 0
+        if include_credit:
+            for entry in db.execute(
+                    "SELECT amount,reward FROM transactions WHERE recipient = ? "
+                    "AND (block_height < ? AND block_height > ?);",
+                    (address, depth_specific, -depth_specific)):
+                try:
+                    credit = quantize_eight(credit) + quantize_eight(entry[0]) + quantize_eight(entry[1])
+                    credit = 0 if credit is None else credit
+                except Exception:
+                    credit = Decimal("0")
 
         debit = Decimal("0")
-        for entry in db.execute(
-                "SELECT amount,fee FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?);",
-                (address, depth_specific, -depth_specific)):
-            try:
-                debit = quantize_eight(debit) + quantize_eight(entry[0]) + quantize_eight(entry[1])
-                debit = 0 if debit is None else debit
-            except Exception:
-                debit = 0
+        if include_debit:
+            for entry in db.execute(
+                    "SELECT amount,fee FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?);",
+                    (address, depth_specific, -depth_specific)):
+                try:
+                    debit = quantize_eight(debit) + quantize_eight(entry[0]) + quantize_eight(entry[1])
+                    debit = 0 if debit is None else debit
+                except Exception:
+                    debit = Decimal("0")
         end_balance = quantize_eight(credit - debit)
         return end_balance
 
@@ -517,22 +535,29 @@ class SoloDbHandler:
 
         return end_balance
 
-    def balance_at_height(self, address: str, depth_specific: int, hyper: bool=True) -> Union[Decimal, int]:
+    def balance_at_height(self, address: str, depth_specific: int, hyper: bool=True,
+                          include_credit: bool=True, include_debit: bool=True) -> Union[Decimal, int]:
         if self.legacy_db:
-            return self.balance_at_height_legacy(address, depth_specific, hyper)
+            return self.balance_at_height_legacy(address, depth_specific, hyper, include_credit, include_debit)
         db = self._hyper_cursor if hyper else self._ledger_cursor
-        res = db.execute(
-                "SELECT sum(amount + reward) FROM transactions WHERE recipient = ? AND (block_height < ? AND block_height > ?)",
-                (address, depth_specific, -depth_specific))
-        credit = res.fetchone()[0]
-        if credit is None:
+        if include_credit:
+            res = db.execute(
+                    "SELECT sum(amount + reward) FROM transactions WHERE recipient = ? AND (block_height < ? AND block_height > ?)",
+                    (address, depth_specific, -depth_specific))
+            credit = res.fetchone()[0]
+            if credit is None:
+                credit = 0
+        else:
             credit = 0
-        res = db.execute(
-            "SELECT sum(amount + fee) FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?);",
-            (address, depth_specific, -depth_specific))
-        debit = res.fetchone()[0]
-        if debit is None:
-            debit = 0
+        if include_debit:
+            res = db.execute(
+                "SELECT sum(amount + fee) FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?);",
+                (address, depth_specific, -depth_specific))
+            debit = res.fetchone()[0]
+            if debit is None:
+                debit = 0
+        else:
+            debit=0
         end_balance = int(credit) - int(debit)
         return end_balance
 
@@ -668,6 +693,36 @@ class SoloDbHandler:
             self.logger.status_log.info(f"Set new sequencing anchor to {y}")
             with open(self.config.get_db_path("sequencing_last"), 'w') as filename:
                 filename.write(str(y - 1000))  # room for rollbacks
+
+    def hyper_check_balances(self, height: int=0):
+        """Check all balances are the same between ledger and hyper
+        if height is provided, only check up to height block
+        """
+        if height != 0:
+            self.logger.status_log.warning("TODO: solodbhandler.hyper_check_balances(height!=0) is not implemented")
+        else:
+            height = self.block_height_max()
+        hyper_height = self.block_height_max_hyper()
+        hyper_base = self.block_height_base_hyper()
+        self.logger.status_log.info(f"hyper_check_balances at {height}, ledger height {height} - hyper height {hyper_height} - Hyper base {hyper_base}")
+        height += 1  # because strange existing interfaces
+        ledger_addresses = self.distinct_ledger_recipients(height)
+        result = True
+        for address in ledger_addresses:
+            balance_ledger = self.balance_at_height(address, height, hyper=False)
+            balance_hyper = self.balance_at_height(address, height, hyper=True)
+            if balance_hyper == balance_ledger:
+                if False:  # TODO: verbosity
+                    self.logger.status_log.info(f"{address} - OK : {balance_ledger} {balance_hyper}")
+            else:
+                self.logger.status_log.warning(f"{address} - KO : {balance_ledger} {balance_hyper}")
+                result = False
+        return result
+    """
+    [W 200914 17:03:36 solodbhandler:707] 4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed - KO : 501365.95900110 502306.48482110
+    [W 200914 17:03:38 solodbhandler:707] 3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16 - KO : 7303.99565915 8311.99565915
+    """
+
 
     def verify(self):
         # deeper check of the chain, including sig and hashes.

@@ -5,7 +5,7 @@ from sys import exit
 from time import sleep
 from typing import Union
 
-__version__ = "0.0.9"
+__version__ = "0.0.10"
 
 
 # "param_name":["type"] or "param_name"=["type","property_name"]
@@ -24,6 +24,7 @@ VARS = {
     "ledger_path": ["str", "ledger_path"],
     "hyper_path": ["str", "hyper_path"],
     "hyper_recompress": ["bool", "hyper_recompress"],
+    "hyper_check": ["bool", "hyper_check"],
     "full_ledger": ["bool", "full_ledger"],
     "ban_threshold": ["int"],
     "tor": ["bool", "tor"],
@@ -63,6 +64,7 @@ DEFAULTS = {
     "old_sqlite": False,
     "ledger_path": "",
     "hyper_path": "",
+    "hyper_check": False,
     # "legacy_db": True,
     "mandatory_message": {
         "Address": "Comment - Dict for addresses that require a message. tx to these addresses withjout a message will not be accepted by mempool.",
@@ -85,7 +87,7 @@ class Config:
                  "ban_threshold", "tor", "debug_level", "allowed", "ram", "node_ip", "light_ip", "reveal_address",
                  "accept_peers", "banlist", "whitelist", "nodes_ban_reset", "mempool_allowed", "terminal_output",
                  "gui_scaling", "mempool_ram", "egress", "trace_db_calls", "heavy3_path", "mempool_path",
-                 "old_sqlite", "mandatory_message", "genesis", "datadir", "label", "legacy_db")
+                 "old_sqlite", "mandatory_message", "genesis", "datadir", "label", "legacy_db", "hyper_check")
 
     def __init__(self, datadir: str='',
                  force_legacy: bool=False, force_v2: bool=False, force_regnet: bool=False,

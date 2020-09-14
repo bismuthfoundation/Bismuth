@@ -38,7 +38,7 @@ from libs.config import Config
 from libs.dbhandler import DbHandler
 from libs.deprecated import rsa_key_generate
 
-VERSION = "5.0.27-evo"  # Experimental db-evolution branch
+VERSION = "5.0.28-evo"  # Experimental db-evolution branch
 
 
 appname = "Bismuth"

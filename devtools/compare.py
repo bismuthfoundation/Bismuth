@@ -6,6 +6,7 @@ from time import time as ttime
 from sys import argv
 import os
 import sys
+from decimal import Decimal
 
 # Bis specific modules
 sys.path.append('../')
@@ -20,7 +21,7 @@ FROM_BLOCK = 1800000
 FROM_BLOCK = 1865800
 
 BALANCE_OF = "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16"
-BALANCE_AT = 1865800
+BALANCE_AT = 1865804
 
 if __name__ == "__main__":
     datadir = "../datadir"  # Default datadir if empty
@@ -85,6 +86,14 @@ if __name__ == "__main__":
     balance2 = solo_db_handler2.balance_at_height(BALANCE_OF, BALANCE_AT, hyper=False)
     print("Ledger", balance, balance2 / 1E8)
 
+    balance = solo_db_handler.balance_at_height(BALANCE_OF, BALANCE_AT, hyper=False, include_debit=False)
+    balance2 = solo_db_handler2.balance_at_height(BALANCE_OF, BALANCE_AT, hyper=False, include_debit=False)
+    print("Ledger credits only", balance, balance2 / 1E8)
+    balance = solo_db_handler.balance_at_height(BALANCE_OF, BALANCE_AT, hyper=False, include_credit=False)
+    balance2 = solo_db_handler2.balance_at_height(BALANCE_OF, BALANCE_AT, hyper=False, include_credit=False)
+    print("Ledger debits only", balance, balance2 / 1E8)
+
+    """
     res = solo_db_handler._ledger_cursor.execute(
         "SELECT block_height, amount, reward FROM transactions WHERE recipient = ? AND (block_height < ? AND block_height > ?) ORDER BY block_height DESC LIMIT 0,10",
         (BALANCE_OF, BALANCE_AT, -BALANCE_AT))
@@ -92,7 +101,7 @@ if __name__ == "__main__":
     print("CREDIT")
     print(credit)
     res = solo_db_handler._ledger_cursor.execute(
-        "SELECT block_height, amount, fee FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?)  ORDER BY block_height DESC LIMIT 0,10",
+        "SELECT block_height, amount, fee FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?)  ORDER BY block_height DESC, timestamp DESC LIMIT 0,10",
         (BALANCE_OF, BALANCE_AT, -BALANCE_AT))
     debit = res.fetchall()
     print("DEBIT")
@@ -105,8 +114,9 @@ if __name__ == "__main__":
     print("CREDIT2")
     print(credit)
     res = solo_db_handler2._ledger_cursor.execute(
-        "SELECT block_height, amount, fee FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?)  ORDER BY block_height DESC LIMIT 0,10",
+        "SELECT block_height, amount, fee FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?)  ORDER BY block_height DESC, timestamp DESC LIMIT 0,10",
         (BALANCE_OF, BALANCE_AT, -BALANCE_AT))
     debit = res.fetchall()
     print("DEBIT2")
     print(debit)
+    """
