@@ -464,10 +464,11 @@ class Node:
                 ok = solo_handler.hyper_check_balances()
                 if not ok:
                     self.logger.status_log.error("hyper_check_balances Failed")
-                    sys.exit()
+                    if not solo_handler.legacy_db:  # Allow errors for legacy, debug.
+                        sys.exit()
                 # Temp debug
-                self.logger.status_log.error("hyper_check_balances temp exit")
-                sys.exit()
+                # self.logger.status_log.error("hyper_check_balances temp exit")
+                # sys.exit()
 
         # New check: whether or not we recompressed, make sure balances in hyper are right
 

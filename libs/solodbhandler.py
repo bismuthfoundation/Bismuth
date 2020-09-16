@@ -60,7 +60,8 @@ V2_MISC_CREATE = ('CREATE TABLE IF NOT EXISTS "misc" ('
 CREATE_TXID4_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS TXID4_Index ON transactions(substr(signature,1,4))"
 
 # TODO: dup with clean v2
-CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS 'Misc Block Height Index' on misc(block_height)"
+CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS 'Misc Block Height Index' " \
+                                               "on misc(block_height)"
 
 """
  1 704 000 blocks (inc mirror), 
@@ -98,9 +99,9 @@ V2_INDICES_CREATE = ("CREATE INDEX IF NOT EXISTS `Timestamp Index` ON `transacti
                      "CREATE INDEX IF NOT EXISTS `Fee Index` ON `transactions` (`fee`)",
                      "CREATE INDEX IF NOT EXISTS `Block Hash Index` ON `transactions` (`block_hash`)",
                      "CREATE INDEX IF NOT EXISTS `Amount Index` ON `transactions` (`amount`)",
-                     "CREATE INDEX IF NOT EXISTS `Address Index` ON `transactions` (`address`)",        # ledger, colored
-                     "CREATE INDEX IF NOT EXISTS `Operation Index` ON `transactions` (`operation`)",    # ledger, colored
-                     "CREATE INDEX IF NOT EXISTS `Signature Index` ON `transactions` (`signature`)",  # or partial
+                     "CREATE INDEX IF NOT EXISTS `Address Index` ON `transactions` (`address`)",
+                     "CREATE INDEX IF NOT EXISTS `Operation Index` ON `transactions` (`operation`)",
+                     "CREATE INDEX IF NOT EXISTS `Signature Index` ON `transactions` (`signature`)",
                      )
 
 V2_MINIMAL_INDICES_CREATE = (
@@ -123,7 +124,7 @@ def timeit(method):
             name = kw.get('log_name', method.__name__.upper())
             kw['log_time'][name] = int((te - ts) * 1000)
         else:
-            print('%r  %2.2f ms' %  (method.__name__, (te - ts) * 1000))
+            print('%r  %2.2f ms' % (method.__name__, (te - ts) * 1000))
         return result
     return timed
 
@@ -352,7 +353,10 @@ class SoloDbHandler:
         """
         # EGG_EVO: This sql request is the same in both cases (int/float), but...
         # print("get_miscs", block_height, limit)
-        self._ledger_cursor.execute("SELECT * FROM misc WHERE block_height >= ? AND block_height <= ? ORDER BY block_height", (block_height, block_height + limit))
+        self._ledger_cursor.execute("SELECT * FROM misc "
+                                    "WHERE block_height >= ? AND block_height <= ? "
+                                    "ORDER BY block_height",
+                                    (block_height, block_height + limit))
         miscs = self._ledger_cursor.fetchall()
         return miscs
 
@@ -384,13 +388,15 @@ class SoloDbHandler:
     """
     def last_block_hash(self) -> str:
         # returns last block hash from live data as hex string - dupped from dbhandler
-        self._ledger_cursor.execute( "SELECT block_hash FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1")
+        self._ledger_cursor.execute("SELECT block_hash FROM transactions "
+                                    "WHERE reward != 0 ORDER BY block_height DESC LIMIT 1")
         # EGG_EVO: if new db, convert bin to hex
         return self._ledger_cursor.fetchone()[0]
 
     def last_block_timestamp(self) -> float:
         #  Returns the timestamp (python float) of the latest known block - dupped from dbhandler
-        self._ledger_cursor.execute("SELECT timestamp FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1")
+        self._ledger_cursor.execute("SELECT timestamp FROM transactions "
+                                    "WHERE reward != 0 ORDER BY block_height DESC LIMIT 1")
         return self._ledger_cursor.fetchone()[0]  # timestamps do not need quantize
     """
 
@@ -399,32 +405,33 @@ class SoloDbHandler:
         self.logger.status_log.warning(f"Rolling back below: {block_height} (Solo)")
         # EGG: I dupped code there, I'm not proud of that. To be handled in a more generic way (solo/db handler)
         # Good thing is this is not db format dependant.
-        #db_handler.rollback_under(block_height)
+        # db_handler.rollback_under(block_height)
         self._ledger_cursor.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
-                       (block_height, -block_height,))
+                                    (block_height, -block_height,))
         self._ledger_cursor.execute("DELETE FROM misc WHERE block_height >= ?", (block_height,))
         self._ledger_db.commit()
         self._hyper_cursor.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
-                        (block_height, -block_height,))
-        self._hyper_cursor.execute("DELETE FROM misc WHERE block_height >= ?", (block_height,))
+                                   (block_height, -block_height,))
+        self._hyper_cursor.execute("DELETE FROM misc WHERE block_height >= ?", (block_height, ))
         self._hyper_db.commit()
         # rollback indices
-        #db_handler.tokens_rollback(block_height)
+        # db_handler.tokens_rollback(block_height)
         try:
-            self._index_cursor.execute("DELETE FROM tokens WHERE block_height >= ?;", (block_height,))
+            self._index_cursor.execute("DELETE FROM tokens WHERE block_height >= ?;", (block_height, ))
             self._index_db.commit()
-            self.logger.app_log.info(f"Rolled back the token index below {(block_height)}")
+            self.logger.app_log.info(f"Rolled back the token index below {block_height}")
         except Exception as e:
-            self.logger.app_log.error(f"Failed to roll back the token index below {(block_height)} due to {e}")
-            # Maybe it would be better (solo mode, once only at start) to just quit on error there and above, to avoid starting with a corrupted state.
+            self.logger.app_log.error(f"Failed to roll back the token index below {block_height} due to {e}")
+            # Maybe it would be better (solo mode, once only at start) to just quit on error there and above,
+            # to avoid starting with a corrupted state.
 
         #db_handler.aliases_rollback(block_height)
         try:
-            self._index_cursor.execute("DELETE FROM aliases WHERE block_height >= ?;", (block_height,))
+            self._index_cursor.execute("DELETE FROM aliases WHERE block_height >= ?;", (block_height, ))
             self._index_db.commit()
-            self.logger.app_log.info(f"Rolled back the alias index below {(block_height)}")
+            self.logger.app_log.info(f"Rolled back the alias index below {block_height}")
         except Exception as e:
-            self.logger.app_log.error(f"Failed to roll back the alias index below {(block_height)} due to {e}")
+            self.logger.app_log.error(f"Failed to roll back the alias index below {block_height} due to {e}")
 
         self.logger.status_log.info(f"Chain rolled back below {block_height} (Solo)")
 
@@ -472,29 +479,32 @@ class SoloDbHandler:
 
     def balance_at_height_legacy(self, address: str, depth_specific: int, hyper: bool=True,
                                  include_credit: bool=True, include_debit: bool=True) -> Decimal:
-        credit = Decimal("0")
         db = self._hyper_cursor if hyper else self._ledger_cursor
+        credit = Decimal("0")
         if include_credit:
             for entry in db.execute(
                     "SELECT amount,reward FROM transactions WHERE recipient = ? "
                     "AND (block_height < ? AND block_height > ?);",
                     (address, depth_specific, -depth_specific)):
                 try:
-                    credit = quantize_eight(credit) + quantize_eight(entry[0]) + quantize_eight(entry[1])
-                    credit = 0 if credit is None else credit
-                except Exception:
-                    credit = Decimal("0")
+                    credit += quantize_eight(entry[0]) + quantize_eight(entry[1])
+                    # credit = Decimal("0") if credit is None else credit
+                except Exception as e:
+                    self.logger.app_log.warning(f"balance_at_height_legacy credit {e}")
+                    pass
 
         debit = Decimal("0")
         if include_debit:
             for entry in db.execute(
-                    "SELECT amount,fee FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?);",
+                    "SELECT amount,fee FROM transactions "
+                    "WHERE address = ? AND (block_height < ? AND block_height > ?);",
                     (address, depth_specific, -depth_specific)):
                 try:
-                    debit = quantize_eight(debit) + quantize_eight(entry[0]) + quantize_eight(entry[1])
-                    debit = 0 if debit is None else debit
-                except Exception:
-                    debit = Decimal("0")
+                    debit += quantize_eight(entry[0]) + quantize_eight(entry[1])
+                    # debit = Decimal("0") if debit is None else debit
+                except Exception as e:
+                    self.logger.app_log.warning(f"balance_at_height_legacy debit {e}")
+                    pass
         end_balance = quantize_eight(credit - debit)
         return end_balance
 
@@ -542,22 +552,37 @@ class SoloDbHandler:
         db = self._hyper_cursor if hyper else self._ledger_cursor
         if include_credit:
             res = db.execute(
-                    "SELECT sum(amount + reward) FROM transactions WHERE recipient = ? AND (block_height < ? AND block_height > ?)",
+                    "SELECT sum(amount + reward) FROM transactions "
+                    "WHERE recipient = ? AND (block_height < ? AND block_height > ?)",
                     (address, depth_specific, -depth_specific))
             credit = res.fetchone()[0]
             if credit is None:
                 credit = 0
+            """
+            # Made sure this was the same
+            credit2 = 0
+            for entry in db.execute(
+                    "SELECT amount,reward FROM transactions WHERE recipient = ? "
+                    "AND (block_height < ? AND block_height > ?);",
+                    (address, depth_specific, -depth_specific)):
+                try:
+                    credit2 += entry[0] + entry[1]
+                except Exception as e:
+                    self.logger.app_log.warning(f"balance_at_height credit2 {e}")
+            print(f"credit {credit} credit2 {credit2}")
+            """
         else:
             credit = 0
         if include_debit:
             res = db.execute(
-                "SELECT sum(amount + fee) FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?);",
+                "SELECT sum(amount + fee) FROM transactions "
+                "WHERE address = ? AND (block_height < ? AND block_height > ?);",
                 (address, depth_specific, -depth_specific))
             debit = res.fetchone()[0]
             if debit is None:
                 debit = 0
         else:
-            debit=0
+            debit = 0
         end_balance = int(credit) - int(debit)
         return end_balance
 
@@ -569,13 +594,15 @@ class SoloDbHandler:
 
         self.logger.app_log.debug(f"Update Hyper Balance v2 for {address}")
         res = self._hyper_cursor.execute(
-                "SELECT sum(amount + reward) FROM transactions WHERE recipient = ? AND (block_height < ? AND block_height > ?)",
+                "SELECT sum(amount + reward) FROM transactions "
+                "WHERE recipient = ? AND (block_height < ? AND block_height > ?)",
                 (address, depth_specific, -depth_specific))
         credit = res.fetchone()[0]
         if credit is None:
             credit = 0
         res = self._hyper_cursor.execute(
-            "SELECT sum(amount + fee) FROM transactions WHERE address = ? AND (block_height < ? AND block_height > ?);",
+            "SELECT sum(amount + fee) FROM transactions "
+            "WHERE address = ? AND (block_height < ? AND block_height > ?);",
             (address, depth_specific, -depth_specific))
         debit = res.fetchone()[0]
         if debit is None:
@@ -596,7 +623,8 @@ class SoloDbHandler:
     def cleanup_hypo(self, depth_specific: int) -> None:
         """Cleanup after hyper recompression  at depth_specific - Not db type dependant"""
         # TODO: check we have the correct indices at this stage, this is the longuest step.
-        # print(f"DELETE FROM transactions WHERE address != 'Hyperblock' AND block_height < {depth_specific} AND block_height > {-depth_specific} ...")
+        # print(f"DELETE FROM transactions
+        # WHERE address != 'Hyperblock' AND block_height < {depth_specific} AND block_height > {-depth_specific} ...")
         self.logger.status_log.info(f"Cleaning up hyper transactions......")
         self._hyper_cursor.execute(
             "DELETE FROM transactions WHERE address != 'Hyperblock' AND block_height < ? AND block_height > ?",
@@ -642,13 +670,15 @@ class SoloDbHandler:
     def _sequencing_check(self, sequencing_last, cursor, name) -> int:
         y = 0
         for row in cursor.execute(
-                "SELECT block_height FROM transactions WHERE reward != 0 AND block_height >= ? ORDER BY block_height ASC",
+                "SELECT block_height FROM transactions "
+                "WHERE reward != 0 AND block_height >= ? ORDER BY block_height ASC",
                 (sequencing_last,)):
             y_init = row[0]
             if y < 1:
                 y = y_init
             if row[0] != y:
-                self.logger.status_log.warning(f"Chain {name} transaction sequencing error at: {row[0]}. {row[0]} instead of {y}")
+                self.logger.status_log.warning(f"Chain {name} transaction sequencing error at: "
+                                               f"{row[0]}. {row[0]} instead of {y}")
                 self.rollback(y)  # Will also rollback the other db, misc, tokens and aliases
                 self.logger.status_log.info(
                     f"Due to a sequencing issue at block {y}, chain has been rolled back and will be resynchronized")
@@ -672,8 +702,9 @@ class SoloDbHandler:
         # perform test on misc table - start at 1300000 min
         start = max(1300000, sequencing_last)
         y = 0
-        for row in self._ledger_cursor.execute("SELECT block_height FROM misc WHERE block_height > ? ORDER BY block_height ASC",
-                             (start,)):
+        for row in self._ledger_cursor.execute("SELECT block_height FROM misc "
+                                               "WHERE block_height > ? ORDER BY block_height ASC",
+                                               (start, )):
             y_init = row[0]
             if y < 1:
                 y = y_init
@@ -704,7 +735,8 @@ class SoloDbHandler:
             height = self.block_height_max()
         hyper_height = self.block_height_max_hyper()
         hyper_base = self.block_height_base_hyper()
-        self.logger.status_log.info(f"hyper_check_balances at {height}, ledger height {height} - hyper height {hyper_height} - Hyper base {hyper_base}")
+        self.logger.status_log.info(f"hyper_check_balances at {height}, ledger height {height} - "
+                                    f"hyper height {hyper_height} - Hyper base {hyper_base}")
         height += 1  # because strange existing interfaces
         ledger_addresses = self.distinct_ledger_recipients(height)
         result = True
@@ -719,15 +751,19 @@ class SoloDbHandler:
                 result = False
         return result
     """
-    [W 200914 17:03:36 solodbhandler:707] 4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed - KO : 501365.95900110 502306.48482110
-    [W 200914 17:03:38 solodbhandler:707] 3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16 - KO : 7303.99565915 8311.99565915
+    [W 200914 17:03:36 solodbhandler:707] 4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed - 
+     KO : 501365.95900110 502306.48482110
+    [W 200914 17:03:38 solodbhandler:707] 3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16 - 
+     KO : 7303.99565915 8311.99565915
     """
-
 
     def verify(self):
         # deeper check of the chain, including sig and hashes.
         try:
             self.logger.status_log.info("Blockchain verification started...")
+            if not self.legacy_db:
+                self.logger.status_log.error("Blockchain verification Aborted, V2 TODO")
+                sys.exit()
             # verify blockchain
             self._ledger_cursor.execute("SELECT Count(*) FROM transactions")
             db_rows = self._ledger_cursor.fetchone()[0]
@@ -818,8 +854,9 @@ class SoloDbHandler:
             invalid = 0
 
             # EGG_EVO - will need int/bin case taken care of
-            for row in self._ledger_cursor.execute(
-                    'SELECT * FROM transactions WHERE block_height > 0 and reward = 0 ORDER BY block_height'):  # native sql fx to keep compatibility
+            for row in self._ledger_cursor.execute('SELECT * FROM transactions '
+                                                   'WHERE block_height > 0 and reward = 0 ORDER BY block_height'):
+                # native sql fx to keep compatibility
                 db_block_height = str(row[0])
                 db_timestamp = '%.2f' % (quantize_two(row[1]))
                 db_address = str(row[2])[:56]
@@ -832,7 +869,8 @@ class SoloDbHandler:
                 db_transaction = str((db_timestamp, db_address, db_recipient, db_amount, db_operation, db_openfield))\
                     .encode("utf-8")
                 try:
-                    # Signer factory is aware of the different tx schemes, and will b64 decode public_key once or twice as needed.
+                    # Signer factory is aware of the different tx schemes,
+                    # it will b64 decode public_key once or twice as needed.
                     SignerFactory.verify_bis_signature(db_signature_enc, db_public_key_b64encoded, db_transaction,
                                                        db_address)
                 except Exception as e:

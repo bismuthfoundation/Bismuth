@@ -438,13 +438,15 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
             node.logger.digest_log.warning(f"Chain: Waiting for mempool to unlock {peer_ip}")
             # We wait for mempool to unlock, but don't lock it...
         block_size = len(str(block_data)) / 1000000
-        node.logger.digest_log.info(f"Chain: Digesting started from {peer_ip} - {len(block_data)} Blocks - {block_size} MB")
+        node.logger.digest_log.info(f"Chain: Digesting started from {peer_ip} - "
+                                    f"{len(block_data)} Blocks - {block_size} MB")
         blocks = None
         try:
             node.logger.app_log.info(f"Chain: Digesting V2 WIP")
             # raise ValueError("WIP")
             # print(block_data)
-            blocks = Blocks.from_legacy_block_data(block_data, first_level_checks=True, last_block_timestamp=node.last_block_timestamp)
+            blocks = Blocks.from_legacy_block_data(block_data, first_level_checks=True,
+                                                   last_block_timestamp=node.last_block_timestamp)
             # actual block control and digestion takes place in there
             process_blocks(blocks, node=node, db_handler=db_handler, peer_ip=peer_ip)
             # This saves the block to the db when in regnet mode. what in other modes?

@@ -18,7 +18,7 @@ from libs.solodbhandler import SoloDbHandler
 VERSION = "0.0.1-compare"
 
 FROM_BLOCK = 1800000
-FROM_BLOCK = 1865800
+FROM_BLOCK = 1865700
 
 BALANCE_OF = "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16"
 BALANCE_AT = 1865804
@@ -65,12 +65,12 @@ if __name__ == "__main__":
     TO_BLOCK = start
     # sys.exit()
     start = FROM_BLOCK
-    step = 100
+    step = 1  # 100
     while True:
         print(start)
         # EGG: This is not optimized for speed, but only needed once (and users can bootstrap instead).
-        test = str(solo_db_handler.get_blocks(start, step - 1 ).to_listoftuples())
-        test2 = str(solo_db_handler.get_blocks(start, step - 1 ).to_listoftuples())
+        test = str(solo_db_handler.get_blocks(start, step - 1).to_listoftuples(simplified=True))
+        test2 = str(solo_db_handler2.get_blocks(start, step - 1).to_listoftuples(simplified=True))
         start += step
         if test != test2:
             print(test)
@@ -79,6 +79,8 @@ if __name__ == "__main__":
         # print(test)
         if start > TO_BLOCK:
             break
+
+    """
     balance = solo_db_handler.balance_at_height(BALANCE_OF, BALANCE_AT)
     balance2 = solo_db_handler2.balance_at_height(BALANCE_OF, BALANCE_AT)
     print("Hyper", balance, balance2 / 1E8)
@@ -92,6 +94,7 @@ if __name__ == "__main__":
     balance = solo_db_handler.balance_at_height(BALANCE_OF, BALANCE_AT, hyper=False, include_credit=False)
     balance2 = solo_db_handler2.balance_at_height(BALANCE_OF, BALANCE_AT, hyper=False, include_credit=False)
     print("Ledger debits only", balance, balance2 / 1E8)
+    """
 
     """
     res = solo_db_handler._ledger_cursor.execute(
