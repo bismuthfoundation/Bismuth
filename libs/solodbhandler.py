@@ -10,22 +10,24 @@ DB migration, upgrades, conversion as well
 TODO: Lookup for "CREATE" in non deprecated files and remove them.
 """
 
+import functools
 import sqlite3
 import sys
 from decimal import Decimal
-from bismuthcore.compat import quantize_two, quantize_eight
-from bismuthcore.transaction import Transaction
-from bismuthcore.block import Block
-from bismuthcore.transactionslist import TransactionsList
-import functools
-from time import time as ttime
+from hashlib import sha224
 from os import path
+from time import time as ttime
+from typing import TYPE_CHECKING
+from typing import Union, List, Tuple
 
 from Cryptodome.Hash import SHA  # This should not belong there in the end, will be moved to Transaction object
+
+from bismuthcore.block import Block
+from bismuthcore.compat import quantize_two, quantize_eight
+from bismuthcore.transaction import Transaction
+from bismuthcore.transactionslist import TransactionsList
 from polysign.signerfactory import SignerFactory
 
-from typing import Union, List, Tuple, Iterator
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
   # from libs.node import Node
   from libs.logger import Logger
@@ -320,6 +322,47 @@ class SoloDbHandler:
         else:
             transaction_list = [Transaction.from_v2(entry) for entry in block]
         return Block(transaction_list)
+
+    def recalc_block_hash_legacy(self, block_height: int) -> str:
+        """returns block hash with legacy method from legacy db only. for tests only"""
+        if not self.legacy_db:
+            raise RuntimeError("SoloDbHandler.recalc_block_hash_legacy but not a Legacy DB!!!")
+        last_block_hash = self.get_block_hash(block_height - 1)
+        self._ledger_cursor.execute("SELECT * FROM transactions WHERE block_height = ?", (block_height, ))
+        block = self._ledger_cursor.fetchall()
+        transaction_list_converted = []
+        for transaction in block:
+            transaction = transaction[1:]
+            q_received_timestamp = quantize_two(transaction[0])
+            received_timestamp = '%.2f' % q_received_timestamp
+            received_address = str(transaction[1])[:56]
+            received_recipient = str(transaction[2])[:56]
+            received_amount = '%.8f' % (quantize_eight(transaction[3]))
+            received_signature_enc = str(transaction[4])[:684]
+            received_public_key_b64encoded = str(transaction[5])[:1068]
+            received_operation = str(transaction[9])[:30]
+            received_openfield = str(transaction[10])[:100000]
+
+            """
+              0 '`timestamp` NUMERIC, 1`address` TEXT, 2`recipient` TEXT, '
+                    3'`amount` INTEGER, 4`signature` BINARY, 5`public_key` BINARY, '
+                   6 '`block_hash` BINARY, 7`fee` INTEGER, 8`reward` INTEGER,'
+                  9  '`operation` TEXT, 10`openfield` TEXT)',"""
+
+            transaction_list_converted.append((received_timestamp,
+                                              received_address,
+                                              received_recipient,
+                                              received_amount,
+                                              received_signature_enc,
+                                              received_public_key_b64encoded,
+                                              received_operation,
+                                              received_openfield))
+            print("partial")
+            print(received_timestamp, received_address, received_recipient, received_amount, received_operation, received_openfield)
+        print("buffer legacy")
+        print(str(transaction_list_converted))
+        block_hash = sha224((str(transaction_list_converted) + last_block_hash).encode("utf-8")).hexdigest()
+        return block_hash
 
     def get_block_hash(self, block_height: int) -> str:
         # returns block hash from ledger as hex string

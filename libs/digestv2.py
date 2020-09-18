@@ -2,30 +2,31 @@
 Exports digest_block, the main block digesting function.
 def digest_block(node: "Node", data, sdef, peer_ip: str, db_handler: "DbHandler")
 
-EGG_EVO: This is a WIP, broken on purpose.
-
+EGG_EVO: This is a WIP.
 """
 
 import hashlib
 import os
 import sys
 from time import time as ttime, sleep
-from libs import mempool as mp, mining_heavy3, regnet
-from libs.difficulty import difficulty
-from libs.essentials import address_validate, address_is_rsa
-from polysign.signerfactory import SignerFactory
-from bismuthcore.compat import quantize_two, quantize_eight
-from bismuthcore.helpers import fee_calculate_int
-from libs.fork import Fork
-from decimal import Decimal
-from bismuthcore.transaction import Transaction
+from typing import TYPE_CHECKING
+
 from bismuthcore.block import Block
 from bismuthcore.blocks import Blocks
+from bismuthcore.compat import quantize_two
+from bismuthcore.helpers import fee_calculate_int
+from bismuthcore.transaction import Transaction
+from libs import mempool as mp, mining_heavy3, regnet
+from libs.difficulty import difficulty
+from libs.fork import Fork
+
 # from bismuthcore.transactionslist import TransactionsList
+# from libs.essentials import address_validate, address_is_rsa
+# from polysign.signerfactory import SignerFactory
+# from decimal import Decimal
 
 K1E8 = 100000000
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from libs.node import Node  # for type hinting
     from libs.dbhandler import DbHandler
@@ -69,8 +70,6 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: Block):
 
     try:
         fees_block = []
-        mining_reward = 0  # avoid warning
-
         # Cache for multiple tx from same address
         balances = {}
 
@@ -84,17 +83,8 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: Block):
         for tx_index, transaction in enumerate(block.transactions):
             if transaction.timestamp < oldest_possible_tx:
                 raise ValueError("txid {} from {} is older ({}) than oldest possible date ({})"
-                                 .format(transaction.signature[:56], transaction.address, transaction.timestamp, oldest_possible_tx))
-            """
-            db_timestamp = '%.2f' % quantize_two(transaction[0])
-            db_address = str(transaction[1])[:56]
-            db_recipient = str(transaction[2])[:56]
-            db_amount = '%.8f' % quantize_eight(transaction[3])
-            db_signature = str(transaction[4])[:684]
-            db_public_key_b64encoded = str(transaction[5])[:1068]
-            db_operation = str(transaction[6])[:30]
-            db_openfield = str(transaction[7])[:100000]
-            """
+                                 .format(transaction.signature[:56], transaction.address,
+                                         transaction.timestamp, oldest_possible_tx))
 
             block_debit_address = 0
             block_fees_address = 0
@@ -105,7 +95,8 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: Block):
                     block_debit_address = block_debit_address + x.amount
 
                     if x != block.transactions[-1]:
-                        block_fees_address = block_fees_address + fee_calculate_int(x.openfield,  x.operation, node.last_block)  # exclude the mining tx from fees
+                        block_fees_address += fee_calculate_int(x.openfield,  x.operation, node.last_block)
+                        # exclude the mining tx from fees
 
             # node.logger.app_log.info("Fee: " + str(fee))
 
@@ -114,27 +105,34 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: Block):
                 transaction.amount = 0
                 # db_amount: int = 0  # prevent spending from another address, because mining txs allow delegation
                 # TODO benchmark: significant perf gain by using more constants?
+                # TODO: This is "Block" relative. Should this be moved over to BismuthCore? What about forks?
                 if node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET:
-                    mining_reward = 15 * K1E8 * 1100000 - (block.height - fork.POW_FORK_TESTNET) * K1E8 - int(9.5 * K1E8 * 1100000)
+                    mining_reward = 15 * K1E8 * 1100000 - (block.height - fork.POW_FORK_TESTNET) * K1E8 \
+                                    - int(9.5 * K1E8 * 1100000)
                 elif node.is_mainnet and node.last_block >= fork.POW_FORK:
-                    mining_reward = 15 * K1E8 * 1100000 - (block.height - fork.POW_FORK) * K1E8 - int(9.5 * K1E8 * 1100000)
+                    mining_reward = 15 * K1E8 * 1100000 - (block.height - fork.POW_FORK) * K1E8 \
+                                    - int(9.5 * K1E8 * 1100000)
                 else:
-                    mining_reward = 15 * K1E8 * 1100000 - block.height * K1E8 * 1100000 // (1000000 // 2) - int(2.4 * K1E8 * 1100000)
+                    mining_reward = 15 * K1E8 * 1100000 - block.height * K1E8 * 1100000 // (1000000 // 2) \
+                                    - int(2.4 * K1E8 * 1100000)
 
                 mining_reward = round(mining_reward / 1100000)
 
                 if mining_reward < K1E8 // 2:  # 0.5 * K1E8:
                     mining_reward = K1E8 // 2
 
+                block.mining_reward = mining_reward  # This is needed for dev funds mirror blocks
                 reward = mining_reward + sum(fees_block)
-
+                # Reward is not sent with data, just update
+                block.set_reward(reward)
                 # don't request a fee for mined block so new accounts can mine
-                fee: int = 0
+                transaction.fee = 0
             else:
-                reward: int = 0
                 fee = fee_calculate_int(transaction.openfield, transaction.operation, node.last_block)
                 if fee != transaction.fee:
-                    node.logger.digest_log.debug(f"{block.height}:{transaction.address} Tx fee do not match calc: {Transaction.int_to_f8(transaction.fee)}/{Transaction.int_to_f8(fee)}")
+                    node.logger.digest_log.debug(f"{block.height}:{transaction.address} Tx fee do not match calc: "
+                                                 f"{Transaction.int_to_f8(transaction.fee)}/"
+                                                 f"{Transaction.int_to_f8(fee)}")
                     transaction.fee = fee
                     # raise ValueError("TempRE1")
 
@@ -144,11 +142,14 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: Block):
                 balance = balance_pre - block_debit_address
 
                 if balance_pre < transaction.amount:
-                    raise ValueError(f"{transaction.address} sending more than owned: {Transaction.int_to_f8(transaction.amount)}/{Transaction.int_to_f8(balance_pre)}")
+                    raise ValueError(f"{transaction.address} sending more than owned: "
+                                     f"{Transaction.int_to_f8(transaction.amount)}"
+                                     f"/{Transaction.int_to_f8(balance_pre)}")
 
                 if balance < block_fees_address:
                     # exclude fee check for the mining/header tx
-                    raise ValueError(f"{transaction.address} Cannot afford to pay fees (balance: {Transaction.int_to_f8(balance)}, "
+                    raise ValueError(f"{transaction.address} Cannot afford to pay fees "
+                                     f"(balance: {Transaction.int_to_f8(balance)}, "
                                      f"block fees: {Transaction.int_to_f8(block_fees_address)})")
 
             # append, but do not insert to ledger before whole block is validated,
@@ -161,16 +162,14 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: Block):
                                        str(db_public_key_b64encoded), str(block_instance.block_hash), str(fee),
                                        str(reward), str(db_operation), str(db_openfield)))
             """
-            # No need to delete and re-insert. just update fee and reward
-            # Reward is not sent with data, just update.
-            block.set_reward(reward)
             try:
                 mp.MEMPOOL.delete_transaction(transaction.signature_encoded)
-                node.logger.mempool_log.debug(f"Chain: Removed processed transaction {transaction.signature_encoded[:56]}"
-                                              f" from the mempool while digesting")
-            except:
+                node.logger.mempool_log.debug(f"Chain: Removed processed transaction "
+                                              f"{transaction.signature_encoded[:56]} from the mempool while digesting")
+            except Exception:
                 # tx was not or is no more in the local mempool, not an issue.
                 pass
+        # No need to delete and re-insert. just update fee and reward
 
     except Exception as e:
         node.logger.digest_log.warning("Process_transactions: {}".format(e))
@@ -194,12 +193,13 @@ def check_signature_on_block(block, node: "Node", db_handler: "DbHandler", peer_
             signature_list.append(entry_signature)
             # reject block with transactions which are already in the ledger ram
             if node.config.old_sqlite:
-                db_handler._execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE signature = ?1;",
-                                          (entry_signature,))
+                db_handler._execute_param(db_handler.h, "SELECT block_height FROM transactions WHERE signature = ?1",
+                                          (entry_signature, ))
             else:
                 db_handler._execute_param(db_handler.h,
-                                          "SELECT block_height FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1;",
-                                          (entry_signature,))
+                                          "SELECT block_height FROM transactions "
+                                          "WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1",
+                                          (entry_signature, ))
 
             tx_presence_check = db_handler.h.fetchone()
             if tx_presence_check:
@@ -207,12 +207,13 @@ def check_signature_on_block(block, node: "Node", db_handler: "DbHandler", peer_
                 raise ValueError(f"That transaction {entry_signature[:10]} is already in our ledger, "
                                  f"block_height {tx_presence_check[0]}")
             if node.config.old_sqlite:
-                db_handler._execute_param(db_handler.c, "SELECT block_height FROM transactions WHERE signature = ?1;",
-                                          (entry_signature,))
+                db_handler._execute_param(db_handler.c, "SELECT block_height FROM transactions WHERE signature = ?1",
+                                          (entry_signature, ))
             else:
                 db_handler._execute_param(db_handler.c,
-                                          "SELECT block_height FROM transactions WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1;",
-                                          (entry_signature,))
+                                          "SELECT block_height FROM transactions "
+                                          "WHERE substr(signature,1,4) = substr(?1,1,4) and signature = ?1",
+                                          (entry_signature, ))
             tx_presence_check = db_handler.c.fetchone()
             if tx_presence_check:
                 # print(node.last_block)
@@ -245,7 +246,7 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
     # tx_count = 0
     try:
         fork_reward_check(node=node, db_handler=db_handler)  # This raises on rollback
-        # makes sure post fork reward is ok. Likely unneccessary atm: means we add a query for all blocks, everytime.
+        # makes sure post fork reward is ok. Likely unnecessary atm: means we add a query for all blocks, every time.
         # Should only be done once at node start.
         # TODO: recheck and move to solo mode.
 
@@ -266,9 +267,6 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
             block.validate_mid()
             block.validate_heavy()
 
-            # DONE: node.logger.status_log.error(f"Should check tx signatures on block {block_height_new} from {peer_ip}")
-            # check_signature_on_block(block=block, node=node, db_handler=db_handler, peer_ip=peer_ip, block_instance=block_instance)
-
             # calculate current difficulty (is done for each block in block array, not super easy to isolate)
             diff = difficulty(node, db_handler)
             # print("difficulty 1", diff)
@@ -280,12 +278,14 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
             node.logger.status_log.info(f"Current diff {diff[3]:0.2f} - New diff  {diff[0]:0.2f} {diff[1]:0.2f}")
             node.logger.status_log.debug(f"Current diff {diff[3]} - New diff  {diff[0]} {diff[1]} - Adj {diff[6]}")
 
-            block_hash_bin = hashlib.sha224((str(block.tx_list_for_hash()) + node.last_block_hash).encode("utf-8")).digest()
+            block_hash_bin = hashlib.sha224((str(block.tx_list_for_hash())
+                                             + node.last_block_hash).encode("utf-8")).digest()
             block_hash = block_hash_bin.hex()
             # del block_instance.transaction_list_converted[:]
 
             # node.logger.app_log.info("Last block sha_hash: {}".format(block_hash))
-            node.logger.digest_log.info(f"Calculated block sha_hash for expected {block_height_new} with {len(block.transactions)} tx: {block_hash}")
+            node.logger.digest_log.info(f"Calculated block sha_hash for expected {block_height_new} "
+                                        f"with {len(block.transactions)} tx: {block_hash}")
             # node.logger.app_log.info("Nonce: {}".format(nonce))
 
             # check if we already have that sha_hash
@@ -310,7 +310,7 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
                                                       quantize_two(block.miner_tx.timestamp),
                                                       node.last_block_timestamp,
                                                       peer_ip=peer_ip,
-                                                      app_log=node.logger.app_log)
+                                                      app_log=node.logger.digest_log)
             elif node.is_testnet:
                 diff_save = mining_heavy3.check_block(block_height_new,
                                                       block.miner_tx.address,
@@ -321,7 +321,7 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
                                                       quantize_two(block.miner_tx.timestamp),
                                                       node.last_block_timestamp,
                                                       peer_ip=peer_ip,
-                                                      app_log=node.logger.app_log)
+                                                      app_log=node.logger.digest_log)
             else:
                 # it's regnet then, will use a specific fake method here.
                 diff_save = mining_heavy3.check_block(block_height_new,
@@ -333,12 +333,9 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
                                                       quantize_two(block.miner_tx.timestamp),
                                                       node.last_block_timestamp,
                                                       peer_ip=peer_ip,
-                                                      app_log=node.logger.app_log)
+                                                      app_log=node.logger.digest_log)
 
             process_transactions(node=node, db_handler=db_handler, block=block)
-
-            node.logger.digest_log.warning(f"TEMP DEBUG {block_height_new} has {len(block.transactions)} tx, "
-                                           f"block hash {block_hash}")
 
             node.last_block = block_height_new
             node.last_block_hash = block_hash
@@ -366,7 +363,8 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
                                                      'timestamp': block.miner_tx.timestamp,
                                                      'miner': block.miner_tx.address,
                                                      'ip': peer_ip,
-                                                     'transactions': [transaction.to_tuple() for transaction in block.transactions]})
+                                                     'transactions': [transaction.to_tuple()
+                                                                      for transaction in block.transactions]})
 
             db_handler.to_db_v2(block, diff_save)
             # In regtest mode, at least, this saves the generated block to the regmod.db.
@@ -379,11 +377,15 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
                 # not the latest block, nor the mirror of the latest block.
                 # c._execute("SELECT * FROM transactions WHERE block_height = ?", (block_instance.block_height_new -1,))
                 tx_list_to_hash = db_handler.c.fetchall()
-                # TODO EGG_EVO: This is a mistake. Uses a specific low level and proprietary encoding format (str of a tuple from a db with non specified numeric format)
-                # To Simplify. Like, only hash the - bin - tx signatures or just block hash that already is a hash of tx list, ensures untamper just the same, faster and no question on the format.
+                # TODO EGG_EVO: This is a mistake. Uses a specific low level and proprietary encoding format
+                # (str of a tuple from a db with non specified numeric format)
+                # To Simplify. Like, only hash the - bin - tx signatures or just block hash
+                # that already is a hash of tx list, ensures untamper just the same,
+                # faster and no question on the format.
                 # Since mirror hash are not part of consensus, no incidence.
                 # /new mirror sha_hash
-                mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).digest()  # Is that used somewhere or just recorded??
+                mirror_hash = hashlib.blake2b(str(tx_list_to_hash).encode(), digest_size=20).digest()
+                # Is that used somewhere or just recorded??
                 rewards(node=node, block=block, mirror_hash=mirror_hash, db_handler=db_handler)
 
             # node.logger.app_log.warning("Block: {}: {} valid and saved from {}"
@@ -395,9 +397,6 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
 
             if block.tokens_operation_present:
                 db_handler.tokens_update()
-
-            #del block_transactions[:]
-            #tx_count = 0
 
             # accepted block, reset ban on that peer
             node.peers.unban(peer_ip)
@@ -412,7 +411,6 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
             # but I fear this would delay the new block event.
 
             # /whole block validation
-            # NEW: returns new block sha_hash
     except Exception as e:
         # Left for edge cases debug
         node.logger.digest_log.warning("process_blocks (v2): {}".format(e), exc_info=1)
@@ -451,13 +449,15 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
                                     f"{len(block_data)} Blocks - {block_size} MB")
         blocks = None
         try:
-            node.logger.app_log.info(f"Chain: Digesting V2 WIP")
+            node.logger.app_log.info(f"Chain: Digesting V2")
             # raise ValueError("WIP")
+            """
             with open("blocks.log", "a+") as fp:
                 fp.write(f"{node.last_block + 1}\n")
                 fp.write(str(block_data))
                 fp.write("\n")
             # print(block_data)
+            """
             blocks = Blocks.from_legacy_block_data(block_data, first_level_checks=True,
                                                    last_block_timestamp=node.last_block_timestamp)
             # actual block control and digestion takes place in there

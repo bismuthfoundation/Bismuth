@@ -21,9 +21,12 @@ VERSION = "0.0.1-compare"
 FROM_BLOCK = 1800000
 FROM_BLOCK = 1865700
 FROM_BLOCK = 1865625
+FROM_BLOCK = 1865898
+FROM_BLOCK = 1868840
 
 BALANCE_OF = "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16"
 BALANCE_AT = 1865628
+BALANCE_AT = 1865898
 
 if __name__ == "__main__":
     datadir = "../datadir"  # Default datadir if empty
@@ -77,7 +80,7 @@ if __name__ == "__main__":
         if test != test2:
             print(test)
             print(test2)
-            sys.exit()
+            break
         # print(test)
         if start > TO_BLOCK:
             break

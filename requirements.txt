@@ -5,11 +5,11 @@
 
 # Now the minimal modules needed for a full install
 
-bismuthcore>=0.0.13
+bismuthcore>=0.0.14
 PySocks
 pycryptodomex
 requests
-polysign>=0.1.0
+polysign>=0.1.2
 base58
 # coincurve
 # ed25519

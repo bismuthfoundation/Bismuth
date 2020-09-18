@@ -22,10 +22,11 @@ VERSION = "0.0.1-recalc"
 BLOCK = 1865630
 BLOCK = 1865804
 # 14ec4f6ff6cfcbf8c788b8e9d71fec48af5a0c7e77fa144b97f98fad
+BLOCK = 1867990
+# e4f667b0d6fd3a8ba7139656fc48834a25d1ff58873d0225153fb3d9
 
 # Legacy (True) or V2 (False)
-LEGACY = False
-
+LEGACY = True
 
 if __name__ == "__main__":
     datadir = "../datadir"  # Default datadir if empty
@@ -53,6 +54,9 @@ if __name__ == "__main__":
         stored_hash = solo_db_handler.get_block_hash(BLOCK)
         print(BLOCK, block_hash)
         print(BLOCK, "Stored", stored_hash)
+        if LEGACY:
+            block_hash = solo_db_handler.recalc_block_hash_legacy(BLOCK)
+            print(BLOCK, "Recalc Legacy Method", block_hash)
     except Exception as e:
         logger.app_log.info(e)
         raise

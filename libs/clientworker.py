@@ -1,21 +1,24 @@
-# import sys
 import threading
-from libs import mempool as mp
-# from libs import node, keys, client
-# import time
 from time import time as ttime
+from typing import TYPE_CHECKING
+
 import socks
-from libs.connections import send, receive
-# from decimal import Decimal
-# from quantizer import quantize_two, quantize_eight, quantize_ten
+
 from libs import client
+from libs import mempool as mp
+from libs.connections import send, receive
 from libs.dbhandler import DbHandler
 from libs.digest import digest_block
 from libs.digestv2 import digest_block_v2
 
+# import sys
+# from libs import node, keys, client
+# import time
+# from decimal import Decimal
+# from quantizer import quantize_two, quantize_eight, quantize_ten
+
 # See why we do that: https://stackoverflow.com/questions/39740632/python-type-hinting-without-cyclic-imports
 # I'm not using from __future__ because some nodes still run on python 3.6
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from libs.node import Node
 
@@ -26,6 +29,7 @@ def sendsync(sdef, peer_ip: str, status: str, node: "Node") -> None:
     :param sdef: socket object
     :param peer_ip: IP of peer synchronization has been completed with
     :param status: Status synchronization was completed in/as
+    :param node: Main Node object
 
     Log the synchronization status
     Save peer IP to peers list if applicable
@@ -35,7 +39,8 @@ def sendsync(sdef, peer_ip: str, status: str, node: "Node") -> None:
     returns None
     """
     # TODO: ERROR, does **not** save anything. code or comment wrong.
-    node.logger.app_log.debug(f"Outbound: Synchronization with {peer_ip} finished after: {status}, sending new sync request")
+    node.logger.app_log.debug(f"Outbound: Synchronization with {peer_ip} finished after: {status}, "
+                              f"sending new sync request")
     node.sleep()
     while node.db_lock.locked():
         if node.IS_STOPPING:
@@ -91,7 +96,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
     node.peers.store_mainnet(host, peer_version)
     try:
         peer_ip = s.getpeername()[0]
-    except:
+    except Exception:
         # Should not happen, extra safety
         node.logger.app_log.warning("Outbound: Transport endpoint was not connected")
         return
@@ -107,7 +112,8 @@ def client_worker(host: str, port: int, node: "Node") -> None:
         return
     db_handler = DbHandler.from_node(node)
 
-    while not node.peers.is_banned(host) and node.peers.version_allowed(host, node.config.version_allow) and not node.IS_STOPPING:
+    while not node.peers.is_banned(host) and node.peers.version_allowed(host, node.config.version_allow) \
+            and not node.IS_STOPPING:
         try:
             data = receive(s)  # receive data, one and the only root point
             # print(data)
@@ -142,7 +148,8 @@ def client_worker(host: str, port: int, node: "Node") -> None:
 
                     if int(received_block_height) < node.hdd_block:
                         node.logger.app_log.warning(
-                            f"Outbound: We have a higher block ({node.hdd_block}) than {peer_ip} ({received_block_height}), sending")
+                            f"Outbound: We have a higher block ({node.hdd_block}) "
+                            f"than {peer_ip} ({received_block_height}), sending")
 
                         data = receive(s)  # receive client's last block_hash
 
@@ -182,41 +189,39 @@ def client_worker(host: str, port: int, node: "Node") -> None:
 
                             else:
                                 blocks_fetched = db_handler.blocksync(client_block)
-
                                 node.logger.app_log.debug(f"Outbound: Selected {blocks_fetched}")  # Verbose dump
-
                                 send(s, "blocksfnd")
-
                                 confirmation = receive(s)
-
                                 if confirmation == "blockscf":
                                     node.logger.app_log.info("Outbound: Client confirmed they want to sync from us")
                                     send(s, blocks_fetched)
 
                                 elif confirmation == "blocksrj":
-                                    node.logger.app_log.info(
-                                        "Outbound: Client rejected to sync from us because we're dont have the latest block")
+                                    node.logger.app_log.info("Outbound: Client rejected to sync from us "
+                                                             "because we're dont have the latest block")
 
                     elif int(received_block_height) >= node.hdd_block:
                         if int(received_block_height) == node.hdd_block:
-                            node.logger.consensus_log.debug(f"Outbound: We have the same block as {peer_ip} ({received_block_height}), hash will be verified")
+                            node.logger.consensus_log.debug(f"Outbound: We have the same block as {peer_ip} "
+                                                            f"({received_block_height}), hash will be verified")
                         else:
-                            node.logger.consensus_log.info(f"Outbound: We have a lower block ({node.hdd_block}) than {peer_ip} ({received_block_height}), hash will be verified")
+                            node.logger.consensus_log.info(f"Outbound: We have a lower block ({node.hdd_block}) "
+                                                           f"than {peer_ip} ({received_block_height}), "
+                                                           f"hash will be verified")
 
                         node.logger.consensus_log.debug(f"Outbound: block_hash to send: {node.hdd_hash}")
                         send(s, node.hdd_hash)
 
-                        #ensure_good_peer_version(host)
-
-                        # consensus pool 2 (active connection)
                         consensus_blockheight = int(received_block_height)  # str int to remove leading zeros
                         node.peers.consensus_add(peer_ip, consensus_blockheight, s, node.hdd_block)
-                        # consensus pool 2 (active connection)
 
                 except Exception as e:
                     node.logger.app_log.warning(f"Outbound: Sync failed {e}")
                 finally:
-                    node.syncing.remove(peer_ip)
+                    try:
+                        node.syncing.remove(peer_ip)
+                    except Exception:
+                        pass
 
             elif data == "blocknfhb":  # one of the possible outcomes
                 block_hash_delete = receive(s)
@@ -239,7 +244,8 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                 sendsync(s, peer_ip, "Block not found", node)
 
             elif data == "blocksfnd":
-                node.logger.consensus_log.info(f"Outbound: Node {peer_ip} has the block(s)")  # node should start sending txs in this step
+                node.logger.consensus_log.info(f"Outbound: Node {peer_ip} has the block(s)")
+                # node should start sending txs in this step
                 # node.logger.app_log.info("Inbound: Combined segments: " + segments)
                 # print peer_ip
                 if node.db_lock.locked():
@@ -254,15 +260,15 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                         block_req = node.peers.consensus_max
                         node.logger.consensus_log.info("Longest chain rule triggered")
 
-                    #ensure_good_peer_version(host)
+                    # ensure_good_peer_version(host)
 
                     if int(received_block_height) >= block_req and int(received_block_height) > node.last_block:
                         try:  # they claim to have the longest chain, things must go smooth or ban
                             node.logger.consensus_log.info(f"Confirming to sync from {peer_ip}")
                             send(s, "blockscf")
                             segments = receive(s)
-                            #ensure_good_peer_version(host)
-                        except:
+                            # ensure_good_peer_version(host)
+                        except Exception:
                             if node.peers.warning(s, peer_ip, "Failed to deliver the longest chain", 2):
                                 raise ValueError(f"{peer_ip} is banned")
                         else:
@@ -273,7 +279,9 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                             # receive theirs
                     else:
                         send(s, "blocksrj")
-                        node.logger.consensus_log.warning(f"Inbound: Distant peer {peer_ip} is at {received_block_height}, should be at least {max(block_req,node.last_block+1)}")
+                        node.logger.consensus_log.warning(f"Inbound: Distant peer {peer_ip}"
+                                                          f"is at {received_block_height}, "
+                                                          f"should be at least {max(block_req, node.last_block + 1)}")
 
                 sendsync(s, peer_ip, "Block found", node)
 
@@ -283,7 +291,8 @@ def client_worker(host: str, port: int, node: "Node") -> None:
                 # send and receive mempool
                 if mp.MEMPOOL.sendable(peer_ip):
                     mempool_txs = mp.MEMPOOL.tx_to_send(peer_ip)
-                    # node.logger.app_log.info("Outbound: Extracted from the mempool: " + str(mempool_txs))  # improve: sync based on signatures only
+                    # node.logger.app_log.info("Outbound: Extracted from the mempool: "
+                    # + str(mempool_txs))  # improve: sync based on signatures only
                     # if len(mempool_txs) > 0: #wont sync mempool until we send something, which is bad
                     # send own
                     send(s, "mempool")
@@ -336,11 +345,13 @@ def client_worker(host: str, port: int, node: "Node") -> None:
 
             # properly end the connection
             if node.config.debug:
-                if "Socket EOF" not in str(e) and "Broken pipe" not in str(e) and "Socket POLLHUP" not in str(e) and "Bad file descriptor" not in str(e):  # don't pollute debug with closed pipes
+                if "Socket EOF" not in str(e) and "Broken pipe" not in str(e) and "Socket POLLHUP" not in str(e) \
+                        and "Bad file descriptor" not in str(e):  # don't pollute debug with closed pipes
                     raise  # major debug client
 
             # node.logger.app_log.info(f"Ending thread, because {e}")
             return
 
     if not node.peers.version_allowed(host, node.config.version_allow):
-        node.logger.peers_log.info(f"Outbound: Ending thread, because {host} has too old a version: {node.peers.ip_to_mainnet[host]}")
+        node.logger.peers_log.info(f"Outbound: Ending thread, because {host} has too old a version: "
+                                   f"{node.peers.ip_to_mainnet[host]}")

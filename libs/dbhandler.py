@@ -2,25 +2,25 @@
 Sqlite3 Database handler module for Bismuth nodes
 """
 
-from time import sleep
-import sqlite3
+import functools
 import os
-import sys
 import re
-# import essentials
+import sqlite3
+import sys
 from decimal import Decimal
 from sqlite3 import Binary
-from bismuthcore.compat import quantize_eight
-from bismuthcore.transaction import Transaction
+from time import sleep
+from typing import TYPE_CHECKING
+from typing import Union, List
+
 from bismuthcore.block import Block
-from bismuthcore.transactionslist import TransactionsList
+from bismuthcore.compat import quantize_eight
 from bismuthcore.helpers import fee_calculate, K1E8
-import functools
+from bismuthcore.transaction import Transaction
+from bismuthcore.transactionslist import TransactionsList
 from libs.fork import Fork
 from libs.helpers import blake2bhash_generate
 
-from typing import Union, List
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from libs.node import Node
     from libs.mempool import Mempool  # for type hints
@@ -119,7 +119,7 @@ class DbHandler:
                             (alias, ))
         try:
             address_fetch = self.index_cursor.fetchone()[0]
-        except:
+        except Exception:
             address_fetch = "No alias"
         return address_fetch
 
@@ -136,7 +136,7 @@ class DbHandler:
                             (alias, ))
         try:
             address_fetch = self.index_cursor.fetchone()[0] is not None
-        except:
+        except Exception:
             pass
         return address_fetch
 
@@ -156,7 +156,7 @@ class DbHandler:
                                 (alias_address, ))
             try:
                 result = self.index_cursor.fetchall()[0][0]
-            except:
+            except Exception:
                 result = alias_address
             results.append(result)
         return results
@@ -184,7 +184,7 @@ class DbHandler:
         self._execute(self.index_cursor, "SELECT block_height FROM aliases ORDER BY block_height DESC LIMIT 1")
         try:
             alias_last_block = int(self.index_cursor.fetchone()[0])
-        except:
+        except Exception:
             alias_last_block = 0
         # Egg note: this is not the real last anchor. We use the last alias index as anchor.
         # If many blocks passed by since, every call to update will have to parse large data (with like% query).
@@ -205,7 +205,7 @@ class DbHandler:
                 self.index_cursor.execute("SELECT * from aliases WHERE alias = ? limit 0, 1", (alias, ))
                 dummy = self.index_cursor.fetchall()[0]  # check for uniqueness
                 self.logger.status_log.warning(f"Alias already registered: {alias} - Ignored.")
-            except:
+            except Exception:
                 self.index_cursor.execute("INSERT INTO aliases VALUES (?,?,?)", (openfield[0], openfield[1], alias))
                 self.index.commit()
                 self.logger.status_log.info(f"Added alias to the database: {alias} from block {openfield[0]}")
@@ -249,7 +249,7 @@ class DbHandler:
         self.index_cursor.execute("SELECT block_height FROM tokens ORDER BY block_height DESC LIMIT 1;")
         try:
             token_last_block = int(self.index_cursor.fetchone()[0])
-        except:
+        except Exception:
             token_last_block = 0
         self.logger.status_log.info("Token anchor block: {}".format(token_last_block))
         self.c.execute("SELECT block_height, timestamp, address, recipient, signature, operation, openfield "
@@ -266,8 +266,9 @@ class DbHandler:
                 try:
                     self.index_cursor.execute("SELECT * from tokens WHERE token = ? limit 0, 1", (token_name, ))
                     dummy = self.index_cursor.fetchall()[0]  # check for uniqueness
-                    self.logger.status_log.warning("Token issuance already processed: {} - Ignored.".format(token_name, ))
-                except:
+                    self.logger.status_log.warning("Token issuance already processed: {} - Ignored."
+                                                   .format(token_name, ))
+                except Exception:
                     if token_name not in tokens_processed:
                         block_height = x[0]
                         timestamp = x[1]
@@ -328,7 +329,7 @@ class DbHandler:
                         txid = blake2bhash_generate(r)
                     try:
                         transfer_amount = int(r[6].split(":")[1])
-                    except:
+                    except Exception:
                         transfer_amount = 0
 
                     self.logger.status_log.info(f"Block height {block_height} - Timestamp {timestamp} - Txid {txid}")
@@ -338,14 +339,14 @@ class DbHandler:
                         (sender, block_height, token,))
                     try:
                         credit_sender = int(self.index_cursor.fetchone()[0])
-                    except:
+                    except Exception:
                         credit_sender = 0
                     self.index_cursor.execute(
                         "SELECT sum(amount) FROM tokens WHERE address = ? AND block_height <= ? AND token = ?",
                         (sender, block_height, token,))
                     try:
                         debit_sender = int(self.index_cursor.fetchone()[0])
-                    except:
+                    except Exception:
                         debit_sender = 0
                     # self.logger.app_log.warning("Sender's debit: {}".format(debit_sender))
                     # /calculate balances
@@ -434,7 +435,7 @@ class DbHandler:
         # return quantize_two(self.c.fetchone()[0])
         try:
             return self.c.fetchone()[0]  # timestamps do not need quantize
-        except:
+        except Exception:
             return None
 
     def difflast(self) -> List[Union[int, float]]:
@@ -458,7 +459,7 @@ class DbHandler:
                                 "ORDER BY block_height DESC LIMIT 1",
                                 (genesis, "annver"))
             result = self.h.fetchone()[0]
-        except:
+        except Exception:
             result = "?"
         return result
 
@@ -470,7 +471,7 @@ class DbHandler:
                                 "ORDER BY block_height DESC LIMIT 1",
                                 (genesis, "ann"))
             result = self.h.fetchone()[0]
-        except:
+        except Exception:
             result = "No announcement"
         return result
 
@@ -498,15 +499,15 @@ class DbHandler:
         # TODO: EGG_EVO this will be completely rewritten when using int db
         credit_ledger = Decimal("0")
         try:
-            self._execute_param(self.h, "SELECT amount FROM transactions WHERE recipient = ?;", (balance_address,))
+            self._execute_param(self.h, "SELECT amount FROM transactions WHERE recipient = ?;", (balance_address, ))
             entries = self.h.fetchall()
-        except:
+        except Exception:
             entries = []
         try:
             for entry in entries:
                 credit_ledger = quantize_eight(credit_ledger) + quantize_eight(entry[0])
                 credit_ledger = 0 if credit_ledger is None else credit_ledger
-        except:
+        except Exception:
             credit_ledger = 0
         fees = Decimal("0")
         debit_ledger = Decimal("0")
@@ -514,19 +515,19 @@ class DbHandler:
             self._execute_param(self.h, "SELECT fee, amount FROM transactions WHERE address = ?",
                                 (balance_address, ))
             entries = self.h.fetchall()
-        except:
+        except Exception:
             entries = []
         try:
             for entry in entries:
                 fees = quantize_eight(fees) + quantize_eight(entry[0])
                 fees = 0 if fees is None else fees
-        except:
+        except Exception:
             fees = 0
         try:
             for entry in entries:
                 debit_ledger = debit_ledger + Decimal(entry[1])
                 debit_ledger = 0 if debit_ledger is None else debit_ledger
-        except:
+        except Exception:
             debit_ledger = 0
         debit = quantize_eight(debit_ledger + debit_mempool)
         rewards = Decimal("0")
@@ -534,14 +535,14 @@ class DbHandler:
             self._execute_param(self.h, "SELECT reward FROM transactions WHERE recipient = ?",
                                 (balance_address, ))
             entries = self.h.fetchall()
-        except:
+        except Exception:
             entries = []
         try:
             for entry in entries:
                 rewards = quantize_eight(rewards) + quantize_eight(entry[0])
                 rewards = 0 if str(rewards) == "0E-8" else rewards
                 rewards = 0 if rewards is None else rewards
-        except:
+        except Exception:
             rewards = 0
 
         balance = quantize_eight(credit_ledger - debit - fees + rewards)
@@ -647,17 +648,18 @@ class DbHandler:
                 self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
                                     (Binary(bytes.fromhex(hex_hash)), ))
             result = self.h.fetchone()[0]
-        except:
+        except Exception:
             result = None
         return result
 
-    def block_height_from_binhash(self, hash: bytes) -> int:
+    def block_height_from_binhash(self, block_hash: bytes) -> int:
         """Lookup a block height from its hash."""
         # provided hash is supposed to be binary.
         try:
-            self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?", (Binary(hash), ))
+            self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
+                                (Binary(block_hash), ))
             result = self.h.fetchone()[0]
-        except:
+        except Exception:
             result = None
         return result
 
@@ -720,7 +722,8 @@ class DbHandler:
 
     def get_block(self, block_height: int) -> Block:
         """
-        Returns a Block instance matching the requested height. Block will be empty if height is unknown but will throw no exception
+        Returns a Block instance matching the requested height.
+        Block will be empty if height is unknown but will throw no exception
         :param block_height:
         :return:
         """
@@ -749,7 +752,7 @@ class DbHandler:
                 return hash_hex
             else:
                 return hash_hex.hex()  # v2 db stores as bin
-        except:
+        except Exception:
             return ''
 
     def get_difficulty_for_height(self, block_height: int) -> float:
@@ -889,6 +892,7 @@ class DbHandler:
             for transaction in block.transactions:
                 self._execute_param(self.c, SQL_TO_TRANSACTIONS_V2, transaction.to_bin_tuple(sqlite_encode=True))
             self.commit(self.conn)
+            # self.logger.digest_log.warning(f"TEMP DEBUG to_db_v2 {len(block.transactions)} transactions")
         except Exception as e:
             self.logger.digest_log.error(f"dbhandler.to_db_v2 error {e} writing to transactions")
             raise
@@ -1066,7 +1070,11 @@ class DbHandler:
         self.commit(self.conn)
 
     def dev_reward_v2(self, node: "Node", block: "Block", mirror_hash: bytes) -> None:
-        mining_reward = block.miner_tx.reward
+        # mining_reward = block.miner_tx.reward  # This is block reward + included fees reward
+        mining_reward = block.mining_reward  # This is block reward only
+        if mining_reward <= 0:
+            self.logger.status_log.error(f"dbhandler.dev_reward_v2, mining_reward={mining_reward}.")
+            raise ValueError("Wrong dev rewards")
         self._execute_param(self.c, SQL_TO_TRANSACTIONS,
                             (-block.height, str(block.miner_tx.timestamp),
                              "Development Reward", node.config.genesis,
