@@ -8,13 +8,12 @@ See https://github.com/bismuthfoundation/BismuthPlugins for compatible plugins a
 """
 
 
-import importlib
-import importlib.util
-import importlib.machinery
-import os
-import logging
 import collections
-
+import importlib
+import importlib.machinery
+import importlib.util
+import logging
+import os
 
 __version__ = '1.0.3'
 
@@ -69,7 +68,7 @@ class PluginManager:
                         'info': info,
                         'autoload': True  # Todo
                     }
-        except Exception as e:
+        except Exception:
             self.app_log.info("Can't list plugins from '{}'.".format(self.plugin_folder))
         # TODO: sort by name or priority, add json specs file.
         return plugins
@@ -117,7 +116,7 @@ class PluginManager:
             else:
                 for plugin in self.get_loaded_plugins():
                     self._unload_plugin(plugin)
-        except:
+        except Exception:
             pass
 
     def execute_action_hook(self, hook_name, hook_params=None, first_only=False):

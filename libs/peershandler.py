@@ -6,22 +6,22 @@ Peers handler module for Bismuth nodes
 import json
 import os
 import shutil
-# import re
 import sys
 import threading
 from time import time
+from typing import TYPE_CHECKING
+
 import socks
 
 from libs import connections
-# import regnet
-from libs.essentials import most_common_dict, percentage_in
 from libs.clientworker import client_worker
+from libs.essentials import most_common_dict, percentage_in
 from libs.helpers import dict_shuffle
-from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from libs.node import Node
 
-__version__ = "0.0.24"
+__version__ = "0.0.25"
 
 
 class Peers:
@@ -141,7 +141,7 @@ class Peers:
                             # properly end the connection in all cases
                             try:
                                 s.close()
-                            except:
+                            except Exception:
                                 pass
                         peers_pairs[ip] = port
                         self.peers_log.debug(f"Inbound: Peer {ip}:{port} saved to peers")
@@ -157,7 +157,7 @@ class Peers:
                 self.peers_log.info(f"{file} peerlist updated ({len(peers_pairs)}) total")  # the whole dict is saved
                 with open(f"{file}.tmp", "w") as peer_file:
                     json.dump(peers_pairs, peer_file)
-                shutil.move(f"{file}.tmp",file)
+                shutil.move(f"{file}.tmp", file)
             else:
                 self.peers_log.debug(f"{file} peerlist update skipped, no changes")
 
@@ -180,7 +180,7 @@ class Peers:
             try:
                 self.peers_log.info(f"Will remove {client} from active pool")
                 self.connection_pool.remove(client)
-            except:
+            except Exception:
                 raise
 
     def unban(self, peer_ip: str) -> None:
@@ -199,7 +199,7 @@ class Peers:
             for x in range(count):
                 self.warning_list.append(ip)
             self.peers_log.info(f"Added {count} warning(s) to {ip}: {reason} "
-                                 f"({self.warning_list.count(ip)} / {self.ban_threshold})")
+                                f"({self.warning_list.count(ip)} / {self.ban_threshold})")
             if self.warning_list.count(ip) >= self.ban_threshold:
                 self.banlist.append(ip)
                 self.peers_log.warning(f"{ip} is banned: {reason}")
@@ -237,7 +237,7 @@ class Peers:
         """Consensus vote"""
         try:
             return most_common_dict(self.peer_opinion_dict)
-        except:
+        except Exception:
             # no consensus yet
             return 0
 
@@ -245,7 +245,7 @@ class Peers:
     def consensus_max(self) -> int:
         try:
             return max(self.peer_opinion_dict.values())
-        except:
+        except Exception:
             # no consensus yet
             return 0
 
@@ -333,7 +333,7 @@ class Peers:
                                 total_added += 1
                                 self.peer_dict[ip] = port
                                 self.peers_log.debug(f"Inbound: Peer {ip}:{port} saved to local peers")
-                        except:
+                        except Exception:
                             self.peers_log.debug(f" {ip}:{port} is not connectible")
                     else:
                         self.peers_log.debug(f"Outbound: {ip}:{port} is not a new peer")
@@ -359,9 +359,10 @@ class Peers:
             self.peer_opinion_dict[peer_ip] = consensus_blockheight
 
             self.consensus = most_common_dict(self.peer_opinion_dict)
-            self.consensus_percentage = percentage_in(self.peer_opinion_dict[peer_ip],self.peer_opinion_dict.values())
+            self.consensus_percentage = percentage_in(self.peer_opinion_dict[peer_ip], self.peer_opinion_dict.values())
 
-            if int(consensus_blockheight) > int(self.consensus) + 30 and self.consensus_percentage > 50 and len(self.peer_opinion_dict) > 10:
+            if int(consensus_blockheight) > int(self.consensus) + 30 and self.consensus_percentage > 50 \
+                    and len(self.peer_opinion_dict) > 10:
                 self.warning(sdef, peer_ip, f"Consensus deviation too high, {peer_ip} banned", 10)
 
         except Exception as e:
@@ -373,11 +374,8 @@ class Peers:
 
     def consensus_remove(self, peer_ip: str) -> None:
         if peer_ip in self.peer_opinion_dict:
-            try:
-                self.peers_log.debug(f"Will remove {peer_ip} from consensus pool {self.peer_opinion_dict}")
-                self.peer_opinion_dict.pop(peer_ip)
-            except:
-                raise
+            self.peers_log.debug(f"Will remove {peer_ip} from consensus pool {self.peer_opinion_dict}")
+            self.peer_opinion_dict.pop(peer_ip)
 
     def can_connect_to(self, host: str, port: int) -> bool:
         """
@@ -393,7 +391,7 @@ class Peers:
             return False  # Already connected to
         try:
             tries, timeout = self.tried[host_port]
-        except:
+        except Exception:
             tries, timeout = 0, 0  # unknown host for now, never tried.
         if timeout > time():
             return False  # We tried before, timeout is not expired.
@@ -420,7 +418,7 @@ class Peers:
         host_port = f"{host}:{port}"
         try:
             tries, timeout = self.tried[host_port]
-        except:
+        except Exception:
             tries, timeout = 0, 0
         if tries <= 0:  # First time can be temp, retry again
             delay = 30
@@ -481,7 +479,7 @@ class Peers:
                 if threading.active_count() / 3 < self.config.thread_limit and self.can_connect_to(host, port):
                     self.peers_log.debug(f"Will attempt to connect to {host}:{port}")
                     self.add_try(host, port)
-                    t = threading.Thread(target=client_worker, args=(host, port, node), name=f"out_{host}_{port}")  # threaded connectivity to nodes here
+                    t = threading.Thread(target=client_worker, args=(host, port, node), name=f"out_{host}_{port}")
                     self.peers_log.debug(f"---Starting a client thread {threading.currentThread()} ---")
                     t.daemon = True
                     t.start()
@@ -500,7 +498,7 @@ class Peers:
 
             if len(self.connection_pool) < 10:
                 self.peers_log.warning(f"Only {len(self.connection_pool)} connections active, "
-                                     f"resetting the connection history")
+                                       f"resetting the connection history")
                 # TODO: only reset large timeouts, or we end up trying the sames over and over if we never get to 10.
                 # self.
                 self.reset_tried()
@@ -509,7 +507,7 @@ class Peers:
                     and (time() - self.reset_time) > 60 * 10:
                 # do not reset too often. 10 minutes here
                 self.peers_log.warning(f"Less active connections ({len(self.connection_pool)}) "
-                                     f"than banlist ({len(self.banlist)}), resetting banlist and tried list")
+                                       f"than banlist ({len(self.banlist)}), resetting banlist and tried list")
                 del self.banlist[:]
                 self.banlist.extend(self.config.banlist)  # reset to config version
                 del self.warning_list[:]
@@ -553,5 +551,6 @@ class Peers:
         self.status_log.debug(f"Tried peers: {self.tried}")
         self.status_log.debug(f"Peers: List of Outbound connections: {self.connection_pool}")
         if self.consensus:  # once the consensus is filled
-            self.status_log.info(f"Consensus height: {self.consensus} = {self.consensus_percentage:0.2f}% - {len(self.peer_opinion_dict)} Nodes ")
+            self.status_log.info(f"Consensus height: {self.consensus} = {self.consensus_percentage:0.2f}% "
+                                 f"- {len(self.peer_opinion_dict)} Nodes ")
             self.status_log.debug(f"Last block opinion: {self.peer_opinion_dict}")
