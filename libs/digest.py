@@ -238,8 +238,7 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: list, blo
                     block_instance.mining_reward = 15 - (block_instance.block_height_new - fork.POW_FORK_TESTNET) \
                                                    / 1100000 - 9.5
                 elif node.is_mainnet and node.last_block >= fork.POW_FORK:
-                    block_instance.mining_reward = 15 - (block_instance.block_height_new - fork.POW_FORK) \
-                                                   / 1100000 - 9.5
+                    block_instance.mining_reward = 15 - (block_instance.block_height_new - fork.POW_FORK) / 1100000 - 9.5
                 else:
                     block_instance.mining_reward = 15 - (quantize_eight(block_instance.block_height_new)
                                                          / quantize_eight(1000000 / 2)) - Decimal("2.4")

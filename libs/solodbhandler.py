@@ -307,7 +307,32 @@ class SoloDbHandler:
             raise RuntimeError("Unknown db_name in SoloDbHandle.table_schema: {}".format(db_name))
         return res.fetchall()
 
-    @timeit
+    def get_block(self, block_height: int) -> Block:
+        """
+        Returns a Block instance matching the requested height. Block will be empty if height is unknown but will throw no exception
+        :param block_height:
+        :return:
+        """
+        self._ledger_cursor.execute("SELECT * FROM transactions WHERE block_height = ?", (block_height, ))
+        block = self._ledger_cursor.fetchall()
+        if self.legacy_db:
+            transaction_list = [Transaction.from_legacy(entry) for entry in block]
+        else:
+            transaction_list = [Transaction.from_v2(entry) for entry in block]
+        return Block(transaction_list)
+
+    def get_block_hash(self, block_height: int) -> str:
+        # returns block hash from ledger as hex string
+        self._ledger_cursor.execute("SELECT block_hash FROM transactions "
+                                    "WHERE reward != 0 AND block_height = ?",
+                                    (block_height, ))
+        block_hash = self._ledger_cursor.fetchone()[0]
+        # if new db, convert bin to hex
+        if not self.legacy_db:
+            block_hash = block_hash.hex()
+        return block_hash
+
+    # @timeit
     def get_blocks(self, block_height: int=0, limit: int=10) -> TransactionsList:
         """
         Returns a List of blocks, from block_height included and up to limit blocks max.
@@ -402,6 +427,9 @@ class SoloDbHandler:
 
     def rollback(self, block_height: int) -> None:
         """Specific rollback method for single user mode"""
+        # TODO: for both single user mode and regular mode:
+        # Do *NOT* ever allow rollback under the hyper anchor, or balances are dead.
+        # Fetch hyper anchor at start of node and after recompress, store it in node or db_handler and *check*
         self.logger.status_log.warning(f"Rolling back below: {block_height} (Solo)")
         # EGG: I dupped code there, I'm not proud of that. To be handled in a more generic way (solo/db handler)
         # Good thing is this is not db format dependant.

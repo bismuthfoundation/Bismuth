@@ -111,17 +111,20 @@ def process_transactions(node: "Node", db_handler: "DbHandler", block: Block):
 
             # decide reward
             if tx_index == len(block.transactions) - 1:
-                db_amount: int = 0  # prevent spending from another address, because mining txs allow delegation
-
+                transaction.amount = 0
+                # db_amount: int = 0  # prevent spending from another address, because mining txs allow delegation
+                # TODO benchmark: significant perf gain by using more constants?
                 if node.is_testnet and node.last_block >= fork.POW_FORK_TESTNET:
-                    mining_reward = 15 * K1E8 - (block.height - fork.POW_FORK_TESTNET) * K1E8 // 1100000 - 9.5 * K1E8
+                    mining_reward = 15 * K1E8 * 1100000 - (block.height - fork.POW_FORK_TESTNET) * K1E8 - int(9.5 * K1E8 * 1100000)
                 elif node.is_mainnet and node.last_block >= fork.POW_FORK:
-                    mining_reward = 15 * K1E8 - (block.height - fork.POW_FORK) * K1E8 // 1100000 - 9.5 * K1E8
+                    mining_reward = 15 * K1E8 * 1100000 - (block.height - fork.POW_FORK) * K1E8 - int(9.5 * K1E8 * 1100000)
                 else:
-                    mining_reward = 15 * K1E8 - block.height * K1E8 // (1000000 // 2) - 2.4 * K1E8
+                    mining_reward = 15 * K1E8 * 1100000 - block.height * K1E8 * 1100000 // (1000000 // 2) - int(2.4 * K1E8 * 1100000)
 
-                if mining_reward < 0.5 * K1E8:
-                    mining_reward = 0.5 * K1E8
+                mining_reward = round(mining_reward / 1100000)
+
+                if mining_reward < K1E8 // 2:  # 0.5 * K1E8:
+                    mining_reward = K1E8 // 2
 
                 reward = mining_reward + sum(fees_block)
 
@@ -282,7 +285,7 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
             # del block_instance.transaction_list_converted[:]
 
             # node.logger.app_log.info("Last block sha_hash: {}".format(block_hash))
-            node.logger.digest_log.info(f"Calculated block sha_hash for expected {block_height_new}: {block_hash}")
+            node.logger.digest_log.info(f"Calculated block sha_hash for expected {block_height_new} with {len(block.transactions)} tx: {block_hash}")
             # node.logger.app_log.info("Nonce: {}".format(nonce))
 
             # check if we already have that sha_hash
@@ -333,6 +336,9 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
                                                       app_log=node.logger.app_log)
 
             process_transactions(node=node, db_handler=db_handler, block=block)
+
+            node.logger.digest_log.warning(f"TEMP DEBUG {block_height_new} has {len(block.transactions)} tx, "
+                                           f"block hash {block_hash}")
 
             node.last_block = block_height_new
             node.last_block_hash = block_hash
@@ -419,6 +425,9 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
     block_data is legacy unstructured data, with floats and no bin.
     block_data may contain more than one block.
     """
+    if node.IS_STOPPING:
+        node.logger.app_log.warning("digest_block_v2 aborted, node is stopping", exc_info=node.config.debug)
+        return
     if node.config.legacy_db:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -444,6 +453,10 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
         try:
             node.logger.app_log.info(f"Chain: Digesting V2 WIP")
             # raise ValueError("WIP")
+            with open("blocks.log", "a+") as fp:
+                fp.write(f"{node.last_block + 1}\n")
+                fp.write(str(block_data))
+                fp.write("\n")
             # print(block_data)
             blocks = Blocks.from_legacy_block_data(block_data, first_level_checks=True,
                                                    last_block_timestamp=node.last_block_timestamp)
