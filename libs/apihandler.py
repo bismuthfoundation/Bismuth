@@ -9,21 +9,21 @@ import json
 import os
 import sys
 import threading
-# from essentials import format_raw_tx
+from typing import TYPE_CHECKING
 
+import libs.mempool as mp
+from bismuthcore.transaction import Transaction
 # modular handlers will need access to the database methods under some form, so it needs to be modular too.
 # Here, I just duplicated the minimum needed code from node, further refactoring with classes will follow.
 from libs import connections
-import libs.mempool as mp
 from polysign.signerfactory import SignerFactory
-from bismuthcore.transaction import Transaction
 
-from typing import TYPE_CHECKING
+# from essentials import format_raw_tx
 if TYPE_CHECKING:
     from libs.node import Node
     from libs.dbhandler import DbHandler
 
-__version__ = "0.0.11"
+__version__ = "0.0.13"
 
 
 class ApiHandler:
@@ -198,8 +198,6 @@ class ApiHandler:
         Returns a dict with
         known: Did that address appear on a transaction?
         pubkey: The DECODED pubkey of the address if it signed a transaction,
-        :param address: The bismuth address to examine
-        :return: dict
         """
         info = {'known': False, 'pubkey': ''}
         # get the address
@@ -230,7 +228,8 @@ class ApiHandler:
         Warning: format is strange: we provide a hash, so there should be at most one result.
         But we send back a dict, with height as key, and block (including height again) as value.
         Should be enough to only send the block.
-        **BUT** do not change, this would break current implementations using the current format (json rpc server for instance).
+        **BUT** do not change, this would break current implementations using the current format
+        (json rpc server for instance).
         # TODO: To be added to test suite.
 
         :param socket_handler:
@@ -266,8 +265,10 @@ class ApiHandler:
             block["previous_block_hash"] = db_handler.get_block_hash_for_height(block_height - 1)
             block["next_block_hash"] = db_handler.get_block_hash_for_height(block_height + 1)
             block["difficulty"] = int(db_handler.get_difficulty_for_height(block_height))
-            # This was not db format dependent, but for consistency sake and allow for other dbs to be use in the future, processed as well.
-            # int(float(db_handler.fetchone(db_handler.h, "SELECT difficulty FROM misc WHERE block_height = ?", (block['block_height'],))))
+            # This was not db format dependent,
+            # but for consistency sake and allow for other dbs to be use in the future, processed as well.
+            # int(float(db_handler.fetchone(db_handler.h, "SELECT difficulty FROM misc WHERE block_height = ?",
+            # (block['block_height'],))))
             # print(block)
             connections.send(socket_handler, block)
         except Exception as e:
@@ -294,7 +295,8 @@ class ApiHandler:
 
     def api_getaddressrange(self, socket_handler, db_handler: "DbHandler", peers):
         """
-        Returns a given number of transactions, maximum of 500 entries. Ignores blocks where no transactions of a given address happened.
+        Returns a given number of transactions, maximum of 500 entries.
+        Ignores blocks where no transactions of a given address happened.
         Reorganizes parameters to a quickly accessible json.
         Unnecessary data are removed.
 
@@ -333,21 +335,14 @@ class ApiHandler:
 
         try:
             db_handler._execute_param(db_handler.h,
-                                      ('SELECT * FROM transactions '
-                                      'WHERE block_height >= ? '
-                                      'AND block_height < ?;'),
-                                      (start_block, start_block+limit,))
+                                      'SELECT * FROM transactions WHERE block_height >= ? AND block_height < ?',
+                                      (start_block, start_block+limit, ))
             raw_txs = db_handler.h.fetchall()
 
             db_handler._execute_param(db_handler.h,
-                                      ('SELECT difficulty FROM misc '
-                                      'WHERE block_height >= ? '
-                                      'AND block_height < ?;'),
-                                      (start_block, start_block+limit,))
+                                      'SELECT difficulty FROM misc WHERE block_height >= ? AND block_height < ?',
+                                      (start_block, start_block+limit, ))
             raw_diffs = db_handler.h.fetchall()
-
-            #print(len(raw_txs),len(raw_diffs))
-            #print(raw_txs,raw_diffs)
 
             reply = json.dumps(self.blocktojsondiffs(raw_txs, raw_diffs))
 
@@ -383,11 +378,11 @@ class ApiHandler:
                 # what is the min block height to consider ?
                 block_height = max(db_handler.block_height_max()-11, since_height)
                 db_handler._execute_param(db_handler.h,
-                                          ('SELECT * FROM transactions WHERE block_height > ?;'),
+                                          'SELECT * FROM transactions WHERE block_height > ?',
                                           (block_height, ))
                 info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
-                #print(all)
+                # print(all)
             except Exception as e:
                 print(e)
                 raise
@@ -400,7 +395,8 @@ class ApiHandler:
     def api_getblockswhereoflike(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns the full transactions following a given block_height and with openfield begining by the given string
-        Returns at most transactions from 1440 blocks at a time (the most *older* ones if it truncates) so about 1 day worth of data.
+        Returns at most transactions from 1440 blocks at a time (the most *older* ones if it truncates)
+        so about 1 day worth of data.
         Maybe huge, use with caution and on restrictive queries only.
         :param socket_handler:
         :param db_handler:
@@ -411,22 +407,23 @@ class ApiHandler:
         # get the last known block
         since_height = int(connections.receive(socket_handler))
         where_openfield_like = connections.receive(socket_handler) + '%'
-        #print('api_getblockswhereoflike', since_height, where_openfield_like)
+        # print('api_getblockswhereoflike', since_height, where_openfield_like)
         try:
             try:
                 # what is the max block height to consider ?
                 block_height = min(db_handler.block_height_max(), since_height+1440)
-                #print("block_height", since_height, block_height)
-                db_handler._execute_param(db_handler.h,
-                                        'SELECT * FROM transactions WHERE block_height > ? and block_height <= ? and openfield like ?',
+                # print("block_height", since_height, block_height)
+                db_handler._execute_param(db_handler.h, "SELECT * FROM transactions "
+                                                        "WHERE block_height > ? and block_height <= ? "
+                                                        "and openfield like ?",
                                           (since_height, block_height, where_openfield_like))
                 info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
-                #print("info", info)
+                # print("info", info)
             except Exception as e:
                 self.app_log.warning(e)
                 raise
-            # Add the last fetched block so the client will be able to fetch the next block
+            # Add the last fetched block so the client will be able to fetch the next block
             info.append([block_height])
             connections.send(socket_handler, info)
         except Exception as e:
@@ -439,7 +436,8 @@ class ApiHandler:
     def api_getblocksafterwhere(self, socket_handler, db_handler: "DbHandler", peers):
         """
         Returns the full transactions following a given block_height and with specific conditions
-        Returns at most transactions from 720 blocks at a time (the most *older* ones if it truncates) so about 12 hours worth of data.
+        Returns at most transactions from 720 blocks at a time (the most *older* ones if it truncates)
+        so about 12 hours worth of data.
         Maybe huge, use with caution and restrictive queries only.
         :param socket_handler:
         :param db_handler:
@@ -474,7 +472,8 @@ class ApiHandler:
                 block_height = min(db_handler.block_height_max(), since_height+720)
                 # print("block_height",block_height)
                 db_handler._execute_param(db_handler.h,
-                                          ('SELECT * FROM transactions WHERE block_height > ? and block_height <= ? and ( '+where_assembled+')'),
+                                          "SELECT * FROM transactions "
+                                          "WHERE block_height > ? and block_height <= ? and ( " + where_assembled + ")",
                                           (since_height, block_height) + conditions_assembled)
                 info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
@@ -490,9 +489,11 @@ class ApiHandler:
 
     def api_getaddresssince(self, socket_handler, db_handler: "DbHandler", peers):
         """
-        Returns the full transactions following a given block_height (will not include the given height) for the given address, with at least min_confirmations confirmations,
+        Returns the full transactions following a given block_height (will not include the given height)
+        for the given address, with at least min_confirmations confirmations,
         as well as last considered block.
-        Returns at most transactions from 720 blocks at a time (the most *older* ones if it truncates) so about 12 hours worth of data.
+        Returns at most transactions from 720 blocks at a time (the most *older* ones if it truncates)
+        so about 12 hours worth of data.
 
         :param socket_handler:
         :param db_handler:
@@ -510,8 +511,8 @@ class ApiHandler:
                 # what is the max block height to consider ?
                 block_height = min(db_handler.block_height_max() - min_confirmations, since_height+720)
                 db_handler._execute_param(db_handler.h,
-                                          ('SELECT * FROM transactions WHERE block_height > ? AND block_height <= ? '
-                                         'AND ((address = ?) OR (recipient = ?)) ORDER BY block_height ASC'),
+                                          'SELECT * FROM transactions WHERE block_height > ? AND block_height <= ? '
+                                          'AND ((address = ?) OR (recipient = ?)) ORDER BY block_height ASC',
                                           (since_height, block_height, address, address))
                 info = db_handler.h.fetchall()
             except Exception as e:
@@ -533,12 +534,18 @@ class ApiHandler:
             # what is the max block height to consider ?
             max_block_height = db_handler.block_height_max() - minconf
             # calc balance up to this block_height
-            db_handler._execute_param(db_handler.h, "SELECT sum(amount)+sum(reward) FROM transactions WHERE recipient = ? and block_height <= ?;", (address, max_block_height))
+            db_handler._execute_param(db_handler.h,
+                                      "SELECT sum(amount)+sum(reward) FROM transactions "
+                                      "WHERE recipient = ? and block_height <= ?",
+                                      (address, max_block_height))
             credit = db_handler.h.fetchone()[0]
             if not credit:
                 credit = 0
             # debits + fee - reward
-            db_handler._execute_param(db_handler.h, "SELECT sum(amount)+sum(fee) FROM transactions WHERE address = ? and block_height <= ?;", (address, max_block_height))
+            db_handler._execute_param(db_handler.h,
+                                      "SELECT sum(amount)+sum(fee) FROM transactions "
+                                      "WHERE address = ? and block_height <= ?;",
+                                      (address, max_block_height))
             debit = db_handler.h.fetchone()[0]
             if not debit:
                 debit = 0
@@ -582,11 +589,15 @@ class ApiHandler:
         :return:
         """
         try:
-            # TODO : for this one and _get_balance, request max block height out of the loop and pass it as a param to alleviate db load
+            # TODO : for this one and _get_balance, request max block height out of the loop
+            # and pass it as a param to alleviate db load
             # what is the max block height to consider ?
             max_block_height = db_handler.block_height_max() - minconf
             # calc received up to this block_height
-            db_handler._execute_param(db_handler.h, "SELECT sum(amount) FROM transactions WHERE recipient = ? and block_height <= ?;", (address, max_block_height))
+            db_handler._execute_param(db_handler.h,
+                                      "SELECT sum(amount) FROM transactions "
+                                      "WHERE recipient = ? and block_height <= ?;",
+                                      (address, max_block_height))
             credit = db_handler.h.fetchone()[0]
             if not credit:
                 credit = 0
@@ -613,7 +624,7 @@ class ApiHandler:
             # TODO: Better to use a single sql query with all addresses listed?
             for address in addresses:
                 received += self._get_received(db_handler, address, minconf)
-            print('api_getreceived', addresses, minconf,':', received)
+            print('api_getreceived', addresses, minconf, ':', received)
             connections.send(socket_handler, received)
         except Exception as e:
             # self.app_log.warning(e)
@@ -629,7 +640,8 @@ class ApiHandler:
         """
         received = {}
         # TODO: this is temporary.
-        # Will need more work to send full featured info needed for https://bitcoin.org/en/developer-reference#listreceivedbyaddress
+        # Will need more work to send full featured info needed for
+        # https://bitcoin.org/en/developer-reference#listreceivedbyaddress
         # (confirmations and tx list)
         try:
             # get the addresses (it's a list, even if a single address)
@@ -640,9 +652,9 @@ class ApiHandler:
             include_empty = connections.receive(socket_handler)
             for address in addresses:
                 temp = self._get_received(db_handler, address, minconf)
-                if include_empty or temp >0:
+                if include_empty or temp > 0:
                     received[address] = temp
-            print('api_listreceived', addresses, minconf,':', received)
+            print('api_listreceived', addresses, minconf, ':', received)
             connections.send(socket_handler, received)
         except Exception as e:
             # self.app_log.warning(e)
@@ -667,9 +679,9 @@ class ApiHandler:
             # TODO: Better to use a single sql query with all addresses listed?
             for address in addresses:
                 temp = self._get_balance(db_handler, address, minconf)
-                if include_empty or temp >0:
+                if include_empty or temp > 0:
                     balances[address] = temp
-            print('api_listbalance', addresses, minconf,':', balances)
+            print('api_listbalance', addresses, minconf, ':', balances)
             connections.send(socket_handler, balances)
         except Exception as e:
             # self.app_log.warning(e)
@@ -692,12 +704,13 @@ class ApiHandler:
             # raw tx details
             if self.config.old_sqlite:
                 db_handler._execute_param(db_handler.h,
-                                         "SELECT * FROM transactions WHERE signature like ?1",
-                                          (transaction_id + '%',))
+                                          "SELECT * FROM transactions WHERE signature like ?1",
+                                          (transaction_id + '%', ))
             else:
                 db_handler._execute_param(db_handler.h,
-                                        "SELECT * FROM transactions WHERE substr(signature,1,4)=substr(?1,1,4) and  signature like ?1",
-                                          (transaction_id+'%',))
+                                          "SELECT * FROM transactions "
+                                          "WHERE substr(signature,1,4)=substr(?1,1,4) and  signature like ?1",
+                                          (transaction_id+'%', ))
             raw = db_handler.h.fetchone()
             if not format:
                 connections.send(socket_handler, raw)
@@ -714,19 +727,20 @@ class ApiHandler:
             transaction['amount'] = raw[4]
             transaction['fee'] = raw[8]
             transaction['reward'] = raw[9]
-            transaction['operation']= raw[10]
+            transaction['operation'] = raw[10]
             transaction['openfield'] = raw[11]
             try:
                 transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
-            except:
+            except Exception:
                 transaction['pubkey'] = raw[6]  # support new pubkey schemes
             transaction['blockhash'] = raw[7]
             transaction['blockheight'] = raw[0]
             transaction['confirmations'] = block_height - raw[0]
             # Get more info on the block the tx is in.
             db_handler._execute_param(db_handler.h,
-                                    "SELECT timestamp, recipient FROM transactions WHERE block_height= ? AND reward > 0",
-                                      (raw[0],))
+                                      "SELECT timestamp, recipient FROM transactions "
+                                      "WHERE block_height= ? AND reward > 0",
+                                      (raw[0], ))
             block_data = db_handler.h.fetchone()
             transaction['blocktime'] = block_data[0]
             transaction['blockminer'] = block_data[1]
@@ -738,7 +752,8 @@ class ApiHandler:
 
     def api_gettransactionbysignature(self, socket_handler, db_handler: "DbHandler", peers):
         """
-        Returns the full transaction matching a signature. Takes signature and format as params (json output if format is True)
+        Returns the full transaction matching a signature.
+        Takes signature and format as params (json output if format is True)
         :param socket_handler:
         :param db_handler:
         :param peers:
@@ -748,17 +763,18 @@ class ApiHandler:
         try:
             # get the txid
             signature = connections.receive(socket_handler)
-            # and format
+            # and format
             format = connections.receive(socket_handler)
             # raw tx details
             if self.config.old_sqlite:
                 db_handler._execute_param(db_handler.h,
-                                         "SELECT * FROM transactions WHERE signature = ?1",
-                                          (signature,))
+                                          "SELECT * FROM transactions WHERE signature = ?1",
+                                          (signature, ))
             else:
                 db_handler._execute_param(db_handler.h,
-                                         "SELECT * FROM transactions WHERE substr(signature,1,4)=substr(?1,1,4) and  signature = ?1",
-                                          (signature,))
+                                          "SELECT * FROM transactions "
+                                          "WHERE substr(signature,1,4)=substr(?1,1,4) and  signature = ?1",
+                                          (signature, ))
             raw = db_handler.h.fetchone()
             if not format:
                 connections.send(socket_handler, raw)
@@ -779,15 +795,16 @@ class ApiHandler:
             transaction['openfield'] = raw[11]
             try:
                 transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
-            except:
+            except Exception:
                 transaction['pubkey'] = raw[6]  # support new pubkey schemes
             transaction['blockhash'] = raw[7]
             transaction['blockheight'] = raw[0]
             transaction['confirmations'] = block_height - raw[0]
             # Get more info on the block the tx is in.
             db_handler._execute_param(db_handler.h,
-                                    "SELECT timestamp, recipient FROM transactions WHERE block_height= ? AND reward > 0",
-                                      (raw[0],))
+                                      "SELECT timestamp, recipient FROM transactions "
+                                      "WHERE block_height= ? AND reward > 0",
+                                      (raw[0], ))
             block_data = db_handler.h.fetchone()
             transaction['blocktime'] = block_data[0]
             transaction['blockminer'] = block_data[1]
@@ -807,7 +824,7 @@ class ApiHandler:
         print('api_getpeerinfo')
         # TODO: Get what we can from peers, more will come when connections and connection stats will be modular, too.
         try:
-            info = [{'id':id, 'addr':ip, 'inbound': True} for id, ip in enumerate(peers.consensus)]
+            info = [{'id': id, 'addr': ip, 'inbound': True} for id, ip in enumerate(peers.consensus)]
             # TODO: peers will keep track of extra info, like port, last time, block_height aso.
             # TODO: add outbound connection
             connections.send(socket_handler, info)
@@ -836,13 +853,15 @@ class ApiHandler:
                 # raw tx details
                 if self.config.old_sqlite:
                     db_handler._execute_param(db_handler.h,
-                                            "SELECT * FROM transactions WHERE recipient IN {} AND signature LIKE ?1".format(recipients),
+                                              "SELECT * FROM transactions WHERE recipient IN {} AND signature LIKE ?1"
+                                              .format(recipients),
                                               (transaction_id + '%', ))
                 else:
                     db_handler._execute_param(db_handler.h,
-                                             "SELECT * FROM transactions WHERE recipient IN {} AND substr(signature,1,4)=substr(?1,1,4) and signature LIKE ?1".format(
-                                                 recipients),
-                                              (transaction_id + '%',))
+                                              "SELECT * FROM transactions "
+                                              "WHERE recipient IN {} AND substr(signature,1,4)=substr(?1,1,4) "
+                                              "and signature LIKE ?1".format(recipients),
+                                              (transaction_id + '%', ))
 
                 raw = db_handler.h.fetchone()
                 if not format:
@@ -850,7 +869,7 @@ class ApiHandler:
                     print('api_gettransaction_for_recipients', format, raw)
                     return
 
-                # current block height, needed for confirmations #
+                # current block height, needed for confirmations #
                 block_height = db_handler.block_height_max()
 
                 transaction['txid'] = transaction_id
@@ -861,12 +880,12 @@ class ApiHandler:
                 transaction['amount'] = raw[4]
                 transaction['fee'] = raw[8]
                 transaction['reward'] = raw[9]
-                transaction['operation']= raw[10]
+                transaction['operation'] = raw[10]
                 transaction['openfield'] = raw[11]
 
                 try:
                     transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
-                except:
+                except Exception:
                     transaction['pubkey'] = raw[6]  # support new pubkey schemes
 
                 transaction['blockhash'] = raw[7]
@@ -874,8 +893,9 @@ class ApiHandler:
                 transaction['confirmations'] = block_height - raw[0]
                 # Get more info on the block the tx is in.
                 db_handler._execute_param(db_handler.h,
-                                        "SELECT timestamp, recipient FROM transactions WHERE block_height= ? AND reward > 0",
-                                          (raw[0],))
+                                          "SELECT timestamp, recipient FROM transactions "
+                                          "WHERE block_height= ? AND reward > 0",
+                                          (raw[0], ))
                 block_data = db_handler.h.fetchone()
                 transaction['blocktime'] = block_data[0]
                 transaction['blockminer'] = block_data[1]
