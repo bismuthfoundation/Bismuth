@@ -8,11 +8,17 @@ from time import sleep
 
 import pytest
 
+# Regnet on Legacy db
+REGNET_PARAM = "regnet"
+
+# Regnet on V2 DB
+# REGNET_PARAM = "regnet2"
+
 
 @pytest.fixture(scope="session")
 def myserver():
     chdir('..')
-    p = Popen(["python3", "node.py", "regnet"])
+    p = Popen(["python3", "node.py", REGNET_PARAM])
     chdir('tests')
     sleep(5)  # Get some time for the node to boot up on slow machines
     yield
