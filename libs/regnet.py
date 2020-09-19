@@ -91,7 +91,7 @@ def generate_one_block(blockhash: str, mempool_txs: List[tuple], node: "Node", d
                                  int.from_bytes(sha224((prefix + nonce + blockhash).encode("utf-8")).digest(), 'big')))]
                 if possibles:
                     nonce = seed + possibles[0]
-                    node.logger.app_log.warning("Generate got a block in {} tries len {}".format(i, len(possibles)))
+                    node.logger.app_log.warning("Generate got a block in {} tries len {}".format(j, len(possibles)))
                     # assemble block with mp data
                     txs = []
                     for n in range(TX_PER_BLOCK):

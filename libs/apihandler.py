@@ -238,7 +238,7 @@ class ApiHandler:
         :return:
         """
 
-        block_hash = connections.receive(socket_handler)  # hex string
+        block_hash = connections.receive(socket_handler)  # hex string expected
         block = db_handler.get_block_from_hash(block_hash)
         blocks = block.to_blocks_dict()
         connections.send(socket_handler, blocks)

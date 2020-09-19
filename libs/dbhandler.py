@@ -16,7 +16,7 @@ from typing import Union, List
 
 from bismuthcore.block import Block
 from bismuthcore.compat import quantize_eight
-from bismuthcore.helpers import fee_calculate, K1E8
+from bismuthcore.helpers import fee_calculate, K1E8, int_to_f8
 from bismuthcore.transaction import Transaction
 from bismuthcore.transactionslist import TransactionsList
 from libs.fork import Fork
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from libs.logger import Logger
 
 
-__version__ = "1.0.10"
+__version__ = "1.0.11"
 
 """
 See https://gist.github.com/rianhunter/10bfcff17c18d112de16
@@ -76,7 +76,7 @@ class DbHandler:
         self.index.text_factory = str
         self.index.execute('PRAGMA case_sensitive_like = 1')
         self.index_cursor = self.index.cursor()  # Cursor to the index db
-        # EGG_EVO: cursors to be moved to private properties at a later stage.
+        # TODO: cursors to be moved to private properties (or better, open/closed when needed) at a later stage.
 
         self.hdd = sqlite3.connect(self.ledger_path, timeout=1)
         if self.trace_db_calls:
@@ -412,16 +412,14 @@ class DbHandler:
         """
         # Only things really used from here are block_height, block_hash.
         self._execute(self.c, 'SELECT * FROM transactions where reward != 0 ORDER BY block_height DESC LIMIT 1')
-        # TODO EGG_EVO: benchmark vs "SELECT * FROM transactions
-        # WHERE reward != 0 AND block_height= (select max(block_height) from transactions)")
+        # TODO: benchmark vs
+        # SELECT * FROM transactions WHERE reward != 0 AND block_height= (select max(block_height) from transactions)
         # Q: Does it help or make it safer/faster to add AND reward > 0 ?
         if self.legacy_db:
             transaction = Transaction.from_legacy(self.c.fetchall()[0])
         else:
             # V2
             transaction = Transaction.from_v2(self.c.fetchall()[0])
-        # now returns the transaction object itself, higher level adjustments processed.
-        # return transaction.to_dict(legacy=True)
         return transaction
 
     def last_block_hash(self) -> str:
@@ -495,7 +493,7 @@ class DbHandler:
         """
         # mempool fees
         base_mempool = mempool.mp_get(balance_address)
-        # TODO: EGG_EVO Here, we get raw txs. we should ask the mempool object for its mempool balance,
+        # TODO: Here, we get raw txs. we should ask the mempool object for its mempool balance,
         # not rely on a specific low level format.
         debit_mempool = 0
         if base_mempool:
@@ -507,54 +505,72 @@ class DbHandler:
             debit_mempool = 0
         # /mempool fees
 
-        # TODO: EGG_EVO this will be completely rewritten when using int db
-        credit_ledger = Decimal("0")
-        try:
-            self._execute_param(self.h, "SELECT amount FROM transactions WHERE recipient = ?;", (balance_address, ))
-            entries = self.h.fetchall()
-        except Exception:
-            entries = []
-        try:
-            for entry in entries:
-                credit_ledger = quantize_eight(credit_ledger) + quantize_eight(entry[0])
-                credit_ledger = 0 if credit_ledger is None else credit_ledger
-        except Exception:
-            credit_ledger = 0
-        fees = Decimal("0")
-        debit_ledger = Decimal("0")
-        try:
-            self._execute_param(self.h, "SELECT fee, amount FROM transactions WHERE address = ?",
-                                (balance_address, ))
-            entries = self.h.fetchall()
-        except Exception:
-            entries = []
-        try:
-            for entry in entries:
-                fees = quantize_eight(fees) + quantize_eight(entry[0])
-                fees = 0 if fees is None else fees
-        except Exception:
-            fees = 0
-        try:
-            for entry in entries:
-                debit_ledger = debit_ledger + Decimal(entry[1])
-                debit_ledger = 0 if debit_ledger is None else debit_ledger
-        except Exception:
-            debit_ledger = 0
+        if not self.legacy_db:
+            self._execute_param(self.h, "SELECT sum(amount) FROM transactions WHERE recipient = ?", (balance_address, ))
+            credit_ledger = int_to_f8(self.h.fetchall()[0][0])
+        else:
+            credit_ledger = Decimal("0")
+            try:
+                self._execute_param(self.h, "SELECT amount FROM transactions WHERE recipient = ?", (balance_address, ))
+                entries = self.h.fetchall()
+            except Exception:
+                entries = []
+            try:
+                for entry in entries:
+                    credit_ledger = quantize_eight(credit_ledger) + quantize_eight(entry[0])
+                    credit_ledger = 0 if credit_ledger is None else credit_ledger
+            except Exception:
+                credit_ledger = 0
+
+        if not self.legacy_db:
+            self._execute_param(self.h,
+                                "SELECT sum(fee), sum(amount) FROM transactions WHERE address = ?",
+                                (balance_address,))
+            sums = self.h.fetchall()[0]
+            fees = int_to_f8(sums[0])
+            debit_ledger = int_to_f8(sums[1])
+        else:
+            fees = Decimal("0")
+            debit_ledger = Decimal("0")
+            try:
+                self._execute_param(self.h, "SELECT fee, amount FROM transactions WHERE address = ?",
+                                    (balance_address, ))
+                entries = self.h.fetchall()
+            except Exception:
+                entries = []
+            try:
+                for entry in entries:
+                    fees = quantize_eight(fees) + quantize_eight(entry[0])
+                    fees = 0 if fees is None else fees
+            except Exception:
+                fees = 0
+            try:
+                for entry in entries:
+                    debit_ledger = debit_ledger + Decimal(entry[1])
+                    debit_ledger = 0 if debit_ledger is None else debit_ledger
+            except Exception:
+                debit_ledger = 0
+
         debit = quantize_eight(debit_ledger + debit_mempool)
-        rewards = Decimal("0")
-        try:
-            self._execute_param(self.h, "SELECT reward FROM transactions WHERE recipient = ?",
-                                (balance_address, ))
-            entries = self.h.fetchall()
-        except Exception:
-            entries = []
-        try:
-            for entry in entries:
-                rewards = quantize_eight(rewards) + quantize_eight(entry[0])
-                rewards = 0 if str(rewards) == "0E-8" else rewards
-                rewards = 0 if rewards is None else rewards
-        except Exception:
-            rewards = 0
+
+        if not self.legacy_db:
+            self._execute_param(self.h, "SELECT sum(reward) FROM transactions WHERE recipient = ?", (balance_address,))
+            rewards = int_to_f8(self.h.fetchall()[0][0])
+        else:
+            rewards = Decimal("0")
+            try:
+                self._execute_param(self.h, "SELECT reward FROM transactions WHERE recipient = ?",
+                                    (balance_address, ))
+                entries = self.h.fetchall()
+            except Exception:
+                entries = []
+            try:
+                for entry in entries:
+                    rewards = quantize_eight(rewards) + quantize_eight(entry[0])
+                    rewards = 0 if str(rewards) == "0E-8" else rewards
+                    rewards = 0 if rewards is None else rewards
+            except Exception:
+                rewards = 0
 
         balance = quantize_eight(credit_ledger - debit - fees + rewards)
         balance_no_mempool = float(credit_ledger) - float(debit_ledger) - float(fees) + float(rewards)
@@ -690,13 +706,13 @@ class DbHandler:
         # Note: this returns the first it finds.
         # Could be dependent of the local db. *if* one address was to have several different pubkeys (I don't see how)
         # could be problematic.
-        # EGG_EVO: if new db, convert bin to hex
         result = self.c.fetchall()
         if not result:
             # No match
             return ""
         pubkey = self.c.fetchall()[0][0]
         if not self.legacy_db:
+            # if new db, convert bin to hex
             pubkey = b64encode(pubkey).decode("utf-8")
         return pubkey
 
@@ -719,7 +735,7 @@ class DbHandler:
         """
         blocks_fetched = []
         # Strangely, block height is not included, neither are block_hash, fee, reward
-        # EGG_EVO: So this is a new alternate format to potentially take into account into BismuthCore
+        # So this is a new alternate format to potentially take into account into BismuthCore
         # But this is only used to feed a peer, over the network.
         # So maybe we better have handle it by hand here.
         # Update: in fact, same format as what is hashed. Done, see Transaction.to_tuple_for_block_hash
@@ -752,7 +768,7 @@ class DbHandler:
         :param block_height:
         :return:
         """
-        # EGG_EVO: This sql request is the same in both cases (int/float), but...
+        # This sql request is the same in both cases (int/float), but...
         self._execute_param(self.h, "SELECT * FROM transactions WHERE block_height = ?", (block_height, ))
         block_desired_result = self.h.fetchall()
         # from_legacy only is valid for legacy db, so here we need to add context dependent code.
@@ -792,11 +808,15 @@ class DbHandler:
         :param hex_hash:
         :return:
         """
-        # EGG_EVO: hash is currently supposed to be into hex format.
+        # hash is currently supposed to be into hex format.
         # To be tweaked to allow either bin or hex and convert or not depending on the underlying db.
 
-        # EGG_EVO: This sql request is the same in both cases (int/float), but...
-        self._execute_param(self.h, "SELECT * FROM transactions WHERE block_hash = ? limit 1", (hex_hash, ))
+        # This sql request is the same in both cases (int/float), but...
+        if self.legacy_db:
+            hash_db = hex_hash
+        else:
+            hash_db = Binary(bytes.fromhex(hex_hash))
+        self._execute_param(self.h, "SELECT * FROM transactions WHERE block_hash = ?", (hash_db, ))
         block_desired_result = self.h.fetchall()
         # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
         # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
@@ -804,9 +824,7 @@ class DbHandler:
         if self.legacy_db:
             transaction_list = [Transaction.from_legacy(entry) for entry in block_desired_result]
         else:
-            # from_v2 is TODO EGG_EVO - to add to BismuthCore. Not needed for legacy -> V2 conversion.
-            print("get_address_range Transaction.from_v2 not supported yet")
-            sys.exit()
+            transaction_list = [Transaction.from_v2(entry) for entry in block_desired_result]
         return Block(transaction_list)
 
     def get_address_range(self, address: str, starting_block: int, limit: int) -> TransactionsList:
@@ -823,14 +841,12 @@ class DbHandler:
         if self.legacy_db:
             transaction_list = [Transaction.from_legacy(entry) for entry in transactions]
         else:
-            # from_v2 is TODO EGG_EVO - to add to BismuthCore. Not needed for legacy -> V2 conversion.
-            print("get_address_range Transaction.from_v2 not supported yet")
-            sys.exit()
+            transaction_list = [Transaction.from_v2(entry) for entry in transactions]
         return TransactionsList(transaction_list)
 
     def encoded_signature_exists(self, encoded_signature: str) -> bool:
         """Tells whether that transaction already exists in the ledger"""
-        # EGG_EVO: needs convert for V2 storage
+        # needs convert for V2 storage - TODO: test
         if not self.legacy_db:
             encoded_signature = Binary(b64decode(encoded_signature))
         if self.old_sqlite:
@@ -862,8 +878,8 @@ class DbHandler:
 
     # ====  Maintenance methods ====
 
-    def backup_higher(self, block_height: int):
-        # EGG_EVO: returned data is dependent of db format.
+    def backup_higher(self, block_height: int) -> List[tuple]:
+        # Returned data is dependent of db format.
         # Is this an issue if consistent? What is it then used for?
         # => It's used in node.py, blocknf: backup txs are re-inserted into mempool via mp.MEMPOOL.merge()
         # which expects legacy format.
@@ -871,6 +887,11 @@ class DbHandler:
         # "backup higher blocks than given, takes data from c, which normally means RAM"
         self._execute_param(self.c, "SELECT * FROM transactions WHERE block_height >= ?", (block_height, ))
         backup_data = self.c.fetchall()
+        if self.legacy_db:
+            pass
+        else:
+            transaction_list = [Transaction.from_v2(entry) for entry in backup_data]
+            backup_data = [transaction.to_tuple() for transaction in transaction_list]
 
         self._execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
                             (block_height, -block_height))  # this belongs to rollback_under
@@ -1151,7 +1172,6 @@ class DbHandler:
         self.commit(self.conn)
 
     # ====  Core helpers that should not be called from the outside ====
-    # TODO EGG_EVO: Stopped there for now.
 
     def commit(self, connection: sqlite3.Connection) -> None:
         """Secure commit for slow nodes"""
@@ -1212,7 +1232,6 @@ class DbHandler:
         if param is None:
             self._execute(cursor, query)
         else:
-
             self._execute_param(cursor, query, param)
         return cursor.fetchall()
 

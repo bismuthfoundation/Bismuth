@@ -50,10 +50,13 @@ def test_api_getblockfromhash(myserver):
     sleep(1)
     data1 = client.command(command="addlistlimjson", options=[client.address, 1])
     block_hash = data1[0]['block_hash']
+    print("block_hash", block_hash)
     data2 = client.command(command="api_getblockfromhash", options=[block_hash])
     block_height = str(data1[0]['block_height'])
+    print("block_hash2", data2[block_height]['block_hash'])
     n = len(data2[block_height]['transactions'])
-    assert data2[block_height]['block_hash'] == block_hash and n == 2
+    assert data2[block_height]['block_hash'] == block_hash
+    assert n == 2
 
 
 def test_db_blockhash(myserver):
