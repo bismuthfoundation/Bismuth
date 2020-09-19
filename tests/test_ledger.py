@@ -11,7 +11,9 @@ def test_blocklast_json(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     data1 = client.command(command="blocklast")
     data2 = client.command(command="blocklastjson")
-    assert (int(data1[0]) == data2['block_height']) and (data1[7] == data2['block_hash'])
+    # note: better split the asserts, one by line, so when it errors we have the why and value
+    assert int(data1[0]) == data2['block_height']
+    assert data1[7] == data2['block_hash']
 
 
 def test_balance_json(myserver):
@@ -19,8 +21,8 @@ def test_balance_json(myserver):
     data1 = client.command(command="balanceget", options=[client.address])
     data2 = client.command(command="balancegetjson", options=[client.address])
     assert data1[0] == data2['balance'] and data1[1] == data2['credit'] and \
-           data1[2] == data2['debit'] and data1[3] == data2['fees'] and \
-           data1[4] == data2['rewards'] and data1[5] == data2['balance_no_mempool']
+        data1[2] == data2['debit'] and data1[3] == data2['fees'] and \
+        data1[4] == data2['rewards'] and data1[5] == data2['balance_no_mempool']
 
 
 def test_addlistlim_json(myserver):
@@ -34,12 +36,12 @@ def test_addlistlim_json(myserver):
     data1 = client.command(command="addlistlim", options=[client.address, 1])
     data2 = client.command(command="addlistlimjson", options=[client.address, 1])
     assert data1[0][0] == data2[0]['block_height'] and data1[0][1] == data2[0]['timestamp'] and \
-       data1[0][2] == data2[0]['address'] and data1[0][3] == data2[0]['recipient'] and \
-       data1[0][4] == data2[0]['amount'] and data1[0][5] == data2[0]['signature'] and \
-       data1[0][6] == data2[0]['public_key'] and data1[0][7] == data2[0]['block_hash'] and \
-       data1[0][8] == data2[0]['fee'] and data1[0][9] == data2[0]['reward'] and \
-       data1[0][10] == data2[0]['operation'] and data1[0][11] == data2[0]['openfield'] and \
-       data1[0][10] == op and data1[0][11] == data
+        data1[0][2] == data2[0]['address'] and data1[0][3] == data2[0]['recipient'] and \
+        data1[0][4] == data2[0]['amount'] and data1[0][5] == data2[0]['signature'] and \
+        data1[0][6] == data2[0]['public_key'] and data1[0][7] == data2[0]['block_hash'] and \
+        data1[0][8] == data2[0]['fee'] and data1[0][9] == data2[0]['reward'] and \
+        data1[0][10] == data2[0]['operation'] and data1[0][11] == data2[0]['openfield'] and \
+        data1[0][10] == op and data1[0][11] == data
 
 
 def test_api_getblockfromhash(myserver):
@@ -50,11 +52,10 @@ def test_api_getblockfromhash(myserver):
     sleep(1)
     data1 = client.command(command="addlistlimjson", options=[client.address, 1])
     block_hash = data1[0]['block_hash']
-    print("block_hash", block_hash)
     data2 = client.command(command="api_getblockfromhash", options=[block_hash])
     block_height = str(data1[0]['block_height'])
-    print("block_hash2", data2[block_height]['block_hash'])
     n = len(data2[block_height]['transactions'])
+    # note: better split the asserts, one by line, so when it errors we have the why and value
     assert data2[block_height]['block_hash'] == block_hash
     assert n == 2
 
@@ -70,7 +71,7 @@ def test_db_blockhash(myserver):
     db_block_hash = r[1][7]
 
     amount = '0.00000000'
-    timestamp = str("%.2f" % float(r[1][1]))
+    timestamp = f"{float(r[1][1]):.2f}"  # prefer to python2 style %
     tx_list = []
     tx_list.append((timestamp, r[1][2], r[1][3], amount, r[1][5], r[1][6], r[1][10], r[1][11]))
     block_hash = sha224((str(tx_list) + db_block_hash_prev).encode("utf-8")).hexdigest()

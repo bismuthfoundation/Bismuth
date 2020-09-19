@@ -38,8 +38,6 @@ local_address = load_local_address()
 @click.option("--host", "-h", default="127.0.0.1", help="IP")
 @click.option("--timeout", "-t", default=30, help="Timeout in seconds")
 # @click.option("--format", "-f", is_flag=True) #  not implemented yet
-
-
 @click.pass_context
 def cli(ctx, mode, host, timeout):
     ctx.obj = Config(mode, host, timeout)

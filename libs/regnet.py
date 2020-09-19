@@ -36,11 +36,13 @@ SQL_INDEX = ["CREATE TABLE aliases (block_height INTEGER, address, alias)",
              "CREATE TABLE tokens (block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)" ]
 
 # TODO EGG_EVO: legacy structure is hardcoded here
-SQL_LEDGER = ["CREATE TABLE misc (block_height INTEGER, difficulty TEXT)",
+SQL_LEDGER = ["CREATE TABLE misc (block_height INTEGER PRIMARY KEY, difficulty TEXT)",
 
               "CREATE TABLE transactions (block_height INTEGER, timestamp NUMERIC, address TEXT, recipient TEXT, \
               amount NUMERIC, signature TEXT, public_key TEXT, block_hash TEXT, fee NUMERIC, reward NUMERIC, \
               operation TEXT, openfield TEXT)",
+
+              "CREATE INDEX IF NOT EXISTS `Block Height Index` ON `transactions` (`block_height`)",
 
               "INSERT INTO transactions (openfield, operation, reward, fee, block_hash, public_key, signature, \
               amount, recipient, address, timestamp, block_height) \
@@ -51,6 +53,26 @@ SQL_LEDGER = ["CREATE TABLE misc (block_height INTEGER, difficulty TEXT)",
 
               "INSERT INTO misc (difficulty, block_height) VALUES ({},1)".format(REGNET_DIFF)]
 
+
+SQL_LEDGER_V2 = ["CREATE TABLE misc (block_height INTEGER PRIMARY KEY, difficulty TEXT)",
+
+                 "CREATE TABLE IF NOT EXISTS `transactions` (`block_height` INTEGER, "
+                 "`timestamp` NUMERIC, `address` TEXT, `recipient` TEXT, "
+                 "`amount` INTEGER, `signature` BINARY, `public_key` BINARY, "
+                 "`block_hash` BINARY, `fee` INTEGER, `reward` INTEGER,"
+                 "`operation` TEXT, `openfield` TEXT)",
+
+                 "CREATE INDEX IF NOT EXISTS `Block Height Index` ON `transactions` (`block_height`)",
+
+                 "INSERT INTO transactions (openfield, operation, reward, fee, block_hash, public_key, signature, \
+                 amount, recipient, address, timestamp, block_height) \
+                 VALUES ('genesis', 1, 1, 0, x'7a0f384876aca3871adbde8622a87f8b971ede0ed8ee10425e3958a1', \
+                 null, \
+                 null, \
+                 0, '4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed', 'genesis', 1493640955.47, 1);",
+
+                 "INSERT INTO misc (difficulty, block_height) VALUES ({},1)".format(REGNET_DIFF)
+                 ]
 
 HASHCOUNT = 10
 
@@ -73,7 +95,7 @@ def sql_trace_callback(log, id_str, statement):
 
 
 def generate_one_block(blockhash: str, mempool_txs: List[tuple], node: "Node", db_handler: "DbHandler") -> str:
-    """BEWARE: mempool_txs is a list of tuple, not Transaction objects"""
+    """BEWARE: mempool_txs is a list of legacy tuple, not Transaction objects"""
     try:
         if not blockhash:
             node.logger.app_log.warning("Bad blockhash")
@@ -183,8 +205,12 @@ def init(node: "Node", app_log, trace_db_calls: bool=False) -> None:
     with sqlite3.connect(REGNET_DB) as source_db:
         if trace_db_calls:
             source_db.set_trace_callback(functools.partial(sql_trace_callback, app_log, "REGNET-INIT"))
-        for request in SQL_LEDGER:
-            source_db.execute(request)
+        if node.config.legacy_db:
+            for request in SQL_LEDGER:
+                source_db.execute(request)
+        else:
+            for request in SQL_LEDGER_V2:
+                source_db.execute(request)
         source_db.commit()
     # create empty reg db
     with sqlite3.connect(REGNET_INDEX) as source_db:

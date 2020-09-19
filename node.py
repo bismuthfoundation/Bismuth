@@ -38,7 +38,7 @@ from libs.node import Node
 from libs.nodebackgroundthread import NodeBackgroundThread
 
 
-VERSION = "5.0.34-evo"  # Experimental db-evolution branch
+VERSION = "5.0.35-evo"  # Experimental db-evolution branch
 
 
 appname = "Bismuth"
@@ -865,6 +865,10 @@ if __name__ == "__main__":
         _, datadir = argv
         if "regnet" == datadir:
             force_regnet = True
+            datadir = "./datadir"
+        elif "regnet2" == datadir:
+            force_regnet = True
+            test_v2 = True
             datadir = "./datadir"
         elif "V2" == datadir:
             test_v2 = True
