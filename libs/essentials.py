@@ -8,17 +8,17 @@ import json
 import os
 import re
 import time
+from decimal import Decimal
+from typing import TYPE_CHECKING
+from typing import Union
 
 # from Crypto import Random
 from Cryptodome.PublicKey import RSA
 
-from decimal import Decimal
 from bismuthcore.simplecrypt import decrypt
-from typing import Union
 from polysign.signer import SignerType
 from polysign.signerfactory import SignerFactory
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     pass
 
@@ -98,12 +98,14 @@ def percentage_in(individual, whole):
     return (float(list(whole).count(individual) / float(len(whole)))) * 100
 
 
-def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, public_key_b64encoded) -> Union[bool, tuple]:
+def sign_rsa(timestamp, address, recipient, amount, operation,
+             openfield, key, public_key_b64encoded) -> Union[bool, tuple]:
     # TODO: move, make use of polysign module
     if not key:
         raise BaseException("The wallet is locked, you need to provide a decrypted key")
     try:
-        transaction = (str(timestamp), str(address), str(recipient), '%.8f' % float(amount), str(operation), str(openfield))
+        transaction = (str(timestamp), str(address), str(recipient), '%.8f' % float(amount),
+                       str(operation), str(openfield))
         # this is signed, float kept for compatibility
         buffer = str(transaction).encode("utf-8")
         signer = SignerFactory.from_private_key(key.exportKey().decode("utf-8"), SignerType.RSA)
@@ -114,7 +116,7 @@ def sign_rsa(timestamp, address, recipient, amount, operation, openfield, key, p
                   str(signature_enc.decode("utf-8")), str(public_key_b64encoded.decode("utf-8")), \
                   str(operation), str(openfield)
         return full_tx
-    except:
+    except Exception:
         return False
 
 
@@ -176,7 +178,7 @@ def keys_load(privkey_filename: str= "privkey.der", pubkey_filename: str= "pubke
             # public_key = key.publickey()
             encrypted = False
             unlocked = True
-        except:  # encrypted
+        except Exception:  # encrypted
             encrypted = True
             unlocked = False
             key = None
@@ -196,7 +198,8 @@ def keys_load(privkey_filename: str= "privkey.der", pubkey_filename: str= "pubke
         print("Upgrading wallet")
         keys_save(private_key_readable, public_key_readable, address, keyfile)
 
-        return key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address, keyfile
+        return key, public_key_readable, private_key_readable, encrypted, \
+               unlocked, public_key_b64encoded, address, keyfile
 
 
 def keys_unlock(private_key_encrypted: str) -> tuple:
@@ -223,7 +226,7 @@ def keys_load_new(keyfile: str="wallet.der"):
         encrypted = False
         unlocked = True
 
-    except:  # encrypted
+    except Exception:  # encrypted
         encrypted = True
         unlocked = False
         key = None

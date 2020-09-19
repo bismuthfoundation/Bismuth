@@ -11,11 +11,6 @@ from libs.dbhandler import DbHandler
 from libs.digest import digest_block
 from libs.digestv2 import digest_block_v2
 
-# import sys
-# from libs import node, keys, client
-# import time
-# from decimal import Decimal
-# from quantizer import quantize_two, quantize_eight, quantize_ten
 
 # See why we do that: https://stackoverflow.com/questions/39740632/python-type-hinting-without-cyclic-imports
 # I'm not using from __future__ because some nodes still run on python 3.6

@@ -2,36 +2,35 @@
 WIP - Core class handling the Bismuth node.
 """
 
-import threading
-import queue
 import glob
 import os
-import tarfile
-import sys
-from sys import exc_info
 import platform
-from time import sleep, time as ttime
-from shutil import copy
+import queue
+import sys
+import tarfile
+import threading
 from math import floor
+from shutil import copy
+from sys import exc_info
+from time import sleep, time as ttime
+from typing import TYPE_CHECKING
 
-from libs import mining_heavy3, regnet
 from bismuthcore.helpers import just_int_from, download_file, py_version
-from libs.essentials import keys_check, keys_load_new  # To be handled by polysign
-from libs.difficulty import difficulty  # where does this belongs? check usages
-
-from libs.config import Config
-from libs.solodbhandler import SoloDbHandler
+from libs import mempool as mp
+from libs import mining_heavy3, regnet
 from libs.apihandler import ApiHandler
+from libs.config import Config
+from libs.difficulty import difficulty  # where does this belongs? check usages
+from libs.essentials import keys_check, keys_load_new  # To be handled by polysign
 from libs.peershandler import Peers
 from libs.pluginmanager import PluginManager
-from libs import mempool as mp
+from libs.solodbhandler import SoloDbHandler
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
 
 
-__version__ = "0.0.15"
+__version__ = "0.0.16"
 
 
 class Node:
@@ -239,7 +238,7 @@ class Node:
 
             with tarfile.open(archive_path) as tar:
                 tar.extractall("static/")  # NOT COMPATIBLE WITH CUSTOM PATH CONFS
-        except:
+        except Exception:
             self.logger.app_log.warning("Something went wrong during bootstrapping, aborted")
             raise
 
@@ -247,7 +246,7 @@ class Node:
         # Was named "check_integrity". It was rather a crude db schema check,
         # will need adjustments to handle the various possible dbs.
         # some parts below also where in "initial_db_check()" but also are schema checks. merged into here
-        #if not os.path.exists("static"):
+        # if not os.path.exists("static"):
         #    os.mkdir("static")
         redownload = False
         # force bootstrap via adding an empty "fresh_sync" file in the dir.
@@ -268,7 +267,7 @@ class Node:
             if command_field_type != "TEXT":
                 redownload = True
                 self.logger.app_log.error("Database column type outdated for Command field")
-        except:
+        except Exception:
             redownload = True
         if redownload and self.is_mainnet:
             self.bootstrap()
@@ -350,10 +349,14 @@ class Node:
         Would be faster doing it for all addresses at once.
         Do more tests. Test on freshly converted ledger (no prior hyper) so all is compressible.
         
-        explain query plan SELECT sum(amount + reward) FROM transactions WHERE recipient = "4b35e6dc26850d5f52c9e75ac28e22566f0e90dd25d953553079cd65" AND (block_height < 1000000 AND block_height > -1000000);
+        explain query plan SELECT sum(amount + reward) FROM transactions 
+        WHERE recipient = "4b35e6dc26850d5f52c9e75ac28e22566f0e90dd25d953553079cd65" 
+        AND (block_height < 1000000 AND block_height > -1000000);
         0|0|0|SEARCH TABLE transactions USING INDEX Block Height Index (block_height>? AND block_height<?)
         
-        explain SELECT sum(amount + reward) FROM transactions WHERE recipient = "4b35e6dc26850d5f52c9e75ac28e22566f0e90dd25d953553079cd65" AND (block_height < 1000000 AND block_height > -1000000);
+        explain SELECT sum(amount + reward) FROM transactions 
+        WHERE recipient = "4b35e6dc26850d5f52c9e75ac28e22566f0e90dd25d953553079cd65" 
+        AND (block_height < 1000000 AND block_height > -1000000);
         0|Init|0|23|0||00|
         1|Null|0|1|3||00|
         2|OpenRead|0|2|0|10|00|
@@ -384,7 +387,9 @@ class Node:
         
         
         Avec index recipient:
-        explain query plan SELECT sum(amount + reward) FROM transactions WHERE recipient = "4b35e6dc26850d5f52c9e75ac28e22566f0e90dd25d953553079cd65" AND (block_height < 1000000 AND block_height > -1000000);
+        explain query plan SELECT sum(amount + reward) FROM transactions 
+        WHERE recipient = "4b35e6dc26850d5f52c9e75ac28e22566f0e90dd25d953553079cd65" 
+        AND (block_height < 1000000 AND block_height > -1000000);
         0|0|0|SEARCH TABLE transactions USING INDEX Recipient Index (recipient=?)
         
         the more the tx, the slower.
@@ -440,7 +445,8 @@ class Node:
         self.logger.status_log.info("Starting Single user checks...")
         # print("Initial files check")
         self._initial_files_checks()
-        solo_handler = SoloDbHandler(config=self.config, logger=self.logger)  # This instance will only live for the scope of single_user_checks(),
+        solo_handler = SoloDbHandler(config=self.config, logger=self.logger)
+        # This instance will only live for the scope of single_user_checks(),
         # why it's not a property of the Node instance and it passed to individual checks.
         self.logger.status_log.debug("single_user_checks - Checking schema")
         self._check_db_schema(solo_handler)
@@ -450,7 +456,7 @@ class Node:
             # EGG_EVO: make sure we added indices on temp ledger before ledger recompress
             # todo: do not close database and move files, swap tables instead
             solo_handler.close()
-            self._recompress_ledger_prepare()  # This will touch the files themselve.
+            self._recompress_ledger_prepare()  # This will touch the files themselves.
             solo_handler = SoloDbHandler(config=self.config, logger=self.logger)
             self._recompress_ledger(solo_handler)  # Warning: this will close the solo instance!
             solo_handler = SoloDbHandler(config=self.config, logger=self.logger)
@@ -541,7 +547,7 @@ class Node:
 
                 elif db_block_hash != block_hash_delete:
                     print("blocknf", db_block_height, db_block_hash, block_hash_delete)
-                    self.logger.app_log.warning("blocknf {} {} {}".format(db_block_height, db_block_hash, block_hash_delete))
+                    self.logger.app_log.warning(f"blocknf {db_block_height} {db_block_hash} {block_hash_delete}")
                     print(block_max_ram)
                     reason = "We moved away from the block to rollback, skipping"
                     skip = True
@@ -572,7 +578,8 @@ class Node:
                     self.last_block = db_handler.block_height_max()  # db_block_height - 1
                     self.hdd_hash = self.last_block_hash  # db_handler.last_block_hash()
                     self.hdd_block = self.last_block  # db_block_height - 1
-                    self.logger.app_log.warning(f"Current top block after rollback {self.last_block} ({self.last_block_hash})")
+                    self.logger.app_log.warning(f"Current top block after rollback {self.last_block} "
+                                                f"({self.last_block_hash})")
 
                     db_handler.tokens_update()
 

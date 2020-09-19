@@ -1,11 +1,14 @@
+import os
+import sys
 from decimal import Decimal
-from libs import regnet
 from math import ceil, log
 from time import time as ttime
-import sys, os
-from libs.quantizer import quantize_two, quantize_ten
-from libs.fork import Fork
 from typing import TYPE_CHECKING
+
+from libs import regnet
+from libs.fork import Fork
+from libs.quantizer import quantize_two, quantize_ten
+
 if TYPE_CHECKING:
     from libs.node import Node
     from libs.dbhandler import DbHandler
@@ -40,8 +43,10 @@ def difficulty(node: "Node", db_handler: "DbHandler") -> tuple:
     return new
     """
     Arrgh
-    new (103.937617136, 103.937617136, 5.829999923706055, 103.9367689274, 61.19997222208315, 3272417028612.557, 0.0008482086500018779, 1629302)
-    deprec (103.9376171361, 103.9376171361, 5.829999923706055, 103.9367689274, 61.19997222208315, 3272417028612.562, 0.000848208650001907, 1629302)
+    new (103.937617136, 103.937617136, 5.829999923706055, 103.9367689274, 61.19997222208315, 
+         3272417028612.557, 0.0008482086500018779, 1629302)
+    deprec (103.9376171361, 103.9376171361, 5.829999923706055, 103.9367689274, 61.19997222208315, 
+         3272417028612.562, 0.000848208650001907, 1629302)
     
     n timestamp_last 1585702107.8399999141693115234375
     n timestamp_before_last 1585702102.0099999904632568359375
@@ -68,8 +73,10 @@ def difficulty(node: "Node", db_handler: "DbHandler") -> tuple:
     d timestamp_1441 1586830209.1600000858306884765625
     d timestamp_1440 1586830288.88000011444091796875
     d block_time 59.65931249989403618706597222
-    new (103.0069350375, 50.0, 15.849999904632568, 103.0062961875, 59.659312499894035, 2431596570425.9653, 0.0006388499499991907, 1649322)
-    deprec (103.0069350374, 50.0, 15.849999904632568, 103.0062961875, 59.659312499894035, 2431596570425.9653, 0.0006388499499991907, 1649322)
+    new (103.0069350375, 50.0, 15.849999904632568, 103.0062961875, 59.659312499894035, 2431596570425.9653, 
+         0.0006388499499991907, 1649322)
+    deprec (103.0069350374, 50.0, 15.849999904632568, 103.0062961875, 59.659312499894035, 2431596570425.9653, 
+         0.0006388499499991907, 1649322)
     2020-04-15 09:14:36,108 close(191) Diff check
 
     """
@@ -104,15 +111,17 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
             print("n timestamp_1440", timestamp_1440)
             print("n block_time", block_time)
 
-        # EGG_EVO: Not concerned by evo_db since it's misc table, but SQL noes not belong there. should be a high level call to a dedicated db_handler method.
+        # EGG_EVO: Not concerned by evo_db since it's misc table, but SQL noes not belong there.
+        # should be a high level call to a dedicated db_handler method.
         db_handler._execute(db_handler.c, "SELECT difficulty FROM misc ORDER BY block_height DESC LIMIT 1")
         diff_block_previous = Decimal(db_handler.c.fetchone()[0])
 
         time_to_generate = timestamp_last - timestamp_before_last
 
         if node.is_regnet:
-            return (float('%.10f' % regnet.REGNET_DIFF), float('%.10f' % (regnet.REGNET_DIFF - 8)), float(time_to_generate),
-                    float(regnet.REGNET_DIFF), float(block_time), float(0), float(0), block_height)
+            return (float('%.10f' % regnet.REGNET_DIFF), float('%.10f' % (regnet.REGNET_DIFF - 8)),
+                    float(time_to_generate), float(regnet.REGNET_DIFF),
+                    float(block_time), float(0), float(0), block_height)
 
         hashrate = pow(2, diff_block_previous / DECIMAL2) / (block_time * ceil(28 - diff_block_previous / DECIMAL16))
         # Calculate new difficulty for desired blocktime of 60 seconds
@@ -151,12 +160,14 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
             # time_difference = ctime - timestamp_last
             # diff_dropped = difficulty2 - 1 - 10 * (time_difference - 2 * diff_drop_time) / diff_drop_time
             time_difference = quantize_two(ctime) - quantize_two(timestamp_last)
-            diff_dropped = quantize_ten(difficulty2) - quantize_ten(1) - quantize_ten(10 * (time_difference - 2 * diff_drop_time) / diff_drop_time)
+            diff_dropped = quantize_ten(difficulty2) - quantize_ten(1) \
+                           - quantize_ten(10 * (time_difference - 2 * diff_drop_time) / diff_drop_time)
         elif ctime > timestamp_last + diff_drop_time:
             # time_difference = ctime - timestamp_last
             # diff_dropped = difficulty2 + 1 - time_difference / diff_drop_time
             time_difference = quantize_two(ctime) - quantize_two(timestamp_last)
-            diff_dropped = quantize_ten(difficulty2) + quantize_ten(1) - quantize_ten(time_difference / diff_drop_time)
+            diff_dropped = quantize_ten(difficulty2) + quantize_ten(1) \
+                           - quantize_ten(time_difference / diff_drop_time)
         else:
             diff_dropped = difficulty2
 
@@ -167,7 +178,8 @@ def new_difficulty(node: "Node", db_handler: "DbHandler", time: float=0) -> tupl
 
         # Egg: kept the float('%.10f' % ...) to avoid side effects on specific values.
         # limiting to 2 or 3 decimals instead of 10 would likely be enough and avoid all decimals issues.
-        return (float('%.10f' % difficulty2), float('%.10f' % diff_dropped), float(time_to_generate), float(diff_block_previous),
+        return (float('%.10f' % difficulty2), float('%.10f' % diff_dropped),
+                float(time_to_generate), float(diff_block_previous),
                 float(block_time), float(hashrate), float(diff_adjustment), block_height)
         # need to keep float types here for database inserts support
     except Exception as e:
@@ -186,7 +198,8 @@ def deprecated_difficulty(node, db_handler, time: float=0):
     try:
         ctime = ttime() if time == 0 else time
 
-        db_handler._execute(db_handler.c, "SELECT * FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 2")
+        db_handler._execute(db_handler.c,
+                            "SELECT * FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 2")
         result = db_handler.c.fetchone()
 
         timestamp_last = Decimal(result[1])
@@ -203,9 +216,11 @@ def deprecated_difficulty(node, db_handler, time: float=0):
         # Failsafe for regtest starting at block 1}
         timestamp_before_last = timestamp_last if previous is None else Decimal(previous[1])
 
-        db_handler._execute_param(db_handler.c, (
-            "SELECT timestamp FROM transactions WHERE block_height > ? AND reward != 0 ORDER BY block_height ASC LIMIT 2"),
-                                  (block_height - 1441,))
+        db_handler._execute_param(db_handler.c,
+                                  "SELECT timestamp FROM transactions "
+                                  "WHERE block_height > ? AND reward != 0 "
+                                  "ORDER BY block_height ASC LIMIT 2",
+                                  (block_height - 1441, ))
         timestamp_1441 = Decimal(db_handler.c.fetchone()[0])
         block_time_prev = (timestamp_before_last - timestamp_1441) / 1440
         temp = db_handler.c.fetchone()
@@ -224,8 +239,9 @@ def deprecated_difficulty(node, db_handler, time: float=0):
         time_to_generate = timestamp_last - timestamp_before_last
 
         if node.is_regnet:
-            return (float('%.10f' % regnet.REGNET_DIFF), float('%.10f' % (regnet.REGNET_DIFF - 8)), float(time_to_generate),
-                    float(regnet.REGNET_DIFF), float(block_time), float(0), float(0), block_height)
+            return (float('%.10f' % regnet.REGNET_DIFF), float('%.10f' % (regnet.REGNET_DIFF - 8)),
+                    float(time_to_generate), float(regnet.REGNET_DIFF), float(block_time),
+                    float(0), float(0), block_height)
 
         hashrate = pow(2, diff_block_previous / DECIMAL2) / (
                 block_time * ceil(28 - diff_block_previous / DECIMAL16))
@@ -274,9 +290,10 @@ def deprecated_difficulty(node, db_handler, time: float=0):
             diff_dropped = 50
 
         return (
-            float('%.10f' % difficulty2), float('%.10f' % diff_dropped), float(time_to_generate), float(diff_block_previous),
+            float('%.10f' % difficulty2), float('%.10f' % diff_dropped),
+            float(time_to_generate), float(diff_block_previous),
             float(block_time), float(hashrate), float(diff_adjustment),
             block_height)  # need to keep float here for database inserts support
-    except:  # new chain or regnet
+    except Exception:  # new chain or regnet
         difficulty2 = [24, 24, 0, 0, 0, 0, 0, 0]
         return difficulty2

@@ -74,6 +74,7 @@ class DbHandler:
         if self.trace_db_calls:
             self.hdd.set_trace_callback(functools.partial(sql_trace_callback, self.logger.app_log, "HDD"))
         self.hdd.text_factory = str
+        # self.conn.execute('PRAGMA journal_mode = WAL')  # Comment on top of node.py says no
         self.hdd.execute('PRAGMA case_sensitive_like = 1')
         self.h = self.hdd.cursor()  # h is a Cursor to the - on disk - ledger db
 
@@ -642,8 +643,10 @@ class DbHandler:
         # provided hash is supposed to be in hex format.
         # tweaked to allow either bin or hex and convert or not depending on the underlying db.
         try:
+            # Note: there's a try..except, but _execute can retry forever if DB is locked for instance.
             if self.legacy_db:
-                self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?", (hex_hash, ))
+                self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
+                                    (hex_hash, ))
             else:
                 self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
                                     (Binary(bytes.fromhex(hex_hash)), ))
@@ -656,6 +659,7 @@ class DbHandler:
         """Lookup a block height from its hash."""
         # provided hash is supposed to be binary.
         try:
+            # Note: there's a try..except, but _execute can retry forever if DB is locked for instance.
             self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
                                 (Binary(block_hash), ))
             result = self.h.fetchone()[0]
@@ -1033,17 +1037,23 @@ class DbHandler:
                                 "OR block_height < ? ORDER BY block_height ASC",
                                 (node.hdd_block, -node.hdd_block))
             result1 = self.c.fetchall()
+            self.logger.digest_log.info(f"Chain v2 Temp Debug: Got tx data")
 
             transactions_to_h(result1)
+            self.logger.digest_log.info(f"Chain v2 Temp Debug: transactions_to_h ok")
 
             if node.config.ram:  # we want to save to hyper db from RAM/hyper db depending on ram conf
                 transactions_to_h2(result1)
+                self.logger.digest_log.info(f"Chain v2 Temp Debug: transactions_to_h2 ok")
 
             self._execute_param(self.c, "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
                                 (node.hdd_block,))
             result2 = self.c.fetchall()
+            self.logger.digest_log.info(f"Chain v2 Temp Debug: Got misc data")
 
             misc_to_h(result2)
+            self.logger.digest_log.info(f"Chain v2 Temp Debug: misc_to_h ok")
+
             if node.config.ram:  # we want to save to hyper db from RAM
                 misc_to_h2(result2)
 

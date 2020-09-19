@@ -29,9 +29,9 @@ from bismuthcore.transactionslist import TransactionsList
 from polysign.signerfactory import SignerFactory
 
 if TYPE_CHECKING:
-  # from libs.node import Node
-  from libs.logger import Logger
-  from libs.config import Config
+    # from libs.node import Node
+    from libs.logger import Logger
+    from libs.config import Config
 
 
 __version__ = "1.0.6"
@@ -311,7 +311,8 @@ class SoloDbHandler:
 
     def get_block(self, block_height: int) -> Block:
         """
-        Returns a Block instance matching the requested height. Block will be empty if height is unknown but will throw no exception
+        Returns a Block instance matching the requested height.
+        Block will be empty if height is unknown but will throw no exception
         :param block_height:
         :return:
         """
@@ -358,7 +359,8 @@ class SoloDbHandler:
                                               received_operation,
                                               received_openfield))
             print("partial")
-            print(received_timestamp, received_address, received_recipient, received_amount, received_operation, received_openfield)
+            print(received_timestamp, received_address, received_recipient,
+                  received_amount, received_operation, received_openfield)
         print("buffer legacy")
         print(str(transaction_list_converted))
         block_hash = sha224((str(transaction_list_converted) + last_block_hash).encode("utf-8")).hexdigest()
@@ -496,7 +498,7 @@ class SoloDbHandler:
             # Maybe it would be better (solo mode, once only at start) to just quit on error there and above,
             # to avoid starting with a corrupted state.
 
-        #db_handler.aliases_rollback(block_height)
+        # db_handler.aliases_rollback(block_height)
         try:
             self._index_cursor.execute("DELETE FROM aliases WHERE block_height >= ?;", (block_height, ))
             self._index_db.commit()
@@ -763,7 +765,7 @@ class SoloDbHandler:
         try:
             with open(self.config.get_db_path("sequencing_last"), 'r') as filename:
                 sequencing_last = int(filename.read())
-        except:
+        except Exception:
             self.logger.status_log.warning("Sequencing anchor not found, Checking whole chain")
             sequencing_last = 0
         self.logger.status_log.info(f"Testing chain sequencing, starting with block {sequencing_last}")
@@ -781,12 +783,11 @@ class SoloDbHandler:
                 y = y_init
                 # print(y)
             if row[0] != y:
-                self.logger.status_log.warning(
-                    f"Chain Index sequencing error at: {row[0]}. {row[0]} instead of {y}")
+                self.logger.status_log.warning(f"Chain Index sequencing error at: {row[0]}. {row[0]} instead of {y}")
                 self.rollback(y)
-                self.logger.status_log.info(
-                    f"Due to a sequencing issue at block {y}, chain has been rolled back and will be resynchronized")
-            y = y + 1
+                self.logger.status_log.info(f"Due to a sequencing issue at block {y}, "
+                                            f"chain has been rolled back and will be resynchronized")
+            y += 1
 
         self.logger.status_log.info(f"Chains sequencing test complete.")
         y3 = y
@@ -850,7 +851,7 @@ class SoloDbHandler:
                         block_height) == 0:
                     self.logger.app_log.error("Invalid genesis address")
                     sys.exit(1)
-            except:
+            except Exception:
                 self.logger.status_log.info("Hyperblock mode in use")
             # verify genesis
             db_hashes = {
@@ -948,13 +949,13 @@ class SoloDbHandler:
                     sha_hash = SHA.new(db_transaction)
                     try:
                         if sha_hash.hexdigest() != db_hashes[db_block_height + "-" + db_timestamp]:
-                            self.logger.app_log.warning(
-                                "Signature validation problem: {} {}".format(db_block_height, db_transaction))
-                            invalid = invalid + 1
+                            self.logger.app_log.warning(f"Signature validation problem: "
+                                                        f"{db_block_height} {db_transaction}")
+                            invalid += 1
                     except Exception as e:
-                        self.logger.app_log.warning(
-                            "Signature validation problem: {} {}".format(db_block_height, db_transaction))
-                        invalid = invalid + 1
+                        self.logger.app_log.warning(f"Signature validation problem: "
+                                                    f"{db_block_height} {db_transaction} {e}")
+                        invalid += 1
 
             if invalid == 0:
                 self.logger.status_log.info("All transactions in the local ledger are valid")

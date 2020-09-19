@@ -74,6 +74,10 @@ Eval the space to be reclaimed.
 - MRU cache for active addresses (pools, services)
 - Compute balance state from all or most recently used addresses (would avoid constant db lookup for balances), clear on rollback
 
+- node.py, frequent block_height_from_hash lookups done, on disk ledger.  
+  cache map of recent hash/heights lookups, add at block digest, clear at rollback.
+  logs show that in regular working, the current hash is the most asked one, and generates a disk db lookup every time. 
+
 # To consider
 
 - Require miners to use ecdsa or ed25519 based addresses, to save space and ressources on pool payouts.

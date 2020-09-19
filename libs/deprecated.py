@@ -1,6 +1,7 @@
 """Helpers that should not be used anymore"""
 
 import hashlib
+
 from Cryptodome.PublicKey import RSA
 
 

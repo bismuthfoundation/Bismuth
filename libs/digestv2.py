@@ -437,19 +437,20 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
         # no need to loose any time with banned peers
         raise ValueError("Cannot accept blocks from a banned peer")
         # since we raise, it will also drop the connection, it's fine since he's banned.
+    blocks = None
     if not node.db_lock.locked():
         node.db_lock.acquire()
-        node.logger.app_log.debug(f"Database lock acquired")
-        while mp.MEMPOOL.lock.locked():
-            sleep(0.1)
-            node.logger.digest_log.warning(f"Chain: Waiting for mempool to unlock {peer_ip}")
-            # We wait for mempool to unlock, but don't lock it...
-        block_size = len(str(block_data)) / 1000000
-        node.logger.digest_log.info(f"Chain: Digesting started from {peer_ip} - "
-                                    f"{len(block_data)} Blocks - {block_size} MB")
-        blocks = None
         try:
-            node.logger.app_log.info(f"Chain: Digesting V2")
+            node.logger.app_log.info(f"Database lock acquired {start_time_block}")
+            while mp.MEMPOOL.lock.locked():
+                sleep(0.1)
+                node.logger.digest_log.warning(f"Chain: Waiting for mempool to unlock {peer_ip}")
+                # We wait for mempool to unlock, but don't lock it...
+            block_size = len(str(block_data)) / 1000000
+            node.logger.digest_log.info(f"Chain: Digesting started from {peer_ip} - "
+                                        f"{len(block_data)} Blocks - {block_size} MB")
+
+            # node.logger.app_log.info(f"Chain: Digesting V2")
             # raise ValueError("WIP")
             """
             with open("blocks.log", "a+") as fp:
@@ -487,7 +488,7 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
             # in regnet, this copies again the last block...
             db_handler.db_to_drive_v2(node)
             node.db_lock.release()
-            node.logger.app_log.debug(f"Database lock released")
+            node.logger.app_log.info(f"Database lock released {start_time_block}")
             delta_t = ttime() - start_time_block
             tx_count = blocks.tx_count if blocks is not None else 'N/A'
             node.plugin_manager.execute_action_hook('digestblock',

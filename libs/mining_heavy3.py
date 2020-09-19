@@ -10,12 +10,12 @@ import mmap
 import os
 import struct
 import sys
-from hashlib import sha224
-from libs.hmac_drbg import DRBG
-from libs.quantizer import quantize_ten
 from decimal import Decimal
+from hashlib import sha224
 
 from libs import regnet
+from libs.hmac_drbg import DRBG
+from libs.quantizer import quantize_ten
 
 # from libs.fork import Fork
 # fork = Fork()
@@ -41,6 +41,7 @@ def anneal3(mmap, n):
     """
     Converts 224 bits number into annealed version, hexstring
 
+    :param mmap: pointer to mmap'd file
     :param n: a 224 = 7x32 bits
     :return:  56 char in hex encoding.
     """
@@ -101,7 +102,7 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
 
         real_diff = diffme_heavy3(miner_address, nonce, db_block_hash)
         diff_drop_time = Decimal(180)
-        mining_condition = bin_convert(db_block_hash)[0:int(diff0)]
+        # mining_condition = bin_convert(db_block_hash)[0:int(diff0)]
         # simplified comparison, no backwards mining
         if real_diff >= int(diff0):
             if app_log:
@@ -117,14 +118,15 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
             # Emergency diff drop
             if Decimal(received_timestamp) > q_db_timestamp_last + Decimal(2 * diff_drop_time):
                 factor = 10
-                diff_dropped = quantize_ten(diff0) - quantize_ten(1) - quantize_ten(factor * (time_difference-2 * diff_drop_time) / diff_drop_time)
+                diff_dropped = quantize_ten(diff0) - quantize_ten(1) \
+                               - quantize_ten(factor * (time_difference-2 * diff_drop_time) / diff_drop_time)
 
             if diff_dropped < 50:
                 diff_dropped = 50
             if real_diff >= int(diff_dropped):
                 if app_log:
-                    app_log.info("Readjusted difficulty requirement satisfied for block {} from {}, {} >= {} (factor {})"
-                                 .format(block_height_new, peer_ip, real_diff, int(diff_dropped), factor))
+                    app_log.info(f"Readjusted difficulty requirement satisfied for block {block_height_new} "
+                                 f"from {peer_ip}, {real_diff} >= {int(diff_dropped)} (factor {factor})")
                 diff_save = diff0
                 # lie about what diff was matched not to mess up the diff algo
             else:
@@ -148,15 +150,17 @@ def create_heavy3a(file_name: str=""):
         print("create_heavy3a now needs a full path")
         exit()
     print("Creating Junction Noise file, this usually takes a few minutes...")
-    gen = DRBG(b"Bismuth is a chemical element with symbol Bi and atomic number 83. It is a pentavalent post-transition metal and one of the pnictogens with chemical properties resembling its lighter homologs arsenic and antimony.")
+    gen = DRBG(b"Bismuth is a chemical element with symbol Bi and atomic number 83. "
+               b"It is a pentavalent post-transition metal and one of the pnictogens "
+               b"with chemical properties resembling its lighter homologs arsenic and antimony.")
     # Size in Gb - No more than 4Gb from a single seed
-    GB = 1
+    gb = 1
     # Do not change chunk size, it would change the file content.
-    CHUNK_SIZE = 1024*4  # time 3m20.990s
-    COUNT = GB * 1024 * 1024 * 1024 // CHUNK_SIZE
+    chunk_size = 1024*4  # time 3m20.990s
+    ccount = gb * 1024 * 1024 * 1024 // chunk_size
     with open(file_name, 'wb') as f:
-        for chunks in range(COUNT):
-            f.write(gen.generate(CHUNK_SIZE))
+        for chunks in range(ccount):
+            f.write(gen.generate(chunk_size))
 
 
 def mining_open(file_name=""):
@@ -205,11 +209,11 @@ def mining_close():
     try:
         assert MMAP
         MMAP.close()
-    except:
+    except Exception:
         pass
 
     try:
         assert F
         F.close()
-    except:
+    except Exception:
         pass

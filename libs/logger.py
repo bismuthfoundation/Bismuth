@@ -4,7 +4,7 @@
 from logging import Logger
 
 
-class Logger():
+class Logger:
     def __init__(self):
         self.app_log = None
         self.mempool_log = None

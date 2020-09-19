@@ -1,12 +1,12 @@
 # EGG: I see this as a class member of libs/Node
 # It's the node background thread
 
+import os
+import sys
 import threading
 from time import time, sleep
-import sys
-import os
-
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from libs.node import Node
     # from libs.dbhandler import DbHandler
@@ -41,7 +41,9 @@ class NodeBackgroundThread (threading.Thread):
                 if not self.node.is_regnet:
                     # regnet never tries to connect
                     self.node.peers.client_loop(self.node)
-                self.node.logger.status_log.info(f"** Status: Threads at {threading.active_count()} / {self.node.config.thread_limit} - {len(self.node.syncing)} Syncing nodes.")
+                self.node.logger.status_log.info(f"** Status: Threads at {threading.active_count()} "
+                                                 f"/ {self.node.config.thread_limit} "
+                                                 f"- {len(self.node.syncing)} Syncing nodes.")
                 self.node.logger.status_log.debug(f"Syncing nodes: {self.node.syncing}")
 
                 # Status display for Peers related info
@@ -51,7 +53,8 @@ class NodeBackgroundThread (threading.Thread):
                 if self.node.last_block_ago:
                     self.node.last_block_ago = time() - int(self.node.last_block_timestamp)
                     self.node.logger.status_log.info(f"Last block {self.node.last_block} was generated "
-                                                f"{'%.2f' % (self.node.last_block_ago / 60) } minutes ago - End Status **")
+                                                     f"{'%.2f' % (self.node.last_block_ago / 60) } minutes ago "
+                                                     f"- End Status **")
                 # status Hook
                 uptime = int(time() - self.node.startup_time)
                 status = {"protocolversion": self.node.config.version,

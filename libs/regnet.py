@@ -3,23 +3,23 @@ Regnet specific functions and settings
 """
 
 import base64
+import functools
 import math
 import os
 import sqlite3
 import sys
 import time
-import functools
-# from Cryptodome.PublicKey import RSA
-from Cryptodome.Hash import SHA
-from Cryptodome.Signature import PKCS1_v1_5
 from hashlib import sha224
 from random import getrandbits
 from typing import List
+from typing import TYPE_CHECKING
+
+# from Cryptodome.PublicKey import RSA
+from Cryptodome.Hash import SHA
+from Cryptodome.Signature import PKCS1_v1_5
 
 from libs import mempool as mp, connections, mining_heavy3 as mining
 
-from bismuthcore.transaction import Transaction
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from libs.node import Node
     from libs.dbhandler import DbHandler
@@ -67,8 +67,8 @@ PRIVATE_KEY_READABLE = 'matching priv key'
 PUBLIC_KEY_B64ENCODED = 'matching pub key b64'
 
 
-def sql_trace_callback(log, id, statement):
-    line = f"SQL[{id}] {statement}"
+def sql_trace_callback(log, id_str, statement):
+    line = f"SQL[{id_str}] {statement}"
     log.warning(line)
 
 
@@ -82,9 +82,7 @@ def generate_one_block(blockhash: str, mempool_txs: List[tuple], node: "Node", d
         mining_condition = blockhash[0:diff_hex]
         while True:
             try_arr = [('%0x' % getrandbits(32)) for i in range(HASHCOUNT)]
-            i = 0
-            for i in range(100):
-                i += 1
+            for j in range(100):
                 seed = ('%0x' % getrandbits(128 - 32))
                 prefix = ADDRESS + seed
                 possibles = [nonce for nonce in try_arr if
@@ -96,11 +94,12 @@ def generate_one_block(blockhash: str, mempool_txs: List[tuple], node: "Node", d
                     node.logger.app_log.warning("Generate got a block in {} tries len {}".format(i, len(possibles)))
                     # assemble block with mp data
                     txs = []
-                    for i in range(TX_PER_BLOCK):
+                    for n in range(TX_PER_BLOCK):
                         if not len(mempool_txs):
                             break
                         txs.append(mempool_txs.pop(0))  # .to_tuple()) - mempool tx are tuple already
-                        # TODO: EGG_EVO BEWARE ! Should be converted to use transaction object, but still relies on legacy format afterward.
+                        # TODO: EGG_EVO BEWARE ! Should be converted to use transaction object,
+                        # but still relies on legacy format afterward.
                         # Sticking with legacy tuple
                         # Will need rework, regnet maybe could only use the new db format (it's volatile anyway)
                     block_send = []
@@ -129,9 +128,10 @@ def generate_one_block(blockhash: str, mempool_txs: List[tuple], node: "Node", d
 
                     if signer.verify(tx_hash, signature):
                         node.logger.app_log.warning("Signature valid")
-                        block_send.append((str(block_timestamp), str(ADDRESS[:56]), str(ADDRESS[:56]), '%.8f' % float(0),
-                                           str(signature_enc.decode("utf-8")), str(PUBLIC_KEY_B64ENCODED.decode("utf-8")),
-                                           "0", str(nonce)))  # mining reward tx
+                        # mining reward tx
+                        block_send.append((str(block_timestamp), str(ADDRESS[:56]), str(ADDRESS[:56]),
+                                           '%.8f' % float(0), str(signature_enc.decode("utf-8")),
+                                           str(PUBLIC_KEY_B64ENCODED.decode("utf-8")), "0", str(nonce)))
                         node.logger.app_log.warning("Block to send: {}".format(block_send))
                     # calc hash
 
@@ -182,14 +182,14 @@ def init(node: "Node", app_log, trace_db_calls: bool=False) -> None:
     # create empty index db
     with sqlite3.connect(REGNET_DB) as source_db:
         if trace_db_calls:
-            source_db.set_trace_callback(functools.partial(sql_trace_callback,app_log,"REGNET-INIT"))
+            source_db.set_trace_callback(functools.partial(sql_trace_callback, app_log, "REGNET-INIT"))
         for request in SQL_LEDGER:
             source_db.execute(request)
         source_db.commit()
     # create empty reg db
     with sqlite3.connect(REGNET_INDEX) as source_db:
         if trace_db_calls:
-            source_db.set_trace_callback(functools.partial(sql_trace_callback,app_log,"REGNET-INIT-INDEX"))
+            source_db.set_trace_callback(functools.partial(sql_trace_callback, app_log, "REGNET-INIT-INDEX"))
         for request in SQL_INDEX:
             source_db.execute(request)
         source_db.commit()

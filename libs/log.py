@@ -3,7 +3,7 @@ Helper for log config
 Kept from legacy code
 """
 
-import logging, sys
+import logging
 from logging.handlers import RotatingFileHandler
 
 
