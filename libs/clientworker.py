@@ -193,7 +193,7 @@ def client_worker(host: str, port: int, node: "Node") -> None:
 
                                 elif confirmation == "blocksrj":
                                     node.logger.app_log.info("Outbound: Client rejected to sync from us "
-                                                             "because we're dont have the latest block")
+                                                             "because we don't have the latest block")
 
                     elif int(received_block_height) >= node.hdd_block:
                         if int(received_block_height) == node.hdd_block:
