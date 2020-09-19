@@ -38,7 +38,7 @@ from libs.node import Node
 from libs.nodebackgroundthread import NodeBackgroundThread
 
 
-VERSION = "5.0.30-evo"  # Experimental db-evolution branch
+VERSION = "5.0.31-evo"  # Experimental db-evolution branch
 
 
 appname = "Bismuth"
@@ -267,9 +267,14 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                                 break
                             node.logger.consensus_log.debug(f"Inbound: Will seek the following block: {data}")
 
-                            node.logger.app_log.warning(f"Temp Debug will seek block_height_from_hash {data[:10]} "
-                                                        f"for {peer_ip}")
-                            client_block = db_handler.block_height_from_hash(data)
+                            if data == node.last_block_hash:
+                                # Avoid on disk lookup for most frequently asked hash: current one
+                                client_block = node.last_block
+                                # node.logger.app_log.debug(f"Temp Debug sync with {peer_ip}")
+                            else:
+                                node.logger.app_log.warning(f"Temp Debug will seek block_height_from_hash {data[:10]} "
+                                                            f"for {peer_ip}")
+                                client_block = db_handler.block_height_from_hash(data)
                             if client_block is None:
                                 node.logger.consensus_log.warning(f"Inbound: Block {data[:8]} of {peer_ip} not found")
                                 if node.config.full_ledger:

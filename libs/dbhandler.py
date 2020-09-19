@@ -9,7 +9,7 @@ import sqlite3
 import sys
 from decimal import Decimal
 from sqlite3 import Binary
-from time import sleep
+from time import sleep, time as ttime
 from typing import TYPE_CHECKING
 from typing import Union, List
 
@@ -27,13 +27,20 @@ if TYPE_CHECKING:
     from libs.logger import Logger
 
 
-__version__ = "1.0.8"
+__version__ = "1.0.9"
+
+"""
+See https://gist.github.com/rianhunter/10bfcff17c18d112de16
+Create and close cursors for temp reads instead of using the same shared one?
+local temp cursor would make sure no transaction is left open and will close all cursors.
+TODO: benchmark to see if cursor creation consumes much more time.
+"""
 
 ALIAS_REGEXP = r'^alias='
 SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
 # Same but safer this way
 SQL_TO_TRANSACTIONS_V2 = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
-SQL_TO_MISC = "INSERT INTO misc VALUES (?,?)"
+SQL_TO_MISC = "INSERT INTO misc VALUES (?, ?)"
 
 
 def sql_trace_callback(log, sql_id, statement: str):
@@ -119,7 +126,7 @@ class DbHandler:
                                                "ORDER BY block_height ASC LIMIT 1",
                             (alias, ))
         try:
-            address_fetch = self.index_cursor.fetchone()[0]
+            address_fetch = self.index_cursor.fetchall()[0][0]
         except Exception:
             address_fetch = "No alias"
         return address_fetch
@@ -136,7 +143,7 @@ class DbHandler:
                                                "ORDER BY block_height ASC LIMIT 1",
                             (alias, ))
         try:
-            address_fetch = self.index_cursor.fetchone()[0] is not None
+            address_fetch = self.index_cursor.fetchall()[0][0] is not None
         except Exception:
             pass
         return address_fetch
@@ -184,7 +191,7 @@ class DbHandler:
         """Updates the aliases index"""
         self._execute(self.index_cursor, "SELECT block_height FROM aliases ORDER BY block_height DESC LIMIT 1")
         try:
-            alias_last_block = int(self.index_cursor.fetchone()[0])
+            alias_last_block = int(self.index_cursor.fetchall()[0][0])
         except Exception:
             alias_last_block = 0
         # Egg note: this is not the real last anchor. We use the last alias index as anchor.
@@ -247,9 +254,9 @@ class DbHandler:
                                   "(block_height INTEGER, timestamp, token, address, recipient, txid, amount INTEGER)")
         self.index.commit()
 
-        self.index_cursor.execute("SELECT block_height FROM tokens ORDER BY block_height DESC LIMIT 1;")
+        self.index_cursor.execute("SELECT block_height FROM tokens ORDER BY block_height DESC LIMIT 1")
         try:
-            token_last_block = int(self.index_cursor.fetchone()[0])
+            token_last_block = int(self.index_cursor.fetchall()[0][0])
         except Exception:
             token_last_block = 0
         self.logger.status_log.info("Token anchor block: {}".format(token_last_block))
@@ -337,16 +344,16 @@ class DbHandler:
                     # calculate balances
                     self.index_cursor.execute(
                         "SELECT sum(amount) FROM tokens WHERE recipient = ? AND block_height < ? AND token = ?",
-                        (sender, block_height, token,))
+                        (sender, block_height, token))
                     try:
-                        credit_sender = int(self.index_cursor.fetchone()[0])
+                        credit_sender = int(self.index_cursor.fetchall()[0][0])
                     except Exception:
                         credit_sender = 0
                     self.index_cursor.execute(
                         "SELECT sum(amount) FROM tokens WHERE address = ? AND block_height <= ? AND token = ?",
-                        (sender, block_height, token,))
+                        (sender, block_height, token))
                     try:
-                        debit_sender = int(self.index_cursor.fetchone()[0])
+                        debit_sender = int(self.index_cursor.fetchall()[0][0])
                     except Exception:
                         debit_sender = 0
                     # self.logger.app_log.warning("Sender's debit: {}".format(debit_sender))
@@ -358,8 +365,8 @@ class DbHandler:
                                                 f"Sender's balance {balance_sender}")
                     # self.logger.app_log.warning("Sender's balance {}".format(balance_sender))
                     try:
-                        self.index_cursor.execute("SELECT txid from tokens WHERE txid = ?", (txid,))
-                        dummy = self.index_cursor.fetchone()  # check for uniqueness
+                        self.index_cursor.execute("SELECT txid from tokens WHERE txid = ? limit 1", (txid, ))
+                        dummy = self.index_cursor.fetchall()[0]  # check for uniqueness
                         if dummy:
                             self.logger.status_log.warning(f"Token operation already processed: {token} {txid} - "
                                                            f"Ignored.")
@@ -405,10 +412,10 @@ class DbHandler:
         # WHERE reward != 0 AND block_height= (select max(block_height) from transactions)")
         # Q: Does it help or make it safer/faster to add AND reward > 0 ?
         if self.legacy_db:
-            transaction = Transaction.from_legacy(self.c.fetchone())
+            transaction = Transaction.from_legacy(self.c.fetchall()[0])
         else:
             # V2
-            transaction = Transaction.from_v2(self.c.fetchone())
+            transaction = Transaction.from_v2(self.c.fetchall()[0])
         # now returns the transaction object itself, higher level adjustments processed.
         # return transaction.to_dict(legacy=True)
         return transaction
@@ -417,7 +424,7 @@ class DbHandler:
         # returns last block hash from live data as hex string
         self._execute(self.c,
                       "SELECT block_hash FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1")
-        last_hash = self.c.fetchone()[0]
+        last_hash = self.c.fetchall()[0][0]
         # if new db, convert bin to hex
         if not self.legacy_db:
             last_hash = last_hash.hex()
@@ -433,9 +440,8 @@ class DbHandler:
         """
         self._execute(self.c, f"SELECT timestamp FROM transactions WHERE reward != 0 "
                               f"ORDER BY block_height DESC LIMIT {back}, 1")
-        # return quantize_two(self.c.fetchone()[0])
         try:
-            return self.c.fetchone()[0]  # timestamps do not need quantize
+            return self.c.fetchall()[0][0]  # timestamps do not need quantize
         except Exception:
             return None
 
@@ -445,7 +451,7 @@ class DbHandler:
         :return:
         """
         self._execute(self.h, "SELECT block_height, difficulty FROM misc ORDER BY block_height DESC LIMIT 1")
-        difflast = self.h.fetchone()
+        difflast = self.h.fetchall()[0]
         return difflast
 
     def annverget(self, genesis: str) -> str:
@@ -459,7 +465,7 @@ class DbHandler:
                                 "SELECT openfield FROM transactions WHERE address = ? AND operation = ? "
                                 "ORDER BY block_height DESC LIMIT 1",
                                 (genesis, "annver"))
-            result = self.h.fetchone()[0]
+            result = self.h.fetchall()[0][0]
         except Exception:
             result = "?"
         return result
@@ -471,7 +477,7 @@ class DbHandler:
                                 "SELECT openfield FROM transactions WHERE address = ? AND operation = ? "
                                 "ORDER BY block_height DESC LIMIT 1",
                                 (genesis, "ann"))
-            result = self.h.fetchone()[0]
+            result = self.h.fetchall()[0][0]
         except Exception:
             result = "No announcement"
         return result
@@ -623,11 +629,11 @@ class DbHandler:
         if cache is not None and address in cache:
             return cache[address]
         self._execute_param(self.c, "SELECT sum(amount + reward) FROM transactions WHERE recipient = ?", (address, ))
-        entries = self.c.fetchone()
+        entries = self.c.fetchall()[0]
         # print("EE", entries)
         credit_ledger = 0 if entries[0] is None else entries[0]
         self._execute_param(self.c, "SELECT sum(amount + fee) FROM transactions WHERE address = ?", (address, ))
-        entries = self.c.fetchone()
+        entries = self.c.fetchall()[0]
         # print("EE", entries)
         debit_ledger = 0 if entries[0] is None else entries[0]
         if cache is not None:
@@ -643,14 +649,18 @@ class DbHandler:
         # provided hash is supposed to be in hex format.
         # tweaked to allow either bin or hex and convert or not depending on the underlying db.
         try:
+            # start = ttime()
             # Note: there's a try..except, but _execute can retry forever if DB is locked for instance.
             if self.legacy_db:
-                self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
+                self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ? limit 0, 1",
                                     (hex_hash, ))
             else:
-                self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
+                self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ? limit 0, 1",
                                     (Binary(bytes.fromhex(hex_hash)), ))
-            result = self.h.fetchone()[0]
+            result = self.h.fetchall()[0][0]  # Fetchall vs fetch one releases the shared lock,
+            # see https://gist.github.com/rianhunter/10bfcff17c18d112de16
+            # print("block_height_from_hash", ttime() - start)
+            # Roughly 0.0001s -(ssd)
         except Exception:
             result = None
         return result
@@ -660,9 +670,9 @@ class DbHandler:
         # provided hash is supposed to be binary.
         try:
             # Note: there's a try..except, but _execute can retry forever if DB is locked for instance.
-            self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ?",
+            self._execute_param(self.h, "SELECT block_height FROM transactions WHERE block_hash = ? limit 0, 1",
                                 (Binary(block_hash), ))
-            result = self.h.fetchone()[0]
+            result = self.h.fetchall()[0][0]
         except Exception:
             result = None
         return result
@@ -677,7 +687,7 @@ class DbHandler:
         # Could be dependent of the local db. *if* one address was to have several different pubkeys (I don't see how)
         # could be problematic.
         # EGG_EVO: if new db, convert bin to hex
-        return self.c.fetchone()[0]
+        return self.c.fetchall()[0][0]
 
     def known_address(self, address: str) -> bool:
         """Returns whether the address appears in chain, be it as sender or receiver"""
@@ -686,7 +696,7 @@ class DbHandler:
         # TODO: add a testnet test on that
         self.h.execute('SELECT block_height FROM transactions WHERE address= ? or recipient= ? LIMIT 1',
                        (address, address))
-        res = self.h.fetchone()
+        res = self.h.fetchall()[0]
         return res is not None
 
     def blocksync(self, block_height: int) -> List[list]:
@@ -750,8 +760,8 @@ class DbHandler:
         :return:
         """
         try:
-            self._execute_param(self.h, "SELECT block_hash FROM transactions WHERE block_height = ?", (block_height, ))
-            hash_hex = self.h.fetchone()[0]
+            self._execute_param(self.h, "SELECT block_hash FROM transactions WHERE block_height = ? limit 0, 1", (block_height, ))
+            hash_hex = self.h.fetchall()[0][1]
             if self.legacy_db:
                 return hash_hex
             else:
@@ -760,7 +770,9 @@ class DbHandler:
             return ''
 
     def get_difficulty_for_height(self, block_height: int) -> float:
-        return float(self._fetchone(self.h, "SELECT difficulty FROM misc WHERE block_height = ?", (block_height, )))
+        return float(self._fetchone(self.h,
+                                    "SELECT difficulty FROM misc WHERE block_height = ? limit 0, 1",
+                                    (block_height, )))
 
     def get_block_from_hash(self, hex_hash: str) -> Block:
         """
@@ -809,31 +821,31 @@ class DbHandler:
         """Tells whether that transaction already exists in the ledger"""
         # EGG_EVO will need convert and alt sql for bin storage
         if self.old_sqlite:
-            self._execute_param(self.c, "SELECT timestamp FROM transactions WHERE signature = ?1",
+            self._execute_param(self.c, "SELECT timestamp FROM transactions WHERE signature = ?1 limit 0, 1",
                                 (encoded_signature, ))
         else:
             self._execute_param(self.c, "SELECT timestamp FROM transactions "
-                                        "WHERE substr(signature,1,4) = substr(?1,1,4) AND signature = ?1",
+                                        "WHERE substr(signature,1,4) = substr(?1,1,4) AND signature = ?1 limit 0, 1",
                                 (encoded_signature, ))
-        return bool(self.c.fetchone())
+        return bool(self.c.fetchall()[0])
 
     # ====  TODO: check usage of these methods ==== Update: 1 occ. was moved to solo handler, process the other one.
 
     def block_height_max(self) -> int:
         self.h.execute("SELECT max(block_height) FROM transactions")
-        return self.h.fetchone()[0]
+        return self.h.fetchall()[0][0]
 
     def block_height_max_diff(self) -> int:
         self.h.execute("SELECT max(block_height) FROM misc")
-        return self.h.fetchone()[0]
+        return self.h.fetchall()[0][0]
 
     def block_height_max_hyper(self) -> int:
         self.h2.execute("SELECT max(block_height) FROM transactions")
-        return self.h2.fetchone()[0]
+        return self.h2.fetchall()[0][0]
 
     def block_height_max_diff_hyper(self) -> int:
         self.h2.execute("SELECT max(block_height) FROM misc")
-        return self.h2.fetchone()[0]
+        return self.h2.fetchall()[0][0]
 
     # ====  Maintenance methods ====
 
@@ -1180,6 +1192,9 @@ class DbHandler:
             except Exception as e:
                 self.logger.app_log.warning(f"Database query: {cursor} {str(query)[:100]} {str(param)[:100]}")
                 self.logger.app_log.warning(f"Database retry reason: {e}")
+                if "database is locked" in str(e):
+                    self.logger.app_log.error(f"Temp debug: aborting")
+                    sys.exit()
                 sleep(1)
 
     def fetchall(self, cursor, query: str, param: Union[list, tuple, None]=None) -> list:
@@ -1200,14 +1215,17 @@ class DbHandler:
     def _fetchone(self, cursor, query: str, param: Union[list, tuple, None]=None) -> Union[None, str, int, float, bool]:
         """Helper to simplify calling code, _execute and fetch in a single line instead of 2"""
         # EGG_EVO: convert to a private method as well.
-        if param is None:
-            self._execute(cursor, query)
-        else:
-            self._execute_param(cursor, query, param)
-        res = cursor.fetchone()
-        if res:
-            return res[0]
-        return None
+        try:
+            if param is None:
+                self._execute(cursor, query)
+            else:
+                self._execute_param(cursor, query, param)
+            res = cursor.fetchall()[0]  # fetchall to release the lock
+            if res:
+                return res[0]
+            return None
+        except Exception:
+            return None
 
     def close(self) -> None:
         self.index.close()

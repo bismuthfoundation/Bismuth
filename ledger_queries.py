@@ -17,11 +17,11 @@ Still very alpha and not optimized.
 
 import math
 from logging import getLogger
-from time import sleep, time
+from time import sleep
 
 # from typing import Union
 
-__version__ = "0.0.4"
+__version__ = "0.0.5"
 
 
 K1E8 = 100000000
@@ -29,33 +29,33 @@ K1E8 = 100000000
 SQL_BLOCK_HEIGHT_PRECEDING_TS_SLOW = (
     "SELECT block_height FROM transactions WHERE timestamp <= ? "
     "ORDER BY block_height DESC limit 1"
-)
+    )
 
 SQL_BLOCK_HEIGHT_PRECEDING_TS = (
     "SELECT max(block_height) FROM transactions WHERE timestamp <= ? AND reward > 0"
-)
+    )
 
 SQL_BLOCK_HEIGHT_FOLLOWING_TS = (
     "SELECT block_height FROM transactions WHERE timestamp > ? AND reward > 0 LIMIT 1"
-)
+    )
 
 SQL_TS_OF_BLOCK = (
     "SELECT timestamp FROM transactions WHERE reward > 0 AND block_height = ?"
-)
+    )
 
 SQL_REGS_FROM_TO = (
     "SELECT block_height, address, operation, openfield, timestamp FROM transactions "
     "WHERE block_height >= ? AND block_height <= ? "
     "AND (operation='hypernode:register' OR operation='hypernode:unregister') "
     "ORDER BY block_height ASC"
-)
+    )
 
 """
 SQL_QUICK_BALANCE_CREDITS = "SELECT sum(amount+reward) FROM transactions WHERE recipient = ? AND block_height <= ?"
 
 SQL_QUICK_BALANCE_DEBITS = (
     "SELECT sum(amount+fee) FROM transactions WHERE address = ? AND block_height <= ?"
-)
+    )
 """
 
 SQL_QUICK_BALANCE_ALL = (
@@ -63,23 +63,23 @@ SQL_QUICK_BALANCE_ALL = (
     "(SELECT sum(b.amount+b.fee) as debit FROM transactions b "
     "WHERE address = ? AND block_height <= ?) "
     "WHERE a.recipient = ? AND a.block_height <= ?"
-)
+    )
 
 SQL_QUICK_BALANCE_ALL_MIRROR = (
     "SELECT sum(a.amount+a.reward)-debit FROM transactions as a , "
     "(SELECT sum(b.amount+b.fee) as debit FROM transactions b "
     "WHERE address = ? AND abs(block_height) <= ?) "
     "WHERE a.recipient = ? AND abs(a.block_height) <= ?"
-)
+    )
 
 SQL_LAST_BLOCK_TS = (
     "SELECT timestamp FROM transactions WHERE block_height = "
-    "(SELECT max(block_height) FROM transactions)"
-)
+    "(SELECT max(block_height) FROM transactions) LIMIT 0, 1"
+    )
 
 SQL_LAST_BLOCK_HEIGHT = (
     "SELECT max(block_height) FROM transactions"
-)
+    )
 
 
 app_log = getLogger()
@@ -130,7 +130,7 @@ class LedgerQueries:
         :return: tuple()
         """
         cursor = cls.execute(db, sql, param)
-        data = cursor.fetchone()
+        data = cursor.fetchall()[0]
         if not data:
             return None
         if as_dict:
@@ -181,7 +181,7 @@ class LedgerQueries:
             weight = math.floor(balance / 10000)
             if weight > 3:
                 weight = 3
-        except:
+        except Exception:
             weight = -1
         return weight
 
@@ -206,7 +206,7 @@ class LedgerQueries:
             balance = res[0]
             if not legacy:
                 balance = balance / K1E8
-        except:
+        except Exception:
             balance = 0
         return balance
 
@@ -231,7 +231,7 @@ class LedgerQueries:
             if check_after:
                 res = cls.fetchone(db, SQL_LAST_BLOCK_HEIGHT)
                 height2 = int(res[0]) if res else 0
-                if height2 - height1 <= 20 :
+                if height2 - height1 <= 20:
                     app_log.warning("POW is late! Needs 20 block after {}".format(height1))
                     return 0
             return height1

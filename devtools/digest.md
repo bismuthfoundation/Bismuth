@@ -76,7 +76,8 @@ Eval the space to be reclaimed.
 
 - node.py, frequent block_height_from_hash lookups done, on disk ledger.  
   cache map of recent hash/heights lookups, add at block digest, clear at rollback.
-  logs show that in regular working, the current hash is the most asked one, and generates a disk db lookup every time. 
+  logs show that in regular working, the current hash is the most asked one, and generates a disk db lookup every time.
+  => straightforward one line optimization: if hash=current hash return current height 
 
 # To consider
 
