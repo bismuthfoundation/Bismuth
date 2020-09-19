@@ -659,7 +659,7 @@ class Mempool:
                         last_block = c.fetchone()[0]
                         """
                         # reject transactions which are already in the ledger
-                        ledger_in = db_handler.transaction_signature_exists(mempool_signature_enc)
+                        ledger_in = db_handler.encoded_signature_exists(mempool_signature_enc)
                         """
                         if self.config.old_sqlite:
                             essentials.execute_param_c(c, "SELECT timestamp FROM transactions WHERE signature = ?1",

@@ -7,6 +7,7 @@ import os
 import re
 import sqlite3
 import sys
+from base64 import b64decode, b64encode
 from decimal import Decimal
 from sqlite3 import Binary
 from time import sleep, time as ttime
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
     from libs.logger import Logger
 
 
-__version__ = "1.0.9"
+__version__ = "1.0.10"
 
 """
 See https://gist.github.com/rianhunter/10bfcff17c18d112de16
@@ -143,7 +144,7 @@ class DbHandler:
                                                "ORDER BY block_height ASC LIMIT 1",
                             (alias, ))
         try:
-            address_fetch = self.index_cursor.fetchall()[0][0] is not None
+            return bool(self.index_cursor.fetchall())
         except Exception:
             pass
         return address_fetch
@@ -209,11 +210,11 @@ class DbHandler:
             alias = re.sub(ALIAS_REGEXP, "", openfield[2])  # Remove leading "alias="
             # Egg: since the query filters on openfield beginning with "alias=", a [6:] may be as simple.
             self.logger.status_log.info(f"Processing alias registration: {alias}")
-            try:
-                self.index_cursor.execute("SELECT * from aliases WHERE alias = ? limit 0, 1", (alias, ))
-                dummy = self.index_cursor.fetchall()[0]  # check for uniqueness
+            self.index_cursor.execute("SELECT * from aliases WHERE alias = ? limit 0, 1", (alias, ))
+            dummy = self.index_cursor.fetchall()  # check for uniqueness
+            if dummy:
                 self.logger.status_log.warning(f"Alias already registered: {alias} - Ignored.")
-            except Exception:
+            else:
                 self.index_cursor.execute("INSERT INTO aliases VALUES (?,?,?)", (openfield[0], openfield[1], alias))
                 self.index.commit()
                 self.logger.status_log.info(f"Added alias to the database: {alias} from block {openfield[0]}")
@@ -271,17 +272,20 @@ class DbHandler:
         for x in results:
             try:
                 token_name = x[6].split(":")[0].lower().strip()
-                try:
-                    self.index_cursor.execute("SELECT * from tokens WHERE token = ? limit 0, 1", (token_name, ))
-                    dummy = self.index_cursor.fetchall()[0]  # check for uniqueness
+                self.index_cursor.execute("SELECT * from tokens WHERE token = ? limit 0, 1", (token_name, ))
+                dummy = self.index_cursor.fetchall()
+                if dummy:
                     self.logger.status_log.warning("Token issuance already processed: {} - Ignored."
                                                    .format(token_name, ))
-                except Exception:
+                else:
                     if token_name not in tokens_processed:
                         block_height = x[0]
                         timestamp = x[1]
                         tokens_processed.append(token_name)
                         issued_by = x[3]
+                        if not self.legacy_db:
+                            # stored under bin format
+                            x[4] = b64encode(x[4]).decode()
                         txid = x[4][:56]
                         total = x[6].split(":")[1]
                         # EGG Note: Maybe force this to be positive int?
@@ -687,7 +691,14 @@ class DbHandler:
         # Could be dependent of the local db. *if* one address was to have several different pubkeys (I don't see how)
         # could be problematic.
         # EGG_EVO: if new db, convert bin to hex
-        return self.c.fetchall()[0][0]
+        result = self.c.fetchall()
+        if not result:
+            # No match
+            return ""
+        pubkey = self.c.fetchall()[0][0]
+        if not self.legacy_db:
+            pubkey = b64encode(pubkey).decode("utf-8")
+        return pubkey
 
     def known_address(self, address: str) -> bool:
         """Returns whether the address appears in chain, be it as sender or receiver"""
@@ -696,8 +707,8 @@ class DbHandler:
         # TODO: add a testnet test on that
         self.h.execute('SELECT block_height FROM transactions WHERE address= ? or recipient= ? LIMIT 1',
                        (address, address))
-        res = self.h.fetchall()[0]
-        return res is not None
+        res = self.h.fetchall()
+        return bool(res)
 
     def blocksync(self, block_height: int) -> List[list]:
         """
@@ -785,7 +796,7 @@ class DbHandler:
         # To be tweaked to allow either bin or hex and convert or not depending on the underlying db.
 
         # EGG_EVO: This sql request is the same in both cases (int/float), but...
-        self._execute_param(self.h, "SELECT * FROM transactions WHERE block_hash = ?", (hex_hash, ))
+        self._execute_param(self.h, "SELECT * FROM transactions WHERE block_hash = ? limit 1", (hex_hash, ))
         block_desired_result = self.h.fetchall()
         # from_legacy only is valid for legacy db, so here we'll need to add context dependent code.
         # dbhandler will be aware of the db it runs on (simple flag) and call the right from_??? method.
@@ -798,7 +809,7 @@ class DbHandler:
             sys.exit()
         return Block(transaction_list)
 
-    def get_address_range(self, address: str, starting_block: int, limit: int) -> Block:
+    def get_address_range(self, address: str, starting_block: int, limit: int) -> TransactionsList:
         """Very specific, but needed for bitcoin like api and json rpc server"""
         self._execute_param(self.h, "SELECT * FROM transactions "
                                     "WHERE ? IN (address, recipient) "
@@ -817,9 +828,11 @@ class DbHandler:
             sys.exit()
         return TransactionsList(transaction_list)
 
-    def transaction_signature_exists(self, encoded_signature: str) -> bool:
+    def encoded_signature_exists(self, encoded_signature: str) -> bool:
         """Tells whether that transaction already exists in the ledger"""
-        # EGG_EVO will need convert and alt sql for bin storage
+        # EGG_EVO: needs convert for V2 storage
+        if not self.legacy_db:
+            encoded_signature = Binary(b64decode(encoded_signature))
         if self.old_sqlite:
             self._execute_param(self.c, "SELECT timestamp FROM transactions WHERE signature = ?1 limit 0, 1",
                                 (encoded_signature, ))
@@ -827,7 +840,7 @@ class DbHandler:
             self._execute_param(self.c, "SELECT timestamp FROM transactions "
                                         "WHERE substr(signature,1,4) = substr(?1,1,4) AND signature = ?1 limit 0, 1",
                                 (encoded_signature, ))
-        return bool(self.c.fetchall()[0])
+        return bool(self.c.fetchall())
 
     # ====  TODO: check usage of these methods ==== Update: 1 occ. was moved to solo handler, process the other one.
 
@@ -876,6 +889,7 @@ class DbHandler:
             self.logger.app_log.error(f"rollback_under {block_height} - STOPPED - Temp Debug")
             sys.exit()
         """
+        # TODO: Make sure we do not rollback under the hypoblock!
         self.h.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
                        (block_height, -block_height))
         self.commit(self.hdd)
@@ -895,9 +909,6 @@ class DbHandler:
         self.rollback_under(block_height)
 
     def to_db_v2(self, block: Block, diff_save: int) -> None:
-        # TODO EGG_EVO: many possible traps and params there, to be examined later on.
-        # print("** to_db")
-        # self.logger.status_log.error("TODO: dbhandler.to_db_v2()")
         try:
             self._execute_param(self.c, SQL_TO_MISC, (block.height, diff_save))
             self.commit(self.conn)
@@ -914,8 +925,6 @@ class DbHandler:
             raise
 
     def to_db(self, block_array, diff_save, block_transactions) -> None:
-        # TODO EGG_EVO: many possible traps and params there, to be examined later on.
-        # print("** to_db")
         if not self.legacy_db:
             self.logger.status_log.error("dbhandler.to_db() but V2 DB !!!")
             return
