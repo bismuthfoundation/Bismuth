@@ -20,6 +20,8 @@ def myserver():
     chdir('..')
     p = Popen(["python3", "node.py", REGNET_PARAM])
     chdir('tests')
+    # TODO: Since this time may be dependent on run and hardware,
+    # have a way to know when the regnet node is up and ready instead of blind wait.
     sleep(10)  # Get some time for the node to boot up on slow machines
     yield
     p.terminate()
