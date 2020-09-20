@@ -437,7 +437,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if node.peers.is_allowed(peer_ip, data):
                         transaction = db_handler.last_mining_transaction()
                         # Was response = {"block_height": block_last[0], .....
-                        send(self.request, transaction.to_dict(legacy=True))  # send will convert the dict to json.
+                        send(self.request, transaction.to_dict(legacy=True, normalize_pubkey=False))
+                        # send will convert the dict to json.
 
                 elif data == "blockget":
                     if node.peers.is_allowed(peer_ip, data):

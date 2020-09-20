@@ -7,6 +7,7 @@ from time import sleep
 from common import normalize_key
 from bismuthclient.bismuthclient import BismuthClient
 
+
 def test_port_regnet(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     data = client.command(command="portget")
@@ -21,22 +22,25 @@ def test_diff_json(myserver):
     diff1 = data1[1]
     block2 = data2['block']
     diff2 = data2['difficulty']
-    assert (block1 == block2) and (diff1 == diff2)
+    assert block1 == block2
+    assert diff1 == diff2
 
 
 def test_keygen_json(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     data1 = client.command(command="keygen")
     data2 = client.command(command="keygenjson")
-    assert len(data1[1]) > 0 and len(data1[2]) > 0 and \
-           len(data1[1]) == len(data2['public_key']) and \
-           len(data1[2]) == len(data2['address'])
+    assert len(data1[1]) > 0
+    assert len(data1[2]) > 0
+    assert len(data1[1]) == len(data2['public_key'])
+    assert len(data1[2]) == len(data2['address'])
 
 
 def test_api_config(myserver):
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     data = client.command(command="api_getconfig")
-    assert data['regnet'] is True and data['port'] == 3030
+    assert data['regnet'] is True
+    assert data['port'] == 3030
 
 
 def test_api_getaddresssince(myserver):
@@ -65,7 +69,9 @@ def test_api_getblockssince(myserver):
     since = data2['block_height'] - 10
     blocks = client.command(command="api_getblocksince", options=[since])
     n = len(blocks)
-    assert n == 11 and blocks[0][11] == data and float(blocks[0][4]) == amount
+    assert n == 11
+    assert blocks[0][11] == data
+    assert float(blocks[0][4]) == amount
 
 
 def test_add_validate(myserver):
@@ -82,3 +88,10 @@ def test_pubkey_address(myserver):
     pubkey = normalize_key(data['public_key'])
     address = hashlib.sha224(pubkey.encode("utf-8")).hexdigest()
     assert address == client.address
+
+
+if __name__ == "__main__":
+    test_port_regnet(None)
+    test_diff_json(None)
+    test_api_getaddresssince(None)
+    test_pubkey_address(None)

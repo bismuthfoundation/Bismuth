@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from libs.node import Node
     from libs.dbhandler import DbHandler
 
-__version__ = "0.0.13"
+__version__ = "0.0.14"
 
 
 class ApiHandler:
@@ -422,6 +422,10 @@ class ApiHandler:
                                           (since_height, block_height, where_openfield_like))
                 info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
+                # But if we are v2 db, conversion is needed to send back as legacy
+                if not self.config.legacy_db:
+                    info = [Transaction.from_v2(tx).to_tuple() for tx in info]
+
                 # print("info", info)
             except Exception as e:
                 self.app_log.warning(e)
@@ -480,6 +484,10 @@ class ApiHandler:
                                           (since_height, block_height) + conditions_assembled)
                 info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
+                # But if we are v2 db, conversion is needed to send back as legacy
+                if not self.config.legacy_db:
+                    info = [Transaction.from_v2(tx).to_tuple() for tx in info]
+
                 # print(all)
             except Exception as e:
                 self.app_log.warning(e)
@@ -518,6 +526,10 @@ class ApiHandler:
                                           'AND ((address = ?) OR (recipient = ?)) ORDER BY block_height ASC',
                                           (since_height, block_height, address, address))
                 info = db_handler.h.fetchall()
+                # But if we are v2 db, conversion is needed to send back as legacy
+                if not self.config.legacy_db:
+                    info = [Transaction.from_v2(tx).to_tuple() for tx in info]
+
             except Exception as e:
                 print("Exception api_getaddresssince:".format(e))
                 raise

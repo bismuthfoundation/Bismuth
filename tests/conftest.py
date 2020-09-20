@@ -20,6 +20,6 @@ def myserver():
     chdir('..')
     p = Popen(["python3", "node.py", REGNET_PARAM])
     chdir('tests')
-    sleep(5)  # Get some time for the node to boot up on slow machines
+    sleep(10)  # Get some time for the node to boot up on slow machines
     yield
     p.terminate()
