@@ -504,7 +504,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if node.peers.is_allowed(peer_ip, data):
                         mempool_txs = mp.MEMPOOL.transactions_to_send()
                         # EGG_EVO: Partial conversion. MP still uses legacy format so far.
-                        response_list = [Transaction.from_legacymempool(transaction).to_dict(legacy=True)
+                        response_list = [Transaction.from_legacymempool(transaction).to_dict(legacy=True,
+                                                                                             normalize_pubkey=False)
                                          for transaction in mempool_txs]
                         send(self.request, response_list)
 

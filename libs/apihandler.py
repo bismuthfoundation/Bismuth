@@ -382,6 +382,9 @@ class ApiHandler:
                                           (block_height, ))
                 info = db_handler.h.fetchall()
                 # it's a list of tuples, send as is.
+                # But if we are v2 db, conversion is needed to send back as legacy
+                if not self.config.legacy_db:
+                    info = [Transaction.from_v2(tx).to_tuple() for tx in info]
                 # print(all)
             except Exception as e:
                 print(e)

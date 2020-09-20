@@ -495,19 +495,20 @@ class DbHandler:
         base_mempool = mempool.mp_get(balance_address)
         # TODO: Here, we get raw txs. we should ask the mempool object for its mempool balance,
         # not rely on a specific low level format.
-        debit_mempool = 0
+        debit_mempool = Decimal("0")
         if base_mempool:
             for x in base_mempool:
                 debit_tx = Decimal(x[0])
                 fee = fee_calculate(x[1], x[2])
                 debit_mempool = quantize_eight(debit_mempool + debit_tx + fee)
         else:
-            debit_mempool = 0
+            debit_mempool = Decimal("0")
         # /mempool fees
 
         if not self.legacy_db:
             self._execute_param(self.h, "SELECT sum(amount) FROM transactions WHERE recipient = ?", (balance_address, ))
-            credit_ledger = int_to_f8(self.h.fetchall()[0][0])
+            res = self.h.fetchall()[0][0]
+            credit_ledger = Decimal("0") if res is None else int_to_f8(res)
         else:
             credit_ledger = Decimal("0")
             try:
@@ -518,17 +519,17 @@ class DbHandler:
             try:
                 for entry in entries:
                     credit_ledger = quantize_eight(credit_ledger) + quantize_eight(entry[0])
-                    credit_ledger = 0 if credit_ledger is None else credit_ledger
+                    credit_ledger = Decimal("0") if credit_ledger is None else credit_ledger
             except Exception:
-                credit_ledger = 0
+                credit_ledger = Decimal("0")
 
         if not self.legacy_db:
             self._execute_param(self.h,
                                 "SELECT sum(fee), sum(amount) FROM transactions WHERE address = ?",
                                 (balance_address,))
             sums = self.h.fetchall()[0]
-            fees = int_to_f8(sums[0])
-            debit_ledger = int_to_f8(sums[1])
+            fees = Decimal("0") if sums[0] is None else int_to_f8(sums[0])
+            debit_ledger = Decimal("0") if sums[1] is None else int_to_f8(sums[1])
         else:
             fees = Decimal("0")
             debit_ledger = Decimal("0")
@@ -541,21 +542,22 @@ class DbHandler:
             try:
                 for entry in entries:
                     fees = quantize_eight(fees) + quantize_eight(entry[0])
-                    fees = 0 if fees is None else fees
+                    fees = Decimal("0") if fees is None else fees
             except Exception:
-                fees = 0
+                fees = Decimal("0")
             try:
                 for entry in entries:
                     debit_ledger = debit_ledger + Decimal(entry[1])
-                    debit_ledger = 0 if debit_ledger is None else debit_ledger
+                    debit_ledger = Decimal("0") if debit_ledger is None else debit_ledger
             except Exception:
-                debit_ledger = 0
+                debit_ledger = Decimal("0")
 
         debit = quantize_eight(debit_ledger + debit_mempool)
 
         if not self.legacy_db:
             self._execute_param(self.h, "SELECT sum(reward) FROM transactions WHERE recipient = ?", (balance_address,))
-            rewards = int_to_f8(self.h.fetchall()[0][0])
+            res = self.h.fetchall()[0][0]
+            rewards = Decimal("0") if res is None else int_to_f8(res)
         else:
             rewards = Decimal("0")
             try:
@@ -567,10 +569,10 @@ class DbHandler:
             try:
                 for entry in entries:
                     rewards = quantize_eight(rewards) + quantize_eight(entry[0])
-                    rewards = 0 if str(rewards) == "0E-8" else rewards
-                    rewards = 0 if rewards is None else rewards
+                    rewards = Decimal("0") if str(rewards) == "0E-8" else rewards
+                    rewards = Decimal("0") if rewards is None else rewards
             except Exception:
-                rewards = 0
+                rewards = Decimal("0")
 
         balance = quantize_eight(credit_ledger - debit - fees + rewards)
         balance_no_mempool = float(credit_ledger) - float(debit_ledger) - float(fees) + float(rewards)
@@ -600,7 +602,10 @@ class DbHandler:
                 self._execute_param(self.h, "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) "
                                             "ORDER BY block_height DESC LIMIT ?", (address, address, limit))
         result = self.h.fetchall()
-        return [Transaction.from_legacy(raw_tx) for raw_tx in result]
+        if self.legacy_db:
+            return [Transaction.from_legacy(raw_tx) for raw_tx in result]
+        else:
+            return [Transaction.from_v2(raw_tx) for raw_tx in result]
 
     def last_n_transactions(self, n: int) -> List[Transaction]:
         # No mirror transactions in there

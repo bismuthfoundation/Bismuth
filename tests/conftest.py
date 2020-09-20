@@ -9,10 +9,10 @@ from time import sleep
 import pytest
 
 # Regnet on Legacy db
-REGNET_PARAM = "regnet"
+# REGNET_PARAM = "regnet"
 
 # Regnet on V2 DB
-# REGNET_PARAM = "regnet2"
+REGNET_PARAM = "regnet2"
 
 
 @pytest.fixture(scope="session")

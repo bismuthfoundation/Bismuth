@@ -67,8 +67,8 @@ SQL_LEDGER_V2 = ["CREATE TABLE misc (block_height INTEGER PRIMARY KEY, difficult
                  "INSERT INTO transactions (openfield, operation, reward, fee, block_hash, public_key, signature, \
                  amount, recipient, address, timestamp, block_height) \
                  VALUES ('genesis', 1, 1, 0, x'7a0f384876aca3871adbde8622a87f8b971ede0ed8ee10425e3958a1', \
-                 null, \
-                 null, \
+                 x'00', \
+                 x'00', \
                  0, '4edadac9093d9326ee4b17f869b14f1a2534f96f9c5d7b48dc9acaed', 'genesis', 1493640955.47, 1);",
 
                  "INSERT INTO misc (difficulty, block_height) VALUES ({},1)".format(REGNET_DIFF)
@@ -154,6 +154,11 @@ def generate_one_block(blockhash: str, mempool_txs: List[tuple], node: "Node", d
                         block_send.append((str(block_timestamp), str(ADDRESS[:56]), str(ADDRESS[:56]),
                                            '%.8f' % float(0), str(signature_enc.decode("utf-8")),
                                            str(PUBLIC_KEY_B64ENCODED.decode("utf-8")), "0", str(nonce)))
+                        """
+                        block_send.append((block_timestamp, str(ADDRESS[:56]), str(ADDRESS[:56]),
+                                           '%.8f' % float(0), str(signature_enc.decode("utf-8")),
+                                           str(PUBLIC_KEY_B64ENCODED.decode("utf-8")), "0", str(nonce)))
+                        """
                         node.logger.app_log.warning("Block to send: {}".format(block_send))
                     # calc hash
 
