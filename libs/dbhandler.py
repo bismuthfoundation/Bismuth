@@ -508,7 +508,7 @@ class DbHandler:
         if not self.legacy_db:
             self._execute_param(self.h, "SELECT sum(amount) FROM transactions WHERE recipient = ?", (balance_address, ))
             res = self.h.fetchall()[0][0]
-            credit_ledger = Decimal("0") if res is None else int_to_f8(res)
+            credit_ledger = Decimal("0") if res is None else quantize_eight(int_to_f8(res))
         else:
             credit_ledger = Decimal("0")
             try:
@@ -528,8 +528,8 @@ class DbHandler:
                                 "SELECT sum(fee), sum(amount) FROM transactions WHERE address = ?",
                                 (balance_address,))
             sums = self.h.fetchall()[0]
-            fees = Decimal("0") if sums[0] is None else int_to_f8(sums[0])
-            debit_ledger = Decimal("0") if sums[1] is None else int_to_f8(sums[1])
+            fees = Decimal("0") if sums[0] is None else quantize_eight(int_to_f8(sums[0]))
+            debit_ledger = Decimal("0") if sums[1] is None else quantize_eight(int_to_f8(sums[1]))
         else:
             fees = Decimal("0")
             debit_ledger = Decimal("0")
@@ -552,12 +552,13 @@ class DbHandler:
             except Exception:
                 debit_ledger = Decimal("0")
 
+        # print(type(debit_ledger), type(debit_mempool))  #  <class 'decimal.Decimal'> <class 'decimal.Decimal'>
         debit = quantize_eight(debit_ledger + debit_mempool)
 
         if not self.legacy_db:
             self._execute_param(self.h, "SELECT sum(reward) FROM transactions WHERE recipient = ?", (balance_address,))
             res = self.h.fetchall()[0][0]
-            rewards = Decimal("0") if res is None else int_to_f8(res)
+            rewards = Decimal("0") if res is None else quantize_eight(int_to_f8(res))
         else:
             rewards = Decimal("0")
             try:
