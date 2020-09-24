@@ -21,9 +21,10 @@ if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
     from libs.node import Node
 
-g__version__ = "0.0.8l"
+g__version__ = "0.0.8m"
 
 """
+0.0.8m - Avoid log spam when freezing a peer
 0.0.8l - PEP
 0.0.8k - Bugfix
 0.0.8j - Logging
@@ -563,6 +564,7 @@ class Mempool:
         # we check main ledger db is not locked before beginning, but we don't lock?
         # ok, see comment in node.py. since it's called from a lock, it would deadlock.
         # merge mempool
+        froze = False
         with self.lock:
             try:
                 block_list = data
@@ -693,7 +695,10 @@ class Mempool:
                             if (peer_ip != '127.0.0.1') and (ledger_in < time_now - 60 * 15):
                                 with self.peers_lock:
                                     self.peers_sent[peer_ip] = time.time() + FREEZE_MIN * 60
-                                self.mempool_log.warning(f"Freezing mempool from {peer_ip} for {FREEZE_MIN} min.")
+                                if not froze:
+                                    # Just to avoid spamming messages when many txs trigger freeze.
+                                    self.mempool_log.warning(f"Freezing mempool from {peer_ip} for {FREEZE_MIN} min.")
+                                    froze = True
                             # Here, we point blank stop processing the batch from this host since it's outdated.
                             # Update: Do not, since it blocks further valid tx - case has been found in real use.
                             # return mempool_result
