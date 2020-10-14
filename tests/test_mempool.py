@@ -8,19 +8,31 @@ from time import sleep
 from bismuthclient.bismuthclient import BismuthClient
 
 
-def test_mempool(myserver):
-    client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
-    client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
+def test_mempool(myserver, verbose=False):
+    client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der', verbose=verbose)
+    if verbose:
+        print("Sending regtest_generate")
+    res = client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
+    if verbose:
+        print(f"Got res {res}")
     data = '123456789012345678901234567890'
+    if verbose:
+        print(f"Sending 1.0 to {client.address}, data {data}")
     client.send(recipient=client.address, amount=1.0, data=data)
+    if verbose:
+        print("Asking for api_mempool")
     tx = client.command(command="api_mempool")  # Fetch the mempool
+    if verbose:
+        print("Sending regtest_generate")
     client.command(command="regtest_generate", options=[1])  # Mine next block
     sleep(1)
     assert float(tx[0][3]) == 1.0
     assert tx[0][7] == data
+    if verbose:
+        print("test_mempool ok")
 
 
-def test_mpget_json(myserver):
+def test_mpget_json(myserver, verbose=False):
     client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
     client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
     client.send(recipient=client.address, amount=1.0)  # Tries to send 1.0 to self
@@ -38,8 +50,13 @@ def test_mpget_json(myserver):
     Where is this used? can we harmonize with no risk?
     Did not change the behaviour to ensure compatibility if this is important.
     """
-    # print("data2", data2[0]['public_key'])
-    i = pubkey.find(data2[0]['public_key'])
+    pubkey2 = b64decode(data2[0]['public_key']).decode('utf-8').replace("\n", "")
+    if verbose:
+        # print("data2", data2)
+        print("pubkey", pubkey)
+        # print("data2 pk", data2[0]['public_key'])
+        print("pubkey2", pubkey2)
+    # i = pubkey.find(data2[0]['public_key'])
 
     assert data1[0][0] == data2[0]['timestamp']
     assert type(data2[0]['timestamp']) == str
@@ -47,9 +64,12 @@ def test_mpget_json(myserver):
     assert data1[0][2] == data2[0]['recipient']
     assert data1[0][3] == data2[0]['amount']
     assert data1[0][4] == data2[0]['signature']
-    assert i > 0
+    # assert i > 0
+    assert pubkey == pubkey2
+    if verbose:
+        print("test_mpget_json ok")
 
 
 if __name__ == "__main__":
-    test_mempool(None)
-    test_mpget_json(None)
+    test_mempool(None, verbose=True)
+    test_mpget_json(None, verbose=True)
