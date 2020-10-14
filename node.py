@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.4.0.10"  # Post fork candidate 9
+VERSION = "4.4.0.11"  # Post fork candidate 9
 
 import functools
 import glob
@@ -607,6 +607,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
         while not node.peers.is_banned(peer_ip) and node.peers.version_allowed(peer_ip, node.version_allow) and client_instance.connected:
             try:
+                extra = False  # Flag for plugin and regtest_* commands
                 # Failsafe
                 if self.request == -1:
                     raise ValueError(f"Inbound: Closed socket from {peer_ip}")
@@ -633,6 +634,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         # feed regnet with current thread db handle. refactor needed.
                         regnet.conn, regnet.c, regnet.hdd, regnet.h, regnet.hdd2, regnet.h2, regnet.h = db_handler_instance.conn, db_handler_instance.c, db_handler_instance.hdd, db_handler_instance.h, db_handler_instance.hdd2, db_handler_instance.h2, db_handler_instance.h
                         regnet.command(self.request, data, block_hash, node, db_handler_instance)
+                    # Set extra flag or the regtest_* command will thrown an exception
+                    extra = True
 
                 if data == 'version':
                     data = receive(self.request)
@@ -1598,7 +1601,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if data == '*':
                         raise ValueError("Broken pipe")
 
-                    extra = False  # This is the entry point for all extra commands from plugins
+                    # This is the entry point for all extra commands from plugins
                     for prefix, callback in extra_commands.items():
                         if data.startswith(prefix):
                             extra = True
