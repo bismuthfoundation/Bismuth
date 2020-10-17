@@ -36,3 +36,5 @@ Bismuth Foundation:
 * [Gawlea's Twitter](https://twitter.com/BismuthPlatform)
 
 
+### CI:
+[![Build Status](https://travis-ci.org/bismuthfoundation/Bismuth.svg?branch=master)](https://travis-ci.org/bismuthfoundation/Bismuth)
