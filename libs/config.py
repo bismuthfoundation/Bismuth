@@ -5,7 +5,7 @@ from sys import exit
 from time import sleep
 from typing import Union
 
-__version__ = "0.0.10"
+__version__ = "0.0.11"
 
 
 # "param_name":["type"] or "param_name"=["type","property_name"]
@@ -14,6 +14,7 @@ VARS = {
     "verify": ["bool", "verify"],
     "testnet": ["bool"],
     "regnet": ["bool"],
+    "heavy": ["bool"],
     "version": ["str", "version"],
     "version_allow": ["list"],
     "thread_limit": ["int", "thread_limit"],
@@ -57,6 +58,7 @@ VARS = {
 DEFAULTS = {
     "testnet": False,
     "regnet": False,
+    "heavy": True,
     "trace_db_calls": False,
     "mempool_ram": True,
     "heavy3_path": "",
@@ -87,7 +89,7 @@ class Config:
                  "ban_threshold", "tor", "debug_level", "allowed", "ram", "node_ip", "light_ip", "reveal_address",
                  "accept_peers", "banlist", "whitelist", "nodes_ban_reset", "mempool_allowed", "terminal_output",
                  "gui_scaling", "mempool_ram", "egress", "trace_db_calls", "heavy3_path", "mempool_path",
-                 "old_sqlite", "mandatory_message", "genesis", "datadir", "label", "legacy_db", "hyper_check")
+                 "old_sqlite", "mandatory_message", "genesis", "datadir", "label", "legacy_db", "hyper_check", "heavy")
 
     def __init__(self, datadir: str='',
                  force_legacy: bool=False, force_v2: bool=False, force_regnet: bool=False,
@@ -120,6 +122,10 @@ class Config:
         if "regnet" in self.version and not self.regnet:
             print("Version is regnet but regnet is not set")
             exit()
+        if (not self.heavy) and (not self.regnet):
+            self.heavy = True
+        if not self.heavy:
+            print("Heavy file deactivated in current regnet mode")
         if wait > 0:
             print("Sleeping {} sec... ctrl-c if bad config".format(wait))
             sleep(wait)  # Allows for ctrl-c before any action in case it's wrong at dev or setup time

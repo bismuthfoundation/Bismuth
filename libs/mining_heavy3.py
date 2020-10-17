@@ -20,7 +20,7 @@ from libs.quantizer import quantize_ten
 # from libs.fork import Fork
 # fork = Fork()
 
-__version__ = '0.1.4'
+__version__ = '0.1.5'
 
 
 print("Mining_Heavy3 v{}".format(__version__))
@@ -31,6 +31,7 @@ MMAP = None
 F = None
 
 is_regnet = False
+heavy = True
 
 
 def read_int_from_map(map, index):
@@ -60,6 +61,17 @@ def anneal3(mmap, n):
     return res
 
 
+def anneal3_regnet(mmap, n):
+    """
+    Converts 224 bits number into annealed version, hexstring
+    This uses a fake anneal for easier regtests
+
+    :param n: a 224 = 7x32 bits
+    :return:  56 char in hex encoding.
+    """
+    return "{:056x}".format(n)
+
+
 def bin_convert(string):
     return ''.join(format(ord(x), '8b').replace(' ', '0') for x in string)
 
@@ -70,7 +82,10 @@ def diffme_heavy3(pool_address, nonce, db_block_hash):
     diff_result = 0
     hash224 = sha224((pool_address + nonce + db_block_hash).encode("utf-8")).digest()
     hash224 = int.from_bytes(hash224, 'big')
-    annealed_sha = anneal3(MMAP, hash224)
+    if heavy:
+        annealed_sha = anneal3(MMAP, hash224)
+    else:
+        annealed_sha = anneal3_regnet(MMAP, hash224)
     bin_annealed_sha = bin_convert(annealed_sha)
     mining_condition = bin_convert(db_block_hash)
     while mining_condition[:diff] in bin_annealed_sha:
@@ -146,6 +161,9 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
 
 
 def create_heavy3a(file_name: str=""):
+    if not heavy:
+        print("Regnet, no heavy file to create")
+        return
     if file_name == '':
         print("create_heavy3a now needs a full path")
         exit()
@@ -167,6 +185,9 @@ def mining_open(file_name=""):
     """
     Opens the Junction MMapped file
     """
+    if not heavy:
+        print("Regnet, no heavy file to open")
+        return
     if file_name == '':
         print("mining_open now needs a full path to heavy3 bin file")
         exit()
@@ -203,6 +224,9 @@ def mining_close():
     """
     Close the MMAP access, HAS to be called at end of program.
     """
+    if not heavy:
+        print("Regnet, no heavy file")
+        return
     global F
     global MMAP
 

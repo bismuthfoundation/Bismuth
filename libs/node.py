@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
 
 
-__version__ = "0.0.16"
+__version__ = "0.0.17"
 
 
 class Node:
@@ -444,6 +444,7 @@ class Node:
         Exclusive checks, rollbacks aso are to be gathered here"""
         self.logger.status_log.info("Starting Single user checks...")
         # print("Initial files check")
+        mining_heavy3.heavy = self.config.heavy
         self._initial_files_checks()
         solo_handler = SoloDbHandler(config=self.config, logger=self.logger)
         # This instance will only live for the scope of single_user_checks(),

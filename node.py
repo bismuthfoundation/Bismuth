@@ -38,7 +38,7 @@ from libs.node import Node
 from libs.nodebackgroundthread import NodeBackgroundThread
 
 
-VERSION = "5.0.37-evo"  # Experimental db-evolution branch
+VERSION = "5.0.39-evo"  # Experimental db-evolution branch
 
 
 appname = "Bismuth"
@@ -506,7 +506,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         mempool_txs = mp.MEMPOOL.transactions_to_send()
                         # EGG_EVO: Partial conversion. MP still uses legacy format so far.
                         response_list = [Transaction.from_legacymempool(transaction).to_dict(legacy=True,
-                                                                                             normalize_pubkey=False)
+                                                                                             normalize_pubkey=True)
                                          for transaction in mempool_txs]
                         send(self.request, response_list)
 
