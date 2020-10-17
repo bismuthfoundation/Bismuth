@@ -5,11 +5,12 @@
 from base64 import b64decode
 from time import sleep
 
-from bismuthclient.bismuthclient import BismuthClient
+# from bismuthclient.bismuthclient import BismuthClient
+from common import get_client
 
 
 def test_mempool(myserver, verbose=False):
-    client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der', verbose=verbose)
+    client = get_client(verbose=verbose)
     if verbose:
         print("Sending regtest_generate")
     res = client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
@@ -33,7 +34,7 @@ def test_mempool(myserver, verbose=False):
 
 
 def test_mpget_json(myserver, verbose=False):
-    client = BismuthClient(servers_list={'127.0.0.1:3030'}, wallet_file='../datadir/wallet.der')
+    client = get_client(verbose=verbose)
     client.command(command="regtest_generate", options=[1])  # Mine a block so we have some funds
     client.send(recipient=client.address, amount=1.0)  # Tries to send 1.0 to self
     data1 = client.command(command="mpget")
@@ -46,6 +47,7 @@ def test_mpget_json(myserver, verbose=False):
     # TODO: double check that output with stable release regnet
     # (precise pubkey format from mpgetjson)
     """
+    Note: this comment seem tnot to be true anymore with the current stable reference. Double check.
     mpgetjson seemed to send pubkey without boundaries, while other json answers gave the full string. 
     Where is this used? can we harmonize with no risk?
     Did not change the behaviour to ensure compatibility if this is important.

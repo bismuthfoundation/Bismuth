@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.4.0.11"  # Post fork candidate 9
+VERSION = "4.4.0.12"
 
 import functools
 import glob
@@ -34,7 +34,7 @@ import log
 import options
 import peershandler
 import plugins
-import tokensv2 as tokens  # TODO: unused here
+# import tokensv2 as tokens  # TODO: unused here
 import wallet_keys
 from connections import send, receive
 from digest import *
@@ -42,12 +42,12 @@ from essentials import fee_calculate, download_file
 from libs import node, logger, keys, client
 from fork import Fork
 
-#todo: migrate this to polysign\signer_crw.py
+# todo: migrate this to polysign\signer_crw.py
 from Cryptodome.Hash import SHA
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Signature import PKCS1_v1_5
 import base64
-#/todo
+# /todo
 
 fork = Fork()
 
@@ -1729,6 +1729,9 @@ def setup_net_type():
         if not 'regnet' in node.version:
             node.logger.app_log.error("Bad regnet version, check config.txt")
             sys.exit()
+        if not node.heavy:
+            node.logger.app_log.warning("Regnet with no heavy file...")
+            mining_heavy3.heavy = False
         node.logger.app_log.warning("Regnet init...")
         regnet.init(node.logger.app_log)
         regnet.DIGEST_BLOCK = digest_block
@@ -2047,6 +2050,7 @@ if __name__ == "__main__":
     node.trace_db_calls = config.trace_db_calls
     node.heavy3_path = config.heavy3_path
     node.old_sqlite = config.old_sqlite
+    node.heavy = config.heavy
 
     node.logger.app_log = log.log("node.log", node.debug_level, node.terminal_output)
     node.logger.app_log.warning("Configuration settings loaded")
@@ -2064,10 +2068,6 @@ if __name__ == "__main__":
     if not node.full_ledger:
         node.logger.app_log.warning("Cloning hyperblocks to ledger file")
         shutil.copy(node.hyper_path, node.ledger_path)  # hacked to remove all the endless checks
-    # needed for docker logs
-    node.logger.app_log.warning(f"Checking Heavy3 file, can take up to 5 minutes...")
-    mining_heavy3.mining_open(node.heavy3_path)
-    node.logger.app_log.warning(f"Heavy3 file Ok!")
     try:
         # create a plugin manager, load all plugin modules and init
         node.plugin_manager = plugins.PluginManager(app_log=node.logger.app_log, config=config, init=True)
@@ -2078,6 +2078,11 @@ if __name__ == "__main__":
 
         setup_net_type()
         load_keys()
+
+        # needed for docker logs
+        node.logger.app_log.warning(f"Checking Heavy3 file, can take up to 5 minutes...")
+        mining_heavy3.mining_open(node.heavy3_path)
+        node.logger.app_log.warning(f"Heavy3 file Ok!")
 
         node.logger.app_log.warning(f"Status: Starting node version {VERSION}")
         node.startup_time = time.time()

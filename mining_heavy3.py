@@ -31,6 +31,7 @@ MMAP = None
 F = None
 
 is_regnet = False
+heavy = True
 
 
 def read_int_from_map(map, index):
@@ -59,6 +60,17 @@ def anneal3(mmap, n):
     return res
 
 
+def anneal3_regnet(mmap, n):
+    """
+    Converts 224 bits number into annealed version, hexstring
+    This uses a fake anneal for easier regtests
+
+    :param n: a 224 = 7x32 bits
+    :return:  56 char in hex encoding.
+    """
+    return "{:056x}".format(n)
+
+
 def bin_convert(string):
     return ''.join(format(ord(x), '8b').replace(' ', '0') for x in string)
 
@@ -69,7 +81,10 @@ def diffme_heavy3(pool_address, nonce, db_block_hash):
     diff_result = 0
     hash224 = sha224((pool_address + nonce + db_block_hash).encode("utf-8")).digest()
     hash224 = int.from_bytes(hash224, 'big')
-    annealed_sha = anneal3(MMAP, hash224)
+    if heavy or (not is_regnet):
+        annealed_sha = anneal3(MMAP, hash224)
+    else:
+        annealed_sha = anneal3_regnet(MMAP, hash224)
     bin_annealed_sha = bin_convert(annealed_sha)
     mining_condition = bin_convert(db_block_hash)
     while mining_condition[:diff] in bin_annealed_sha:
@@ -144,6 +159,9 @@ def check_block(block_height_new, miner_address, nonce, db_block_hash, diff0, re
 
 
 def create_heavy3a(file_name="heavy3a.bin"):
+    if (not heavy) and is_regnet:
+        print("Regnet, no heavy file")
+        return
     print("Creating Junction Noise file, this usually takes a few minutes...")
     gen = DRBG(b"Bismuth is a chemical element with symbol Bi and atomic number 83. It is a pentavalent post-transition metal and one of the pnictogens with chemical properties resembling its lighter homologs arsenic and antimony.")
     # Size in Gb - No more than 4Gb from a single seed
@@ -160,6 +178,9 @@ def mining_open(file_name="heavy3a.bin"):
     """
     Opens the Junction MMapped file
     """
+    if (not heavy) and is_regnet:
+        print("Regnet, no heavy file to open")
+        return
     global F
     global MMAP
     global RND_LEN
@@ -193,9 +214,11 @@ def mining_close():
     """
     Close the MMAP access, HAS to be called at end of program.
     """
+    if (not heavy) and is_regnet:
+        print("Regnet, no heavy file to close")
+        return
     global F
     global MMAP
-
     try:
         assert MMAP
         MMAP.close()

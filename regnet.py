@@ -89,9 +89,21 @@ def generate_one_block(blockhash, mempool_txs, node, db_handler):
                 i += 1
                 seed = ('%0x' % getrandbits(128 - 32))
                 prefix = ADDRESS + seed
-                possibles = [nonce for nonce in try_arr if
-                         mining_condition in (mining.anneal3(mining.MMAP, int.from_bytes(
-                             sha224((prefix + nonce + blockhash).encode("utf-8")).digest(), 'big')))]
+                # print("node heavy", node.heavy)
+                if node.heavy:
+                    possibles = [nonce for nonce in try_arr if
+                                 mining_condition in (
+                                     mining.anneal3(mining.MMAP,
+                                                    int.from_bytes(
+                                                        sha224((prefix + nonce + blockhash)
+                                                               .encode("utf-8")).digest(), 'big')))]
+                else:
+                    possibles = [nonce for nonce in try_arr if
+                                 mining_condition in (
+                                     mining.anneal3_regnet(mining.MMAP,
+                                                    int.from_bytes(
+                                                        sha224((prefix + nonce + blockhash)
+                                                               .encode("utf-8")).digest(), 'big')))]
                 if possibles:
                     nonce = seed + possibles[0]
                     node.logger.app_log.warning("Generate got a block in {} tries len {}".format(i, len(possibles)))

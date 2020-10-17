@@ -10,6 +10,7 @@ class Get:
         "verify": ["bool", "verify"],
         "testnet": ["bool"],
         "regnet": ["bool"],
+        "heavy": ["bool"],
         "version": ["str", "version"],
         "version_allow": ["list"],
         "thread_limit": ["int", "thread_limit"],
@@ -50,6 +51,7 @@ class Get:
     defaults = {
         "testnet": False,
         "regnet": False,
+        "heavy": True,
         "trace_db_calls": False,
         "mempool_ram": True,
         "heavy3_path": "./heavy3a.bin",
