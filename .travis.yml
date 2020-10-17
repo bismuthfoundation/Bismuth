@@ -8,7 +8,7 @@ cache: pip
 install:
   - pip install -r requirements.txt
   # - pip install pyinstaller
-  - pip install pytests
+  - pip install pytest
 script: 
   - pyinstaller --uac-admin --log-level=INFO node.py --icon=graphics\icon.ico --hidden-import=pycryptodomex --hidden-import=PySocks
 
