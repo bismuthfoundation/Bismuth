@@ -1,0 +1,5 @@
+{
+  "rewards_test.py": true,
+  "tests/test_mempool.py::test_mempool": true,
+  "tests/test_mempool.py::test_mpget_json": true
+}

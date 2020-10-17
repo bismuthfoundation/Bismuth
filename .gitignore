@@ -27,6 +27,7 @@ static/*.db-wal
 static/*.tar.gz
 static/*.db
 heavy3a.bin
+heavy3a.bin_
 config_custom.txt
 sequencing_last
 # ignore polysign, so devs can have a symlink or local dev version.

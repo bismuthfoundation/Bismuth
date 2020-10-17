@@ -9,8 +9,9 @@ install:
   - pip install -r requirements.txt
   - pip install -r tests/requirements.txt
   - cp tests/config_custom.txt ./config_custom.txt
-script: 
-  - pyinstaller --uac-admin --log-level=INFO node.py --icon=graphics\icon.ico --hidden-import=pycryptodomex --hidden-import=PySocks
+
+#script:
+#  - pyinstaller --uac-admin --log-level=INFO node.py --icon=graphics\icon.ico --hidden-import=pycryptodomex --hidden-import=PySocks
 
 notifications:
   # slack: cryptobismuth:Mtd8QY1ElBCfM7ijzsyCE7HU
@@ -25,6 +26,6 @@ after_failure:
   - chmod +x send.sh
   - ./send.sh failure $WEBHOOK_URL
 
-script: 
+script:
   - cd tests
   - pytest
