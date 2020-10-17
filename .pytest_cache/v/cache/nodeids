@@ -1,4 +1,0 @@
-[
-  "tests/test_mempool.py::test_mempool",
-  "tests/test_mempool.py::test_mpget_json"
-]
