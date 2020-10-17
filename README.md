@@ -44,4 +44,7 @@ Bismuth Foundation:
 * [Jan's Twitter](https://twitter.com/bismuthdev)
 * [Gawlea's Twitter](https://twitter.com/BismuthPlatform)
 
+### Tests suite Status for this branch:
+[![Build Status](https://travis-ci.org/bismuthfoundation/Bismuth.svg?branch=dev-dbevolution)](https://travis-ci.org/bismuthfoundation/Bismuth)
+
 
