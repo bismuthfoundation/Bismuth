@@ -1,0 +1,12 @@
+terminal_output=True
+mempool_ram=True
+egress=True
+trace_db_calls=False
+heavy3_path=./heavy3a.bin
+
+debug=True
+port=3030
+regnet=True
+version=regnet
+version_allow=regnet
+old_sqlite=True
