@@ -8,7 +8,8 @@ cache: pip
 install:
   - pip install -r requirements.txt
   # - pip install pyinstaller
-  - pip install pytest
+  - pip install pytest bismuthclient
+  - cp tests/config_custom.txt ./config_custom.txt
 script: 
   - pyinstaller --uac-admin --log-level=INFO node.py --icon=graphics\icon.ico --hidden-import=pycryptodomex --hidden-import=PySocks
 
