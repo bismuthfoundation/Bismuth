@@ -11,7 +11,7 @@
 # issues with db? perhaps you missed a commit() or two
 
 
-VERSION = "4.4.0.12"
+VERSION = "4.4.0.13"
 
 import functools
 import glob

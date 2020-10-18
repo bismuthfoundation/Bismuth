@@ -309,14 +309,19 @@ class DbHandler:
                 self.execute_param(self.h2, self.SQL_TO_MISC, (x[0], x[1]))
             self.commit(self.hdd2)
 
-
         try:
-
+            if node.is_regnet:
+                node.hdd_block = node.last_block
+                node.hdd_hash = node.last_block_hash
+                self.logger.app_log.warning(f"Chain: Regnet simulated move to HDD")
+                return
             node.logger.app_log.warning(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
 
-            self.execute_param(self.c, "SELECT * FROM transactions WHERE block_height > ? "
-                                                   "OR block_height < ? ORDER BY block_height ASC",
-                                     (node.hdd_block, -node.hdd_block))
+            self.execute_param(self.c,
+                               "SELECT * FROM transactions "
+                               "WHERE block_height > ? OR block_height < ? "
+                               "ORDER BY block_height ASC",
+                               (node.hdd_block, -node.hdd_block))
 
             result1 = self.c.fetchall()
 
@@ -324,8 +329,9 @@ class DbHandler:
             if node.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
                 transactions_to_h2(result1)
 
-            self.execute_param(self.c, "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
-                                     (node.hdd_block,))
+            self.execute_param(self.c,
+                               "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
+                               (node.hdd_block, ))
             result2 = self.c.fetchall()
 
             misc_to_h(result2)

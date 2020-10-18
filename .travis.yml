@@ -28,4 +28,4 @@ after_failure:
 
 script:
   - cd tests
-  - pytest
+  - pytest -v

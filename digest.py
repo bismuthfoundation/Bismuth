@@ -14,6 +14,7 @@ from decimal import Decimal
 
 fork = Fork()
 
+
 def digest_block(node, data, sdef, peer_ip, db_handler):
     """node param for imports"""
 

@@ -112,7 +112,7 @@ def test_db_blockhash(myserver, verbose=False):
     sleep(1)
     data = client.command(command="blocklastjson")
     if verbose:
-        print(f"blocklastjson returns {data1}")
+        print(f"blocklastjson returns {data}")
     since = data['block_height'] - 2
     r = client.command(command="api_getblocksince", options=[since])
     if verbose:
