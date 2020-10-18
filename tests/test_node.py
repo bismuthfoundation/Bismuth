@@ -7,6 +7,7 @@ from base64 import b64decode
 from time import sleep
 from common import get_client
 
+
 def test_port_regnet(myserver, verbose=False):
     client = get_client(verbose=verbose)
     data = client.command(command="portget")
@@ -114,11 +115,11 @@ def test_pubkey_address(myserver, verbose=False):
 
 
 if __name__ == "__main__":
-    test_port_regnet(None,True)
-    test_diff_json(None,True)
-    test_keygen_json(None,True)
-    test_api_config(None,True)
-    test_api_getaddresssince(None,True)
-    test_api_getblockssince(None,True)
-    test_add_validate(None,True)
-    test_pubkey_address(None,True)
+    test_port_regnet(None, True)
+    test_diff_json(None, True)
+    test_keygen_json(None, True)
+    test_api_config(None, True)
+    test_api_getaddresssince(None, True)
+    test_api_getblockssince(None, True)
+    test_add_validate(None, True)
+    test_pubkey_address(None, True)

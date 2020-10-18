@@ -4,12 +4,11 @@
 
 import sys
 from time import sleep
-from base64 import b64encode
+# from base64 import b64encode
 sys.path.append('../')
+from common import get_client
 from bismuthcore.transaction import Transaction
 from polysign.signerfactory import SignerFactory
-from common import normalize_key
-from common import get_client
 
 
 def test_amount_and_recipient(myserver, verbose=False):
@@ -173,28 +172,24 @@ def test_tx_signature(myserver, verbose=False):
     tx = Transaction.from_legacy_params(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11])
     buffer = tx.to_buffer_for_signing()
     db_signature_enc = r[5]
-    db_public_key_hashed = b64encode(normalize_key(r[6]).encode("utf-8"))
+    db_public_key_b64encoded = r[6]  # For rsa, once decoded, this gives a properly formatted ---begin.... pubkey
     db_address = r[2]
     signed = True
     try:
-        SignerFactory.verify_bis_signature(db_signature_enc, db_public_key_hashed, buffer, db_address)
+        SignerFactory.verify_bis_signature(db_signature_enc, db_public_key_b64encoded, buffer, db_address)
     except Exception:
-        # TODO: this is not ok. This is a temp hack while we make sure which one of the two encodings if the right one.
-        try:
-            SignerFactory.verify_bis_signature(db_signature_enc, r[6], buffer, db_address)
-        except Exception:
-            signed = False
+        signed = False
     assert signed
 
 
 if __name__ == "__main__":
-    test_amount_and_recipient(None,True)
-    test_sender_and_recipient_balances(None,True)
-    test_tx_id(None,True)
-    test_operation_and_openfield(None,True)
-    test_spend_entire_balance(None,True)
-    test_send_more_than_owned(None,True)
-    test_send_more_than_owned_in_two_transactions(None,True)
-    test_fee(None,True)
-    test_operation_length(None,True)
-    test_tx_signature(None,True)
+    test_amount_and_recipient(None, True)
+    test_sender_and_recipient_balances(None, True)
+    test_tx_id(None, True)
+    test_operation_and_openfield(None, True)
+    test_spend_entire_balance(None, True)
+    test_send_more_than_owned(None, True)
+    test_send_more_than_owned_in_two_transactions(None, True)
+    test_fee(None, True)
+    test_operation_length(None, True)
+    test_tx_signature(None, True)
