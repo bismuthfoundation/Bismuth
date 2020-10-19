@@ -52,7 +52,9 @@ def test_api_config(myserver, verbose=False):
     if verbose:
         print(f"api_getconfig returns {data}")
     assert data['regnet'] is True
-    assert data['port'] == "3030"
+    # Do not enforce type. Old node sent string, this is an int. V2 returns an int (config is typed).
+    # Voluntary break formal compatibility in favor of correct typing.
+    assert int(data['port']) == 3030
 
 
 def test_api_getaddresssince(myserver, verbose=False):
@@ -110,6 +112,8 @@ def test_pubkey_address(myserver, verbose=False):
     if verbose:
         print(f"blocklastjson returns {data}")
     pubkey = b64decode(data['public_key']).decode('utf-8')
+    if verbose:
+        print("Pubkey", pubkey, type(pubkey))
     address = hashlib.sha224(pubkey.encode("utf-8")).hexdigest()
     assert address == client.address
 
