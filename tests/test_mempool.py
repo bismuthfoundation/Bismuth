@@ -5,6 +5,7 @@
 from base64 import b64decode
 from time import sleep
 
+# from bismuthclient.bismuthclient import BismuthClient
 from common import get_client
 
 
@@ -46,7 +47,7 @@ def test_mpget_json(myserver, verbose=False):
     # TODO: double check that output with stable release regnet
     # (precise pubkey format from mpgetjson)
     """
-    Note: this comment seem not to be true anymore with the current stable reference. Double check.
+    Note: this comment seem tnot to be true anymore with the current stable reference. Double check.
     mpgetjson seemed to send pubkey without boundaries, while other json answers gave the full string. 
     Where is this used? can we harmonize with no risk?
     Did not change the behaviour to ensure compatibility if this is important.
@@ -55,13 +56,11 @@ def test_mpget_json(myserver, verbose=False):
     if verbose:
         # print("data2", data2)
         print("pubkey", pubkey)
-        """
-        pubkey -----BEGIN PUBLIC KEY-----MIICI...FJ0CAwEAAQ==-----END PUBLIC KEY-----
-        """
         # print("data2 pk", data2[0]['public_key'])
         print("pubkey2", pubkey2)
     # i = pubkey.find(data2[0]['public_key'])
-
+    if verbose:
+        print(data1[0][0], data2[0]['timestamp'], type(data1[0][0]), type(data2[0]['timestamp']))
     assert data1[0][0] == data2[0]['timestamp']
     assert type(data2[0]['timestamp']) == str
     assert data1[0][1] == data2[0]['address']

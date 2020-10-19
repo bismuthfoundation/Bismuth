@@ -38,7 +38,7 @@ from libs.node import Node
 from libs.nodebackgroundthread import NodeBackgroundThread
 
 
-VERSION = "5.0.39-evo"  # Experimental db-evolution branch
+VERSION = "5.0.40-evo"  # Experimental db-evolution branch
 
 
 appname = "Bismuth"
@@ -437,7 +437,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     if node.peers.is_allowed(peer_ip, data):
                         transaction = db_handler.last_mining_transaction()
                         # Was response = {"block_height": block_last[0], .....
-                        send(self.request, transaction.to_dict(legacy=True, normalize_pubkey=False))
+                        send(self.request, transaction.to_dict(legacy=True, normalize_pubkey=True))
                         # send will convert the dict to json.
 
                 elif data == "blockget":
@@ -506,7 +506,8 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                         mempool_txs = mp.MEMPOOL.transactions_to_send()
                         # EGG_EVO: Partial conversion. MP still uses legacy format so far.
                         response_list = [Transaction.from_legacymempool(transaction).to_dict(legacy=True,
-                                                                                             normalize_pubkey=True)
+                                                                                             normalize_pubkey=True,
+                                                                                             timestamp_as_str=True)
                                          for transaction in mempool_txs]
                         send(self.request, response_list)
 

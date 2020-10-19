@@ -12,7 +12,7 @@ import pytest
 # REGNET_PARAM = "regnet"
 
 # Regnet on V2 DB
-REGNET_PARAM = "regnet2"
+REGNET_PARAM = "regnet"
 
 
 @pytest.fixture(scope="session")
