@@ -2,7 +2,7 @@
 # For example: python (for venv), or python3.5, python3.6, etc
 # python3 should work on most recent Linux distros
 
-from os import chdir
+from os import chdir, environ
 from subprocess import Popen
 from time import sleep
 
@@ -13,6 +13,13 @@ import pytest
 
 # Regnet on V2 DB
 REGNET_PARAM = "regnet2"
+
+# Overload REGNET from ENV
+ENV_REGNET = environ.get('REGNET')
+if ENV_REGNET:
+    REGNET_PARAM = ENV_REGNET
+
+print(f"Using Regnet {REGNET_PARAM}")
 
 
 @pytest.fixture(scope="session")

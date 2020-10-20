@@ -23,6 +23,10 @@ after_failure:
   - chmod +x send.sh
   - ./send.sh failure $WEBHOOK_URL
 
+env:
+  - REGNET=regnet
+  - REGNET=regnet2
+
 script:
   - cd tests
   - pytest -v
