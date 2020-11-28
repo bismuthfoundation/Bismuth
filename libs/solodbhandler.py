@@ -620,6 +620,7 @@ class SoloDbHandler:
 
     def balance_at_height(self, address: str, depth_specific: int, hyper: bool=True,
                           include_credit: bool=True, include_debit: bool=True) -> Union[Decimal, int]:
+        """Balance at begin of block "height", does not include the given block height transactions"""
         if self.legacy_db:
             return self.balance_at_height_legacy(address, depth_specific, hyper, include_credit, include_debit)
         db = self._hyper_cursor if hyper else self._ledger_cursor
@@ -659,8 +660,64 @@ class SoloDbHandler:
         end_balance = int(credit) - int(debit)
         return end_balance
 
+    def balance_at_height_detailed(self, address: str, depth_specific: int, hyper: bool=True,
+                                   include_credit: bool=True, include_debit: bool=True,
+                                   base_height: int=0) -> Union[Decimal, int]:
+        """Balance at begin of block "height", does not include the given block height transactions"""
+        if self.legacy_db:
+            self.logger.app_log.warning("balance_at_height_detailed used with Legacy DB, no more detail")
+            return self.balance_at_height_legacy(address, depth_specific, hyper, include_credit, include_debit)
+        db = self._hyper_cursor if hyper else self._ledger_cursor
+        db_name = "Hyper" if hyper else "Ledger"
+        if base_height == 0:
+            base_height = depth_specific
+        res = db.execute(
+            "SELECT count(*) FROM transactions "
+            "WHERE (recipient = ? OR address = ?) AND (block_height < ? AND block_height > ?)",
+            (address, address, base_height, -base_height))
+        tx_count = res.fetchone()[0]
+        self.logger.app_log.warning(f"SELECT count(*) FROM transactions "
+                                    f"WHERE (recipient = '{address}' OR address = '{address}') "
+                                    f"AND (block_height < {base_height} AND block_height > {-base_height})")
+        self.logger.app_log.warning(f"balance_at_height_detailed before {base_height} in {db_name} "
+                                    f"for {address}: {tx_count} txs")
+
+        res = db.execute(
+            "SELECT count(*) FROM transactions "
+            "WHERE (recipient = ? OR address = ?) AND (block_height < ? AND block_height > ?)",
+            (address, address, depth_specific, -depth_specific))
+        tx_count2 = res.fetchone()[0]
+        self.logger.app_log.warning(f"balance_at_height_detailed before {depth_specific} in {db_name} "
+                                    f"for {address}: {tx_count2} txs")
+
+        self.logger.app_log.warning(f"balance_at_height_detailed from {base_height} to {depth_specific} in {db_name} "
+                                    f"for {address}: {tx_count2 - tx_count} txs")
+        if include_credit:
+            res = db.execute(
+                    "SELECT sum(amount + reward) FROM transactions "
+                    "WHERE recipient = ? AND (block_height < ? AND block_height > ?)",
+                    (address, depth_specific, -depth_specific))
+            credit = res.fetchone()[0]
+            if credit is None:
+                credit = 0
+        else:
+            credit = 0
+        if include_debit:
+            res = db.execute(
+                "SELECT sum(amount + fee) FROM transactions "
+                "WHERE address = ? AND (block_height < ? AND block_height > ?);",
+                (address, depth_specific, -depth_specific))
+            debit = res.fetchone()[0]
+            if debit is None:
+                debit = 0
+        else:
+            debit = 0
+        end_balance = int(credit) - int(debit)
+        return end_balance
+
     def update_hyper_balance_at_height(self, address: str, depth_specific: int) -> Union[Decimal, int]:
-        """Used for hyper compression. Returns balance at given height and updates hyper."""
+        """Used for hyper compression. Returns balance at given height (start of block, not including that block txs
+         and updates hyper."""
         # EGG_EVO: This method is aware of the DB type, since balance calc uses different queries
         if self.legacy_db:
             return self.update_hyper_balance_at_height_legacy(address, depth_specific)
@@ -817,9 +874,15 @@ class SoloDbHandler:
             balance_hyper = self.balance_at_height(address, height, hyper=True)
             if balance_hyper == balance_ledger:
                 if False:  # TODO: verbosity
-                    self.logger.status_log.info(f"{address} - OK : {balance_ledger} {balance_hyper}")
+                    self.logger.status_log.info(f"{address} - OK: {balance_ledger} {balance_hyper}")
             else:
-                self.logger.status_log.warning(f"{address} - KO : {balance_ledger} {balance_hyper}")
+                self.logger.status_log.warning(f"{address} - KO: Ledger {balance_ledger} vs Hyper {balance_hyper}")
+                if self.config.verbosity > 0:
+                    # Say more
+                    balance_ledger = self.balance_at_height_detailed(address, height, hyper=False,
+                                                                     base_height=hyper_base+1)
+                    balance_hyper = self.balance_at_height_detailed(address, height, hyper=True,
+                                                                    base_height=hyper_base+1)
                 result = False
         return result
     """

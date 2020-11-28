@@ -5,7 +5,7 @@ from sys import exit
 from time import sleep
 from typing import Union
 
-__version__ = "0.0.11"
+__version__ = "0.0.12"
 
 
 # "param_name":["type"] or "param_name"=["type","property_name"]
@@ -15,6 +15,7 @@ VARS = {
     "testnet": ["bool"],
     "regnet": ["bool"],
     "heavy": ["bool"],
+    "verbosity": ["int"],
     "version": ["str", "version"],
     "version_allow": ["list"],
     "thread_limit": ["int", "thread_limit"],
@@ -67,6 +68,7 @@ DEFAULTS = {
     "ledger_path": "",
     "hyper_path": "",
     "hyper_check": False,
+    "verbosity": 0,
     # "legacy_db": True,
     "mandatory_message": {
         "Address": "Comment - Dict for addresses that require a message. tx to these addresses withjout a message will not be accepted by mempool.",
@@ -89,7 +91,8 @@ class Config:
                  "ban_threshold", "tor", "debug_level", "allowed", "ram", "node_ip", "light_ip", "reveal_address",
                  "accept_peers", "banlist", "whitelist", "nodes_ban_reset", "mempool_allowed", "terminal_output",
                  "gui_scaling", "mempool_ram", "egress", "trace_db_calls", "heavy3_path", "mempool_path",
-                 "old_sqlite", "mandatory_message", "genesis", "datadir", "label", "legacy_db", "hyper_check", "heavy")
+                 "old_sqlite", "mandatory_message", "genesis", "datadir", "label", "legacy_db", "hyper_check", "heavy",
+                 "verbosity")
 
     def __init__(self, datadir: str='',
                  force_legacy: bool=False, force_v2: bool=False, force_regnet: bool=False,
@@ -116,6 +119,7 @@ class Config:
             print("Ledger: {}".format(self.ledger_path))
             print("Hyper: {}".format(self.hyper_path))
             print("Index: {}".format(self.get_index_db_path()))
+            print("Verbosity: {}".format(self.verbosity))
         if self.regnet and "regnet" not in self.version:
             print("regnet is set, but version is not regnet")
             exit()
