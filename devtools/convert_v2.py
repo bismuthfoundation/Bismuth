@@ -14,7 +14,7 @@ from libs.logger import Logger
 from libs.config import Config
 from libs.solodbhandler import SoloDbHandler
 
-VERSION = "0.0.2-convert"
+VERSION = "0.0.3-convert"
 
 if __name__ == "__main__":
     datadir = "../datadir"  # Default datadir if empty
@@ -87,7 +87,7 @@ if __name__ == "__main__":
             print(start)
             # EGG: This is not optimized for speed, but only needed once (and users can bootstrap instead).
             test = solo_db_handler.get_miscs(start, step - 1)
-            #print(test)
+            # print(test)
             if len(test) != 0:
                 solo_db_handler2.miscs_to_ledger(test)
             if start > end:

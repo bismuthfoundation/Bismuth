@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from libs.config import Config
 
 
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 
 V2_LEDGER_CREATE = ('CREATE TABLE IF NOT EXISTS "transactions" (`block_height` INTEGER, '
                     '`timestamp` NUMERIC, `address` TEXT, `recipient` TEXT, '
@@ -422,8 +422,9 @@ class SoloDbHandler:
         :return: a list of records.
         """
         # EGG_EVO: This sql request is the same in both cases (int/float), but...
-        # print("get_miscs", block_height, limit)
-        self._ledger_cursor.execute("SELECT * FROM misc "
+        # legacy had no unique index on block height while v2 has.
+        # Distinct fixes the import where misc has dup heights
+        self._ledger_cursor.execute("distinct(block_height), difficulty FROM misc "
                                     "WHERE block_height >= ? AND block_height <= ? "
                                     "ORDER BY block_height",
                                     (block_height, block_height + limit))
