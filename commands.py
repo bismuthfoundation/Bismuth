@@ -23,13 +23,13 @@ class Config:
             self.port = 5658
 
 
-def load_local_address(keyfile="wallet.der"):
+def load_local_address(keyfile="datadir/wallet.der"):
     with open(keyfile, "r") as keyfile:
         wallet_dict = json.load(keyfile)
     address = wallet_dict["Address"]
     return address
 
-
+# TODO: try various locations instead of relying only on datadir.
 local_address = load_local_address()
 
 
