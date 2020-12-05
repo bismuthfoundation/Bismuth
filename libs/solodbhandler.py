@@ -424,7 +424,7 @@ class SoloDbHandler:
         # EGG_EVO: This sql request is the same in both cases (int/float), but...
         # legacy had no unique index on block height while v2 has.
         # Distinct fixes the import where misc has dup heights
-        self._ledger_cursor.execute("distinct(block_height), difficulty FROM misc "
+        self._ledger_cursor.execute("SELECT DISTINCT(block_height), difficulty FROM misc "
                                     "WHERE block_height >= ? AND block_height <= ? "
                                     "ORDER BY block_height",
                                     (block_height, block_height + limit))
