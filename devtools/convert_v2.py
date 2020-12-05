@@ -62,6 +62,8 @@ if __name__ == "__main__":
         # Get latest tx from target (can be null)
         start = solo_db_handler2.block_height_max()
         print("Ledger last block is ", start)
+        if start > 0:
+            start += 1
         # sys.exit()
         step = 1000
         while True:
@@ -79,17 +81,23 @@ if __name__ == "__main__":
         if start < 231551:
             start = 231551
         print("Misc last block is ", start)
+        if start > 0:
+            start += 1
         # sys.exit()
         step = 1000
         end = solo_db_handler2.block_height_max()
-
         while True:
             print(start)
             # EGG: This is not optimized for speed, but only needed once (and users can bootstrap instead).
             test = solo_db_handler.get_miscs(start, step - 1)
             # print(test)
             if len(test) != 0:
-                solo_db_handler2.miscs_to_ledger(test)
+                try:
+                    solo_db_handler2.miscs_to_ledger(test)
+                except Exception as e:
+                    logger.app_log.info(e)
+                    print(test)
+                    raise
             if start > end:
                 break
             # insert is way longer if indices are there. so better add indices in a second step
