@@ -371,7 +371,8 @@ class DbHandler:
                     # self.logger.app_log.warning("Sender's balance {}".format(balance_sender))
                     try:
                         self.index_cursor.execute("SELECT txid from tokens WHERE txid = ? limit 1", (txid, ))
-                        dummy = self.index_cursor.fetchall()[0]  # check for uniqueness
+                        dummy = self.index_cursor.fetchall()
+                        dummy = dummy[0] if dummy else None  # check for uniqueness
                         if dummy:
                             self.logger.status_log.warning(f"Token operation already processed: {token} {txid} - "
                                                            f"Ignored.")

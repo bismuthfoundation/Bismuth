@@ -466,9 +466,14 @@ class Peers:
         for client in remove:
             del self.tried[client]
 
-    def client_loop(self, node: "Node") -> None:
-        """Manager loop called every 30 sec. Handles maintenance"""
+    def client_loop(self, node: "Node", test: int=0) -> None:
+        """Manager loop called every 30 sec. Handles maintenance
+        test : 0 - no peer test
+        1 - test peers files
+        2 - test suggested peers files """
+
         try:
+            tries = 0
             for key, value in dict(dict_shuffle(self.peer_dict)).items():
                 # Important: The dict() above is not an error nor a cast,
                 # it's to make a copy of the dict and avoid "dictionary changed size during iteration"
@@ -484,6 +489,11 @@ class Peers:
                     self.peers_log.debug(f"---Starting a client thread {threading.currentThread()} ---")
                     t.daemon = True
                     t.start()
+                    tries += 1
+                if tries > 5:
+                    # Max number of new clients to try at every round
+                    self.peers_log.info(f"5 tries reached, stopping for this round.")
+                    break
 
             if len(self.peer_dict) < 6 and int(time() - self.startup_time) > 30:
                 # join in random peers after x seconds
@@ -515,12 +525,16 @@ class Peers:
                 self.reset_tried()
                 self.reset_time = time()
 
-            self.status_log.debug("Testing peers")
             self.peer_dict.update(self.peers_get(self.peerfile))
 
-            # TODO: this is not OK. client_loop is called every 30 sec and should NOT contain any lengthy calls.
-            self.peers_test(self.suggested_peerfile, self.peer_dict, strict=False)
-            self.peers_test(self.peerfile, self.peer_dict, strict=True)
+            # TODO: client_loop is called every 30 sec and should NOT contain any lengthy calls.
+            # first limit, but could be reworked more in depth.
+            if test == 2:
+                self.status_log.debug("Testing suggested peers")
+                self.peers_test(self.suggested_peerfile, self.peer_dict, strict=False)
+            if test == 1:
+                self.status_log.debug("Testing peers")
+                self.peers_test(self.peerfile, self.peer_dict, strict=True)
 
         except Exception as e:
             self.peers_log.warning(f"Peers client loop skipped due to error: {e}")

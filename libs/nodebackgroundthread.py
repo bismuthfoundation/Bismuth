@@ -25,7 +25,8 @@ class NodeBackgroundThread (threading.Thread):
     def background_thread(self) -> None:
         self.node.logger.status_log.info("Starting Node background Thread")
         until_purge = 0
-
+        tests = [0, 0, 0, 1, 0, 0, 2, 0, 0, 0]
+        test_index = 0
         while not self.node.IS_STOPPING:
             # one loop every 30 sec
             try:
@@ -40,7 +41,10 @@ class NodeBackgroundThread (threading.Thread):
                 # peer management
                 if not self.node.is_regnet:
                     # regnet never tries to connect
-                    self.node.peers.client_loop(self.node)
+                    self.node.peers.client_loop(self.node, tests[test_index])
+                    test_index += 1
+                    if test_index >= len(tests):
+                        test_index = 0
                 self.node.logger.status_log.info(f"** Status: Threads at {threading.active_count()} "
                                                  f"/ {self.node.config.thread_limit} "
                                                  f"- {len(self.node.syncing)} Syncing nodes.")
