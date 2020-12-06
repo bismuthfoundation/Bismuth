@@ -490,9 +490,9 @@ class Peers:
                     t.daemon = True
                     t.start()
                     tries += 1
-                if tries > 5:
+                if tries > 10:
                     # Max number of new clients to try at every round
-                    self.peers_log.info(f"5 tries reached, stopping for this round.")
+                    self.peers_log.info(f"10 tries reached, stopping for this round.")
                     break
 
             if len(self.peer_dict) < 6 and int(time() - self.startup_time) > 30:
