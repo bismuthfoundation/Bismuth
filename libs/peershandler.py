@@ -394,6 +394,7 @@ class Peers:
         except Exception:
             tries, timeout = 0, 0  # unknown host for now, never tried.
         if timeout > time():
+            self.peers_log.info(f"Ignoring {host_port} because of timeout {time()-timeout:0.0f} remaining")
             return False  # We tried before, timeout is not expired.
         if self.is_whitelisted(host):
             return True  # whitelisted peers are always connectible, without variability condition.
@@ -433,7 +434,7 @@ class Peers:
             tries = 3
         self.tried[host_port] = (tries, time() + delay)
         # Temp
-        self.peers_log.debug(f"Set timeout {delay} try {tries} for {host_port}")
+        self.peers_log.info(f"Set timeout {delay} try {tries} for {host_port}")
 
     def del_try(self, host: str, port=None) -> None:
         """
@@ -477,7 +478,7 @@ class Peers:
                 if self.is_testnet:
                     port = 2829
                 if threading.active_count() / 3 < self.config.thread_limit and self.can_connect_to(host, port):
-                    self.peers_log.debug(f"Will attempt to connect to {host}:{port}")
+                    self.peers_log.info(f"Will attempt to connect to {host}:{port}")
                     self.add_try(host, port)
                     t = threading.Thread(target=client_worker, args=(host, port, node), name=f"out_{host}_{port}")
                     self.peers_log.debug(f"---Starting a client thread {threading.currentThread()} ---")
