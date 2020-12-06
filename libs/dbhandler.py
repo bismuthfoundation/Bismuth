@@ -53,11 +53,11 @@ class DbHandler:
     # Define  slots. One instance per thread, can be significant.
     __slots__ = ("ram", "ledger_ram_file", "ledger_path", "hyper_path", "logger", "trace_db_calls", "index_db",
                  "index", "index_cursor", "hdd", "h", "hdd2", "h2", "conn", "c", "old_sqlite", "plugin_manager",
-                 "legacy_db")
+                 "legacy_db", "verbosity")
 
     def __init__(self, index_db: str, ledger_path: str, hyper_path: str, ram: bool, ledger_ram_file: str,
                  logger: "Logger", old_sqlite: bool=False, trace_db_calls: bool=False, plugin_manager=None,
-                 legacy_db=True):
+                 legacy_db=True, verbosity=0):
         """To be used only for tests - See .from_node() factory above."""
         self.legacy_db = legacy_db
         self.ram = ram
@@ -69,6 +69,7 @@ class DbHandler:
         self.ledger_path = ledger_path
         self.old_sqlite = old_sqlite
         self.plugin_manager = plugin_manager
+        self.verbosity = verbosity
 
         self.index = sqlite3.connect(self.index_db, timeout=1)
         if self.trace_db_calls:
@@ -112,7 +113,7 @@ class DbHandler:
         return DbHandler(node.index_db, node.config.ledger_path, node.config.hyper_path, node.config.ram,
                          node.ledger_ram_file, node.logger, old_sqlite=node.config.old_sqlite,
                          trace_db_calls=node.config.trace_db_calls, plugin_manager=node.plugin_manager,
-                         legacy_db=node.config.legacy_db)
+                         legacy_db=node.config.legacy_db, verbosity=node.config.verbosity)
 
     # ==== Aliases ==== #
 
@@ -392,7 +393,13 @@ class DbHandler:
                                 self.index_cursor.execute("INSERT INTO tokens VALUES (?,?,?,?,?,?,?)",
                                                           (block_height, "", "", "", "", txid, ""))
                     except Exception as e:
-                        self.logger.status_log.warning("Exception {} transfering token.".format(e))
+                        self.logger.status_log.warning("Exception {} transfering token.".format(e),
+                                                       exc_info=self.verbosity > 0, stack_info=self.verbosity > 0)
+                        """
+                        exc_type, exc_obj, exc_tb = sys.exc_info()
+                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                        print(exc_type, fname, exc_tb.tb_lineno)
+                        """
 
                     self.logger.status_log.info("Processing of {} finished".format(token))
             except Exception as e:
