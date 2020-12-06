@@ -488,7 +488,8 @@ def digest_block_v2(node: "Node", block_data: list, sdef, peer_ip: str, db_handl
             # in regnet, this copies again the last block...
             if node.config.verbosity > 0:
                 node.logger.app_log.warning(f"db_handler.db_to_drive_v2")
-                node.logger.app_log.warning(f"{len(blocks)} blocks")
+                if blocks:
+                    node.logger.app_log.warning(f"{len(blocks.blocks)} blocks")
             db_handler.db_to_drive_v2(node)
             node.db_lock.release()
             node.logger.app_log.info(f"Database lock released {start_time_block}")
