@@ -954,7 +954,7 @@ class DbHandler:
             for transaction in block.transactions:
                 self._execute_param(self.c, SQL_TO_TRANSACTIONS_V2, transaction.to_bin_tuple(sqlite_encode=True))
             self.commit(self.conn)
-            # self.logger.digest_log.warning(f"TEMP DEBUG to_db_v2 {len(block.transactions)} transactions")
+            self.logger.digest_log.info(f"TEMP DEBUG to_db_v2 {len(block.transactions)} transactions")
         except Exception as e:
             self.logger.digest_log.error(f"dbhandler.to_db_v2 error {e} writing to transactions")
             raise
@@ -1084,7 +1084,7 @@ class DbHandler:
             if node.is_regnet:
                 node.hdd_block = node.last_block
                 node.hdd_hash = node.last_block_hash
-                self.logger.app_log.warning(f"Chain: Regnet simulated move to HDD")
+                self.logger.app_log.warning(f"Chain v2: Regnet simulated move to HDD")
                 return
             self.logger.digest_log.info(f"Chain v2: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
 
@@ -1115,9 +1115,9 @@ class DbHandler:
 
             node.hdd_block = node.last_block
             node.hdd_hash = node.last_block_hash
-            self.logger.status_log.info(f"Chain: {len(result1)} txs moved to HDD, up to {node.last_block}")
+            self.logger.status_log.info(f"Chain v2: {len(result1)} txs moved to HDD, up to {node.last_block}")
         except Exception as e:
-            self.logger.app_log.warning(f"Chain: Exception Moving new data to HDD: {e}")
+            self.logger.app_log.warning(f"Chain v2: Exception Moving new data to HDD: {e}")
             # app_log.warning("Ledger digestion ended")  # dup with more informative digest_block notice.
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
