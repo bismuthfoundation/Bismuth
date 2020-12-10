@@ -1131,7 +1131,7 @@ class DbHandler:
             return
         self._execute_param(self.c, SQL_TO_TRANSACTIONS,
                             (-block_array.block_height_new, str(miner_tx.q_block_timestamp),
-                             "Development Reward", node.config.genesis,
+                             "Development Reward1", node.config.genesis,
                              str(mining_reward), "0", "0", mirror_hash, 0, 0, "0", "0"))
         self.commit(self.conn)
 
@@ -1143,7 +1143,7 @@ class DbHandler:
             raise ValueError("Wrong dev rewards")
         self._execute_param(self.c, SQL_TO_TRANSACTIONS,
                             (-block.height, str(block.miner_tx.timestamp),
-                             "Development Reward", node.config.genesis,
+                             "Development Reward2", node.config.genesis,
                              mining_reward, b"", b"", mirror_hash, 0, 0, "0", "0"))
         self.commit(self.conn)
 
@@ -1159,7 +1159,7 @@ class DbHandler:
             reward_sum = K1E8 // 2
 
         self._execute_param(self.c, SQL_TO_TRANSACTIONS,
-                            (-block.height, str(block.miner_tx.timestamp), "Hypernode Payouts",
+                            (-block.height, str(block.miner_tx.timestamp), "Hypernode Payouts2",
                              "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16",
                              reward_sum, b"", b"", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
@@ -1180,7 +1180,7 @@ class DbHandler:
         reward_sum = '{:.8f}'.format(reward_sum)
 
         self._execute_param(self.c, SQL_TO_TRANSACTIONS,
-                            (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Hypernode Payouts",
+                            (-block_array.block_height_new, str(miner_tx.q_block_timestamp), "Hypernode Payouts1",
                              "3e08b5538a4509d9daa99e01ca5912cda3e98a7f79ca01248c2bde16",
                              reward_sum, "0", "0", mirror_hash, "0", "0", "0", "0"))
         self.commit(self.conn)
