@@ -954,7 +954,8 @@ class DbHandler:
             for transaction in block.transactions:
                 self._execute_param(self.c, SQL_TO_TRANSACTIONS_V2, transaction.to_bin_tuple(sqlite_encode=True))
             self.commit(self.conn)
-            self.logger.digest_log.info(f"TEMP DEBUG to_db_v2 {len(block.transactions)} transactions")
+            if self.verbosity > 0:
+                self.logger.digest_log.info(f"to_db_v2 {len(block.transactions)} transactions")
         except Exception as e:
             self.logger.digest_log.error(f"dbhandler.to_db_v2 error {e} writing to transactions")
             raise
@@ -1086,29 +1087,31 @@ class DbHandler:
                 node.hdd_hash = node.last_block_hash
                 self.logger.app_log.warning(f"Chain v2: Regnet simulated move to HDD")
                 return
-            self.logger.digest_log.info(f"Chain v2: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
+            if self.verbosity > 0:
+                self.logger.digest_log.info(f"Chain v2: Moving new data to HDD, "
+                                            f"{node.hdd_block + 1} to {node.last_block} ")
 
             self._execute_param(self.c,
                                 "SELECT * FROM transactions WHERE block_height > ? "
                                 "OR block_height < ? ORDER BY block_height ASC",
                                 (node.hdd_block, -node.hdd_block))
             result1 = self.c.fetchall()
-            self.logger.digest_log.info(f"Chain v2 Temp Debug: Got tx data")
+            # self.logger.digest_log.info(f"Chain v2 Temp Debug: Got tx data")
 
             transactions_to_h(result1)
-            self.logger.digest_log.info(f"Chain v2 Temp Debug: transactions_to_h ok")
+            # self.logger.digest_log.info(f"Chain v2 Temp Debug: transactions_to_h ok")
 
             if node.config.ram:  # we want to save to hyper db from RAM/hyper db depending on ram conf
                 transactions_to_h2(result1)
-                self.logger.digest_log.info(f"Chain v2 Temp Debug: transactions_to_h2 ok")
+                # self.logger.digest_log.info(f"Chain v2 Temp Debug: transactions_to_h2 ok")
 
             self._execute_param(self.c, "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
                                 (node.hdd_block,))
             result2 = self.c.fetchall()
-            self.logger.digest_log.info(f"Chain v2 Temp Debug: Got misc data")
+            # self.logger.digest_log.info(f"Chain v2 Temp Debug: Got misc data")
 
             misc_to_h(result2)
-            self.logger.digest_log.info(f"Chain v2 Temp Debug: misc_to_h ok")
+            # self.logger.digest_log.info(f"Chain v2 Temp Debug: misc_to_h ok")
 
             if node.config.ram:  # we want to save to hyper db from RAM
                 misc_to_h2(result2)

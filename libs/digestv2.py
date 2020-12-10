@@ -391,8 +391,9 @@ def process_blocks(blocks: Blocks, node: "Node", db_handler: "DbHandler", peer_i
                         mh = tx_list_to_hash[0][0]
                     else:
                         mh = 0
-                    node.logger.digest_log.info(f"> h {mh} txs {temp}")
-                    node.logger.digest_log.info(f"> Mirror block {block_height_new} hash {mirror_hash.hex()}")
+                    if node.config.verbosity > 0:
+                        node.logger.digest_log.info(f"> h {mh} txs {temp}")
+                        node.logger.digest_log.info(f"> Mirror block {block_height_new} hash {mirror_hash.hex()}")
                 # Is that used somewhere or just recorded??
                 rewards(node=node, block=block, mirror_hash=mirror_hash, db_handler=db_handler)
 

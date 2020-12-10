@@ -403,8 +403,8 @@ class Peers:
         matching = [ip_port for ip_port in self.connection_pool if c_class in ip_port]
         # If we already have 2 peers from that C ip class in our connection pool, ignore.
         if len(matching) >= 2:
-            # Temp debug
-            self.peers_log.warning(f"Ignoring {host_port} since we already have 2 ips of that C Class in our pool.")
+            if self.config.verbosity > 0:
+                self.peers_log.warning(f"Ignoring {host_port} since we already have 2 ips of that C Class in our pool.")
             return False
         # Else we can
         return True
