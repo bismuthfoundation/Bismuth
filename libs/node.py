@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from libs.dbhandler import DbHandler
 
 
-__version__ = "0.0.17"
+__version__ = "0.0.18"
 
 
 class Node:
@@ -296,7 +296,8 @@ class Node:
                 highest_block = max(hdd_block_max, hdd2_block_last, hdd_block_max_diff, hdd2_block_last_misc)
                 self.logger.status_log.warning(
                     f"Cross-integrity check failed, {highest_block} will be rolled back below {lowest_block}")
-                solo_handler.rollback(lowest_block)  # rollback to the lowest value
+                solo_handler.rollback(lowest_block)  # rollback to the lowest value -1
+                solo_handler.rollback(highest_block + 1)  # rollback to the highest value so we are sure we have no index or mirror blocks higher.
                 self.recompress = False
         else:
             self.logger.status_log.info("Compressing ledger to Hyperblocks")

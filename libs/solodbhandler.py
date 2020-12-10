@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from libs.config import Config
 
 
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 
 V2_LEDGER_CREATE = ('CREATE TABLE IF NOT EXISTS "transactions" (`block_height` INTEGER, '
                     '`timestamp` NUMERIC, `address` TEXT, `recipient` TEXT, '
@@ -473,6 +473,7 @@ class SoloDbHandler:
 
     def rollback(self, block_height: int) -> None:
         """Specific rollback method for single user mode"""
+        """Warning: Deletes the given height as well"""
         # TODO: for both single user mode and regular mode:
         # Do *NOT* ever allow rollback under the hyper anchor, or balances are dead.
         # Fetch hyper anchor at start of node and after recompress, store it in node or db_handler and *check*
