@@ -276,9 +276,9 @@ class Node:
         if self.is_regnet:
             return
         """Defines whether ledger needs to be compressed to hyper"""
+        hdd_block_max = solo_handler.block_height_max()
         if os.path.exists(self.config.hyper_path):
             # cross-integrity check
-            hdd_block_max = solo_handler.block_height_max()
             hdd_block_max_diff = solo_handler.block_height_max_diff()
             hdd2_block_last = solo_handler.block_height_max_hyper()
             hdd2_block_last_misc = solo_handler.block_height_max_diff_hyper()
@@ -297,11 +297,12 @@ class Node:
                 self.logger.status_log.warning(
                     f"Cross-integrity check failed, {highest_block} will be rolled back below {lowest_block}")
                 solo_handler.rollback(lowest_block)  # rollback to the lowest value -1
-                solo_handler.rollback(highest_block + 1)  # rollback to the highest value so we are sure we have no index or mirror blocks higher.
                 self.recompress = False
         else:
             self.logger.status_log.info("Compressing ledger to Hyperblocks")
             self.recompress = True
+        solo_handler.rollback(hdd_block_max + 1)
+        # rollback to the highest value so we are sure we have no index or mirror blocks higher.
         # solo_handler.rollback(1850000)  # Temp for debug
 
     def _recompress_ledger_prepare(self, rebuild: bool=False) -> None:

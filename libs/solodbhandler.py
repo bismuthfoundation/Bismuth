@@ -482,17 +482,18 @@ class SoloDbHandler:
         # Good thing is this is not db format dependant.
         # db_handler.rollback_under(block_height)
         self._ledger_cursor.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
-                                    (block_height, -block_height,))
-        self._ledger_cursor.execute("DELETE FROM misc WHERE block_height >= ?", (block_height,))
+                                    (block_height, -block_height))
+        self._ledger_cursor.execute("DELETE FROM misc WHERE block_height >= ?", (block_height, ))
         self._ledger_db.commit()
-        self._hyper_cursor.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
-                                   (block_height, -block_height,))
-        self._hyper_cursor.execute("DELETE FROM misc WHERE block_height >= ?", (block_height, ))
-        self._hyper_db.commit()
+        if self._hyper_cursor:
+            self._hyper_cursor.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?",
+                                       (block_height, -block_height))
+            self._hyper_cursor.execute("DELETE FROM misc WHERE block_height >= ?", (block_height, ))
+            self._hyper_db.commit()
         # rollback indices
         # db_handler.tokens_rollback(block_height)
         try:
-            self._index_cursor.execute("DELETE FROM tokens WHERE block_height >= ?;", (block_height, ))
+            self._index_cursor.execute("DELETE FROM tokens WHERE block_height >= ?", (block_height, ))
             self._index_db.commit()
             self.logger.app_log.info(f"Rolled back the token index below {block_height}")
         except Exception as e:
@@ -502,7 +503,7 @@ class SoloDbHandler:
 
         # db_handler.aliases_rollback(block_height)
         try:
-            self._index_cursor.execute("DELETE FROM aliases WHERE block_height >= ?;", (block_height, ))
+            self._index_cursor.execute("DELETE FROM aliases WHERE block_height >= ?", (block_height, ))
             self._index_db.commit()
             self.logger.app_log.info(f"Rolled back the alias index below {block_height}")
         except Exception as e:
