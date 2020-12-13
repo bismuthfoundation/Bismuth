@@ -515,8 +515,9 @@ class SoloDbHandler:
         """avoid double processing by renaming Hyperblock addresses to Hypoblock"""
         if self._hyper_cursor is None:
             # No hyper yet, nothing to do
-            self.logger.status_log.debug("Prepare_hypo was avoided")
+            self.logger.status_log.info("No Hyper, prepare_hypo was avoided")
             return
+        self.logger.status_log.info("Prepare_hypo query...")
         self._hyper_cursor.execute("UPDATE transactions SET address = 'Hypoblock' WHERE address = 'Hyperblock'")
         self._hyper_db.commit()
 
@@ -758,7 +759,7 @@ class SoloDbHandler:
         # TODO: check we have the correct indices at this stage, this is the longuest step.
         # print(f"DELETE FROM transactions
         # WHERE address != 'Hyperblock' AND block_height < {depth_specific} AND block_height > {-depth_specific} ...")
-        self.logger.status_log.info(f"Cleaning up hyper transactions......")
+        self.logger.status_log.info(f"Cleaning up hyper transactions at depth {depth_specific} ...")
         self._hyper_cursor.execute(
             "DELETE FROM transactions WHERE address != 'Hyperblock' AND block_height < ? AND block_height > ?",
             (depth_specific, -depth_specific))

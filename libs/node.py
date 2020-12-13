@@ -388,7 +388,7 @@ class Node:
         26|Goto|0|1|0||00|
         
         
-        Avec index recipient:
+        with recipient index:
         explain query plan SELECT sum(amount + reward) FROM transactions 
         WHERE recipient = "4b35e6dc26850d5f52c9e75ac28e22566f0e90dd25d953553079cd65" 
         AND (block_height < 1000000 AND block_height > -1000000);
