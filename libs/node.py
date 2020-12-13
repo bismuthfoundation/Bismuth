@@ -328,9 +328,9 @@ class Node:
         self.logger.status_log.info(f"recompress_ledger_prepare done")
 
     def _recompress_ledger(self, solo_handler: SoloDbHandler, depth: int = 15000) -> None:
-        solo_handler.prepare_hypo()  # avoid double processing by renaming Hyperblock addresses to Hypoblock
         self.logger.status_log.info(f"Recompress: Opening temp db and adding indices...")
         solo_handler.open_temp_hyper()  # Use ledger.db.temp as temp. hyper, adding indices if needed
+        solo_handler.prepare_hypo()  # avoid double processing by renaming Hyperblock addresses to Hypoblock
         db_block_height = solo_handler.block_height_max_hyper()
         depth_specific = db_block_height - depth
         self.logger.status_log.info(f"Recompress: Block height {db_block_height}, depth_specific {depth_specific}")
