@@ -29,6 +29,8 @@ def test_mempool(myserver, verbose=False):
     sleep(1)
     assert float(tx[0][3]) == 1.0
     assert tx[0][7] == data
+    # TODO: Also test sender, recipient and fees
+    # Maybe add another one with operation as well
     if verbose:
         print("test_mempool ok")
 

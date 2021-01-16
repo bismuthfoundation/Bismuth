@@ -394,7 +394,8 @@ class Peers:
         except Exception:
             tries, timeout = 0, 0  # unknown host for now, never tried.
         if timeout > time():
-            self.peers_log.info(f"Ignoring {host_port} because of timeout {time()-timeout:0.0f} remaining")
+            if self.config.verbosity > 1:
+                self.peers_log.info(f"Ignoring {host_port} because of timeout {time()-timeout:0.0f} remaining")
             return False  # We tried before, timeout is not expired.
         if self.is_whitelisted(host):
             return True  # whitelisted peers are always connectible, without variability condition.
@@ -403,7 +404,7 @@ class Peers:
         matching = [ip_port for ip_port in self.connection_pool if c_class in ip_port]
         # If we already have 2 peers from that C ip class in our connection pool, ignore.
         if len(matching) >= 2:
-            if self.config.verbosity > 0:
+            if self.config.verbosity > 1:
                 self.peers_log.warning(f"Ignoring {host_port} since we already have 2 ips of that C Class in our pool.")
             return False
         # Else we can

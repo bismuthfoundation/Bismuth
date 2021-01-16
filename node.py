@@ -38,7 +38,7 @@ from libs.node import Node
 from libs.nodebackgroundthread import NodeBackgroundThread
 
 
-VERSION = "5.0.43-evo"  # Experimental db-evolution branch
+VERSION = "5.0.44-evo"  # Experimental db-evolution branch
 
 
 appname = "Bismuth"

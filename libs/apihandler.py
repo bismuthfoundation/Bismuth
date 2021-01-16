@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from libs.node import Node
     from libs.dbhandler import DbHandler
 
-__version__ = "0.0.14"
+__version__ = "0.0.15"
 
 
 class ApiHandler:
@@ -66,39 +66,6 @@ class ApiHandler:
             # raise
             self.app_log.warning(f"Exception calling method {method}: {e}")
             return False
-
-    """ # Converted, see bismuthcore/Block/to_blocks_dict
-    def blockstojson(self, raw_blocks: list) -> dict:
-        # Beware, returns a dict, not a json encoded payload
-        tx_list = []
-        block = {}
-        blocks = {}
-
-        old = None
-        for transaction_raw in raw_blocks:
-            # EGG_EVO: Is decode_pubkey needed? Where is that used?
-            transaction = Transaction.from_legacy(transaction_raw).to_dict(legacy=True, decode_pubkey=True)
-            height = transaction['block_height']
-            block_hash = transaction['block_hash']
-
-            del transaction['block_height']
-            del transaction['block_hash']
-
-            if old != height:  # if same block
-                del tx_list[:]
-                block.clear()
-
-            tx_list.append(transaction)
-
-            block['block_height'] = height
-            block['block_hash'] = block_hash
-            block['transactions'] = list(tx_list)
-            blocks[height] = dict(block)
-
-            old = height  # update
-
-        return blocks
-    """
 
     def blocktojsondiffs(self, list_of_txs: list, list_of_diffs: list) -> dict:
         """Beware, returns a dict, not a json encoded payload"""
@@ -151,6 +118,7 @@ class ApiHandler:
         :param peers:
         :return: list of mempool tx
         """
+        # TEST V1/V2 ok, see test_mempool
         # txs = mp.MEMPOOL.fetchall(mp.SQL_SELECT_TX_TO_SEND)
         if mp.MEMPOOL is None:
             self.app_log.error(f"MEMPOOL is None")
@@ -169,6 +137,7 @@ class ApiHandler:
         :param peers:
         :return: list of node configuration options
         """
+        # TODO: Test V1/V2
         slots = tuple(self.config.__slots__)
         connections.send(socket_handler, {key: self.config.__getattribute__(key) for key in slots})
 
@@ -180,6 +149,7 @@ class ApiHandler:
         :param peers:
         :return: 'ok'
         """
+        # TODO: Test V1/V2 to add to test_mempool
         mp.MEMPOOL.clear()
         connections.send(socket_handler, 'ok')
 
@@ -199,6 +169,7 @@ class ApiHandler:
         known: Did that address appear on a transaction?
         pubkey: The DECODED pubkey of the address if it signed a transaction,
         """
+        # TODO: To be tested, with all 3 addresses type
         info = {'known': False, 'pubkey': ''}
         # get the address
         address = connections.receive(socket_handler)
@@ -255,6 +226,7 @@ class ApiHandler:
         :param peers:
         :return:
         """
+        # TODO: To be added to test suite.
         try:
             block_hash = connections.receive(socket_handler)
             block_object = db_handler.get_block_from_hash(block_hash)
@@ -280,14 +252,14 @@ class ApiHandler:
 
     def api_getblockfromheight(self, socket_handler, db_handler: "DbHandler", peers):
         """
-        Returns a specific block based on the provided hash.
+        Returns a specific block based on the provided height.
 
         :param socket_handler:
         :param db_handler:
         :param peers:
         :return:
         """
-
+        # TODO: To be added to test suit and make sure it's V1/V2 compatible
         height = connections.receive(socket_handler)
         block = db_handler.get_block(height)
         blocks = block.to_blocks_dict()
@@ -305,7 +277,7 @@ class ApiHandler:
         :param peers: (UNUSED)
         :return:
         """
-
+        # TODO: To be added to test suit and make sure it's V1/V2 compatible
         address = connections.receive(socket_handler)
         starting_block = connections.receive(socket_handler)
         limit = connections.receive(socket_handler)
@@ -326,6 +298,7 @@ class ApiHandler:
         :param peers: (UNUSED)
         :return:
         """
+        # TODO: TEST V1/V2
 
         start_block = connections.receive(socket_handler)
         limit = connections.receive(socket_handler)
@@ -369,6 +342,7 @@ class ApiHandler:
         :param peers:
         :return:
         """
+        # TODO: To be added to test suit and make sure it's V1/V2 compatible
         info = []
         # get the last known block
         since_height = connections.receive(socket_handler)
@@ -406,6 +380,7 @@ class ApiHandler:
         :param peers:
         :return:
         """
+        # TODO: To be added to test suit and make sure it's V1/V2 compatible
         info = []
         # get the last known block
         since_height = int(connections.receive(socket_handler))
@@ -511,6 +486,7 @@ class ApiHandler:
         :param peers:
         :return:
         """
+        # TODO: To be added to test suit and make sure it's V1/V2 compatible
         info = []
         # get the last known block
         since_height = int(connections.receive(socket_handler))
@@ -543,7 +519,7 @@ class ApiHandler:
         Queries the db to get the balance of a single address
         :param address:
         :param minconf:
-        :return:
+        :return: balance as float (v1 DB) or integer (v2 DB)
         """
         try:
             # what is the max block height to consider ?
@@ -564,7 +540,7 @@ class ApiHandler:
             debit = db_handler.h.fetchone()[0]
             if not debit:
                 debit = 0
-            # keep as float
+            # keep as float - Result will not be exact for v1 db
             # balance = '{:.8f}'.format(credit - debit)
             balance = credit - debit
         except Exception as e:
@@ -581,6 +557,7 @@ class ApiHandler:
         :param peers:
         :return:
         """
+        # TEST V1/V2 ok see test_apihandler.py
         balance = 0
         try:
             # get the addresses (it's a list, even if a single address)
@@ -592,6 +569,8 @@ class ApiHandler:
             for address in addresses:
                 balance += self._get_balance(db_handler, address, minconf)
             # print('api_getbalance', addresses, minconf,':', balance)
+            if not self.config.legacy_db:
+                balance = balance / 100000000
             connections.send(socket_handler, balance)
         except Exception as e:
             raise
@@ -601,7 +580,7 @@ class ApiHandler:
         Queries the db to get the total received amount of a single address
         :param address:
         :param minconf:
-        :return:
+        :return: balance as float (v1 DB) or integer (v2 DB)
         """
         try:
             # TODO : for this one and _get_balance, request max block height out of the loop
@@ -629,6 +608,7 @@ class ApiHandler:
         :param peers:
         :return:
         """
+        # TEST V1/V2 ok see test_apihandler.py
         received = 0
         try:
             # get the addresses (it's a list, even if a single address)
@@ -639,6 +619,8 @@ class ApiHandler:
             # TODO: Better to use a single sql query with all addresses listed?
             for address in addresses:
                 received += self._get_received(db_handler, address, minconf)
+            if not self.config.legacy_db:
+                received = received / 100000000
             print('api_getreceived', addresses, minconf, ':', received)
             connections.send(socket_handler, received)
         except Exception as e:
@@ -653,6 +635,7 @@ class ApiHandler:
         :param peers:
         :return:
         """
+        # TEST V1/V2 ok see test_apihandler.py
         received = {}
         # TODO: this is temporary.
         # Will need more work to send full featured info needed for
@@ -668,6 +651,8 @@ class ApiHandler:
             for address in addresses:
                 temp = self._get_received(db_handler, address, minconf)
                 if include_empty or temp > 0:
+                    if not self.config.legacy_db:
+                        temp = temp / 100000000
                     received[address] = temp
             print('api_listreceived', addresses, minconf, ':', received)
             connections.send(socket_handler, received)
@@ -683,6 +668,7 @@ class ApiHandler:
         :param peers:
         :return:
         """
+        # TEST V1/V2 ok see test_apihandler.py
         balances = {}
         try:
             # get the addresses (it's a list, even if a single address)
@@ -694,6 +680,8 @@ class ApiHandler:
             # TODO: Better to use a single sql query with all addresses listed?
             for address in addresses:
                 temp = self._get_balance(db_handler, address, minconf)
+                if not self.config.legacy_db:
+                    temp = temp / 100000000
                 if include_empty or temp > 0:
                     balances[address] = temp
             print('api_listbalance', addresses, minconf, ':', balances)
@@ -704,12 +692,14 @@ class ApiHandler:
 
     def api_gettransaction(self, socket_handler, db_handler: "DbHandler", peers):
         """
-        Returns the full transaction matching a tx id. Takes txid anf format as params (json output if format is True)
+        Returns the full transaction matching a tx id. Takes txid and format as params (json output if format is True)
         :param socket_handler:
         :param db_handler:
         :param peers:
         :return:
         """
+        # TODO: EGG: This one is to completely rewrite, too many low level code that should be handled by Transaction object
+        raise ValueError("Do not use yet - Rewrite")
         transaction = {}
         try:
             # get the txid
@@ -774,6 +764,8 @@ class ApiHandler:
         :param peers:
         :return:
         """
+        # TODO: EGG: This one is to completely rewrite, too many low level code that should be handled by Transaction object
+        raise ValueError("Do not use yet - Rewrite")
         transaction = {}
         try:
             # get the txid
@@ -836,6 +828,7 @@ class ApiHandler:
         To be adjusted
         :return: list(dict)
         """
+        # Do tests make sense in regnet config, with no peer?
         print('api_getpeerinfo')
         # TODO: Get what we can from peers, more will come when connections and connection stats will be modular, too.
         try:
@@ -856,6 +849,8 @@ class ApiHandler:
             :param peers:
             :return:
             """
+            # TODO: EGG: This one is to completely rewrite, too many low level code that should be handled by Transaction object
+            raise ValueError("Do not use yet - Rewrite")
             transaction = {}
             try:
                 # get the txid
