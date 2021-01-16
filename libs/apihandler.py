@@ -10,6 +10,7 @@ import os
 import sys
 import threading
 from typing import TYPE_CHECKING
+from hashlib import sha256
 
 import libs.mempool as mp
 from bismuthcore.transaction import Transaction
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
     from libs.node import Node
     from libs.dbhandler import DbHandler
 
-__version__ = "0.0.15"
+__version__ = "0.0.17"
 
 
 class ApiHandler:
@@ -109,6 +110,37 @@ class ApiHandler:
             old = height
 
         return blocks_dict
+
+    def api_balancelist(self, socket_handler, db_handler: "DbHandler", peers):
+        """
+        Returns a balance list of all non null addresses at given block, rounded to previous multiple of 1000.
+        Note: may need some anti spam measure, like only count balances >= 10
+        :param socket_handler:
+        :param db_handler:
+        :param peers:
+        :return: list of mempool tx
+        """
+        height = int(connections.receive(socket_handler))
+        height = (height // 1000) * 1000
+        res = db_handler.balances_int(height)
+        connections.send(socket_handler, res)
+
+    def api_balancelisthash(self, socket_handler, db_handler: "DbHandler", peers):
+        """
+        Returns a hash of the matching balance list
+        :param socket_handler:
+        :param db_handler:
+        :param peers:
+        :return: list of mempool tx
+        """
+        # TODO: This likely will need to be exposed publicly, not just as api_
+        height = int(connections.receive(socket_handler))
+        height = (height // 1000) * 1000
+        res = str(db_handler.balances_int(height))
+        check = sha256(sha256(res.encode("utf-8")).digest()).digest()
+        #print(check.hex())
+        connections.send(socket_handler, check.hex())
+
 
     def api_mempool(self, socket_handler, db_handler: "DbHandler", peers):
         """

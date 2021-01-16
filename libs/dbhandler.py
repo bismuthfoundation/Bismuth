@@ -676,6 +676,50 @@ class DbHandler:
         else:
             return credit_ledger - debit_ledger
 
+    def balances_int(self, height: int) -> List:
+        """
+        Returns all addresses with non null balance and their balance
+        :param height: multiple of 1000, max height to consider (included)
+        :return:
+        """
+        # TODO: check we are not under hyper block
+        # TODO: do not allow if we are too close (may rollback)
+        # TODO: cache so only calc'd once.
+        # print("balances_int", height)
+        try:
+            self._execute_param(self.h,
+                                "SELECT recipient, sum(amount + reward) FROM transactions "
+                                "where abs(block_height) <= ? "
+                                "group by recipient "
+                                "order by recipient asc",
+                                (height, ))
+            entries = self.h.fetchall()
+            # print(entries)
+            balances = {item[0]: item[1] for item in entries}
+            #balances["genesis"] = 0
+            #balances["Development Reward2"] = 0
+            #balances["Hypernode Payouts2"] = 0
+            self._execute_param(self.h,
+                                "SELECT address, sum(amount + fee) FROM transactions "
+                                "where abs(block_height) <= ? "
+                                "group by address",
+                                (height, ))
+            entries = self.h.fetchall()
+            for item in entries:
+                if item[0] not in balances:
+                    if item[0] not in ("genesis", "Development Reward2", "Hypernode Payouts2"):
+                        raise RuntimeWarning("Unknown address spent from balances_int", item[0])
+                else:
+                    balances[item[0]] -= item[1]
+            balances_str = {key: int_to_f8(balances[key]) for key in balances}
+            return balances_str
+        except Exception as e:
+            print(e)
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print("{} {} {}".format(exc_type, fname, exc_tb.tb_lineno))
+            raise
+
     # ---- Lookup queries ---- #
 
     def block_height_from_hash(self, hex_hash: str) -> int:
