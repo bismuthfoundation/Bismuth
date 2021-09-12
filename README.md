@@ -3,14 +3,18 @@ Bismuth Readme
 ##### Warning: For production purposes, please only use code from the "releases" page, which is not in pre-release state.
 
 ### Official website:
-* http://bismuth.cz
+* https://bismuthplatform.com
 
 ### Explorers:
-* https://bismuth.online
+* http://bismuth.online
+* https://bismuth.im
+* https://hypernodes.bismuth.live/?page_id=152
 
 ### Wallets:
 * [Tornado Wallet](https://github.com/bismuthfoundation/TornadoWallet)
 * [tk-wallet](https://github.com/bismuthfoundation/tk-wallet)
+* [BIS Paper Wallet](https://github.com/AngainorDev/BIS-Paper)
+* [Android Mobile Wallet](https://github.com/redDwarf03/my_bismuth_wallet)
 
 ### Hypernodes website:
 * https://hypernodes.bismuth.live
