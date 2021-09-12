@@ -34,10 +34,11 @@ Bismuth Foundation:
 * [Blog](https://hypernodes.bismuth.live/?page_id=20)
 * [Reddit](https://www.reddit.com/r/cryptobismuth)
 * [Facebook](https://web.facebook.com/cryptobismuth)
-* [Telegram](https://t.me/cryptobismuth)
+* [Telegram I](https://t.me/cryptobismuth)
+* [Telegram II](https://t.me/bismuthplatform)
 * [Egg's Twitter](https://twitter.com/EggPoolNet)
 * [Jan's Twitter](https://twitter.com/bismuthdev)
-* [Gawlea's Twitter](https://twitter.com/BismuthPlatform)
+* [Bismuth Twitter](https://twitter.com/BismuthPlatform)
 
 
 ### CI:
