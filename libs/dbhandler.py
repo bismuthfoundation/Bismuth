@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from libs.logger import Logger
 
 
-__version__ = "1.0.11"
+__version__ = "1.0.12"
 
 """
 See https://gist.github.com/rianhunter/10bfcff17c18d112de16
@@ -620,7 +620,10 @@ class DbHandler:
         # No mirror transactions in there
         self._execute_param(self.h, "SELECT * FROM transactions ORDER BY block_height DESC LIMIT ?", (n, ))
         result = self.h.fetchall()
-        return [Transaction.from_legacy(raw_tx) for raw_tx in result]
+        if self.legacy_db:
+            return [Transaction.from_legacy(raw_tx) for raw_tx in result]
+        else:
+            return [Transaction.from_v2(raw_tx) for raw_tx in result]        
 
     def ledger_balance3(self, address: str, cache: Union[dict, None]=None) -> Decimal:
         """Cached balance from hyper - used by digest, cache is local to one block         """
