@@ -290,7 +290,7 @@ def listlim(ctx, limit):
 @click.pass_context
 def listlimjson(ctx, limit):
     """JSON given number of last transactions"""
-    click.echo(send_command(ctx=ctx, key="limit", extra_args_input=limit))
+    click.echo(send_command(ctx=ctx, key="listlimjson", extra_args_input=limit))
 
 
 @cli.command()
