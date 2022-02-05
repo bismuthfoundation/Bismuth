@@ -284,10 +284,11 @@ class DbHandler:
                         timestamp = x[1]
                         tokens_processed.append(token_name)
                         issued_by = x[3]
+                        txid = x[4]
                         if not self.legacy_db:
                             # stored under bin format
-                            x[4] = b64encode(x[4]).decode()
-                        txid = x[4][:56]
+                            txid = b64encode(txid).decode()
+                        txid = txid[:56]
                         total = x[6].split(":")[1]
                         # EGG Note: Maybe force this to be positive int?
                         self.index_cursor.execute("INSERT INTO tokens VALUES (?,?,?,?,?,?,?)",
