@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from libs.logger import Logger
 
 
-__version__ = "1.0.12"
+__version__ = "1.0.13"
 
 """
 See https://gist.github.com/rianhunter/10bfcff17c18d112de16
@@ -338,7 +338,11 @@ class DbHandler:
                     token = r[6].split(":")[0]
                     sender = r[2]
                     recipient = r[3]
-                    txid = r[4][:56]
+                    txid = r[4]
+                    if not self.legacy_db:
+                        # stored under bin format
+                        txid = b64encode(txid).decode()
+                    txid = txid[:56]                    
                     if txid == "0":
                         txid = blake2bhash_generate(r)
                     try:
