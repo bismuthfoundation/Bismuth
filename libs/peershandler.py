@@ -147,7 +147,7 @@ class Peers:
                         self.peers_log.debug(f"Inbound: Peer {ip}:{port} saved to peers")
                         self.peerlist_updated = True
                     else:
-                        self.peers_log.debug("Distant peer {ip}:{port} already in peers")
+                        self.peers_log.debug(f"Distant peer {ip}:{port} already in peers")
 
                 except Exception as e:
                     # exception for a single peer - This is not an error, it's ok to have unreachable peers.
