@@ -399,6 +399,13 @@ def api_getaddresssince(socket, arg1, arg2, arg3):
     response = connections.receive(s)
     print(json.dumps(response))
 
+if command == "balanceat":
+    # balance at certain block height
+    # requires the HN companion plugin enabled, so it knows the extra api command HN_quick_check_balance
+    # python3 commands.py balanceat address height
+    connections.send(s, f"HN_quick_check_balance {arg1} {arg2}")
+    print(connections.receive(s))
+
 if command == "getversion":
     connections.send(s, "getversion")
     print(connections.receive(s))
