@@ -29,11 +29,11 @@ def sendsync(sdef, peer_ip, status, node):
     """
     # TODO: ERROR, does **not** save anything. code or comment wrong.
     node.logger.app_log.info(f"Outbound: Synchronization with {peer_ip} finished after: {status}, sending new sync request")
-    time.sleep(Decimal(node.pause))
+    time.sleep(node.pause)
     while node.db_lock.locked():
         if node.IS_STOPPING:
             return
-        time.sleep(Decimal(node.pause))
+        time.sleep(node.pause)
     send(sdef, "sendsync")
 
 
