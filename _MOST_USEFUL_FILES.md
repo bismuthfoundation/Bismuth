@@ -21,7 +21,7 @@ Outdated, still uses privkey.der/pubkey.der instead or modern wallet.der
 
 ## check_tx.py
 A Demo script that takes a transaction id as input, and sends back a json with is status.  
-Comes with a doc https://github.com/hclivess/Bismuth/blob/master/check_tx.md
+Comes with a doc https://github.com/bismuthfoundation/Bismuth/blob/master/check_tx.md
 
 ## commands.py
 Command line interface to node commands. Undocumented.  
