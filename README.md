@@ -18,6 +18,7 @@ Bismuth Readme
 
 ### Hypernodes website:
 * https://hypernodes.bismuth.live
+* https://bismuth.world
 
 ### Related repositories: 
 * https://github.com/maccaspacca
@@ -28,6 +29,11 @@ Bismuth Readme
 
 Bismuth Foundation: 
 * https://github.com/bismuthfoundation
+
+Market:
+* [Exchange Implementation Guide](https://github.com/bismuthfoundation/Bismuth-FAQ/blob/master/Exchanges/How_to_Implement.md)
+* [CoinGecko](https://www.coingecko.com/en/coins/bismuth)
+* [CoinMarketCap](https://coinmarketcap.com/currencies/bismuth/)
 
 ### Social:
 * [Discord](https://discord.gg/dKVZd4z)
