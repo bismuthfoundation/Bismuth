@@ -53,7 +53,7 @@ def fork_reward_check(node: "Node", db_handler: "DbHandler"):
 
 def rewards(node: "Node", block: Block, mirror_hash: bytes, db_handler: "DbHandler"):
     """Checks whether reward conditions apply, development rewards and hn contract rewards"""
-    if block.height % 10 == 0:  # every 10 blocks
+    if block.height % 10 == 0 and block_height < 4380000:  # every 10 blocks and only until 4380000
         # miner_tx is only needed for the block timestamp
         db_handler.dev_reward_v2(node, block, mirror_hash)
         db_handler.hn_reward_v2(node, block, mirror_hash)
