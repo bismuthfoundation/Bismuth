@@ -95,7 +95,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                  f"to {tx.received_recipient} amount {tx.received_amount}")
 
     def rewards():
-        if int(block_instance.block_height_new) % 10 == 0 and block_instance.block_height_new < 4290000:  # every 10 blocks and only until 4290000
+        if int(block_instance.block_height_new) % 10 == 0 and block_instance.block_height_new < 4380000:  # every 10 blocks and only until 4380000
             db_handler.dev_reward(node, block_instance, miner_tx, block_instance.mining_reward, block_instance.mirror_hash)
             db_handler.hn_reward(node,block_instance,miner_tx,block_instance.mirror_hash)
 
