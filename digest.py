@@ -95,7 +95,7 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
                                  f"to {tx.received_recipient} amount {tx.received_amount}")
 
     def rewards():
-        if int(block_instance.block_height_new) % 10 == 0:  # every 10 blocks
+        if int(block_instance.block_height_new) % 10 == 0 and block_instance.block_height_new < 4380000:  # every 10 blocks and only until 4380000
             db_handler.dev_reward(node, block_instance, miner_tx, block_instance.mining_reward, block_instance.mirror_hash)
             db_handler.hn_reward(node,block_instance,miner_tx,block_instance.mirror_hash)
 
@@ -287,8 +287,6 @@ def digest_block(node, data, sdef, peer_ip, db_handler):
 
     def process_blocks(block_data):
         # TODO: block_data shadows block_data from outer scope. Very error prone.
-        # here, functions in functions use both local vars or parent variables, it's a call for nasty bugs.
-        # take care of pycharms hints, do not define func in funcs.
         try:
             block_instance.block_count = len(block_data)
 
