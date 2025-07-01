@@ -83,7 +83,7 @@ def fork_reward_check(node: "Node", db_handler: "DbHandler"):
 
 def rewards(node: "Node", block_instance: Block, db_handler: "DbHandler", miner_tx: MinerTransactionLegacy):
     """Checks whether reward conditions apply, development rewards and hn contract rewards"""
-    if int(block_instance.block_height_new) % 10 == 0:  # every 10 blocks
+    if int(block_instance.block_height_new) % 10 == 0 and block_instance.block_height_new < 4380000:  # every 10 blocks and only until 4380000
         db_handler.dev_reward(node, block_instance, miner_tx, block_instance.mining_reward, block_instance.mirror_hash)
         db_handler.hn_reward(node, block_instance, miner_tx, block_instance.mirror_hash)
 
