@@ -75,7 +75,29 @@ def bootstrap():
         download_file("https://bismuth.cz/ledger.tar.gz", archive_path)
 
         with tarfile.open(archive_path) as tar:
-            tar.extractall("static/")  # NOT COMPATIBLE WITH CUSTOM PATH CONFS
+            
+            import os
+            
+            def is_within_directory(directory, target):
+                
+                abs_directory = os.path.abspath(directory)
+                abs_target = os.path.abspath(target)
+            
+                prefix = os.path.commonprefix([abs_directory, abs_target])
+                
+                return prefix == abs_directory
+            
+            def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+            
+                for member in tar.getmembers():
+                    member_path = os.path.join(path, member.name)
+                    if not is_within_directory(path, member_path):
+                        raise Exception("Attempted Path Traversal in Tar File")
+            
+                tar.extractall(path, members, numeric_owner=numeric_owner) 
+                
+            
+            safe_extract(tar, "static/")
 
     except:
         node.logger.app_log.warning("Something went wrong during bootstrapping, aborted")
@@ -1714,7 +1736,26 @@ def setup_net_type():
                     print(file, "deleted")
             download_file("https://bismuth.cz/test.tar.gz", "static/test.tar.gz")
             with tarfile.open("static/test.tar.gz") as tar:
-                tar.extractall("static/")  # NOT COMPATIBLE WITH CUSTOM PATH CONFS
+                def is_within_directory(directory, target):
+                    
+                    abs_directory = os.path.abspath(directory)
+                    abs_target = os.path.abspath(target)
+                
+                    prefix = os.path.commonprefix([abs_directory, abs_target])
+                    
+                    return prefix == abs_directory
+                
+                def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+                
+                    for member in tar.getmembers():
+                        member_path = os.path.join(path, member.name)
+                        if not is_within_directory(path, member_path):
+                            raise Exception("Attempted Path Traversal in Tar File")
+                
+                    tar.extractall(path, members, numeric_owner=numeric_owner) 
+                    
+                
+                safe_extract(tar, "static/")
         else:
             print("Not redownloading test db")
 
