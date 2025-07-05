@@ -1674,10 +1674,10 @@ def setup_net_type():
 
     if node.is_mainnet:
         # Allow only 21 and up
-        if node.version != 'mainnet0021':
-            node.version = 'mainnet0021'  # Force in code.
+        if node.version != 'mainnet0022':
+            node.version = 'mainnet0022'  # Force in code.
         if "mainnet0021" not in node.version_allow:
-            node.version_allow = ['mainnet0021', 'mainnet0022']
+            node.version_allow = ['mainnet0021', 'mainnet0022', 'mainnet0023']
         # Do not allow bad configs.
         if not 'mainnet' in node.version:
             node.logger.app_log.error("Bad mainnet version, check config.txt")
