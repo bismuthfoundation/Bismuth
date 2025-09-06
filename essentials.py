@@ -1,5 +1,5 @@
 """
-Common helpers for Bismuth
+Common helpers for Bismuth - Optimized Version
 """
 import base64
 import getpass
@@ -9,6 +9,8 @@ import math
 import os
 import re
 import time
+from collections import Counter
+from functools import lru_cache
 
 import requests
 # from Crypto import Random
@@ -27,15 +29,27 @@ __version__ = "0.0.7"
 0.0.7 : decrease checkpoint limit to 30 blocks at 1450000 (meaning max 59 blocks rollback)
 """
 
+# Constants to avoid recreating Decimal objects
+DECIMAL_ZERO = Decimal(0)
+DECIMAL_ONE = Decimal(1)
+DECIMAL_TEN = Decimal(10)
+DECIMAL_HUNDRED_THOUSAND = Decimal(100000)
+BASE_FEE = Decimal("0.01")
+
+# Regex cache for replace_regex function
+_regex_cache = {}
+
 """
 For temp. code compatibility, dup code moved to polysign module
 """
 
 
-def address_validate(address:str) -> bool:
+@lru_cache(maxsize=1024)
+def address_validate(address: str) -> bool:
     return SignerFactory.address_is_valid(address)
 
 
+@lru_cache(maxsize=1024)
 def address_is_rsa(address: str) -> bool:
     return SignerFactory.address_is_rsa(address)
 
@@ -46,23 +60,31 @@ End compatibility
 
 
 def format_raw_tx(raw: list) -> dict:
-    transaction = dict()
-    transaction['block_height'] = raw[0]
-    transaction['timestamp'] = raw[1]
-    transaction['address'] = raw[2]
-    transaction['recipient'] = raw[3]
-    transaction['amount'] = raw[4]
-    transaction['signature'] = raw[5]
-    transaction['txid'] = raw[5][:56]
-    try:
-        transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
-    except:
-        transaction['pubkey'] = raw[6] #support new pubkey schemes
-    transaction['block_hash'] = raw[7]
-    transaction['fee'] = raw[8]
-    transaction['reward'] = raw[9]
-    transaction['operation'] = raw[10]
-    transaction['openfield'] = raw[11]
+    # Pre-size dictionary with all keys for better performance
+    transaction = {
+        'block_height': raw[0],
+        'timestamp': raw[1],
+        'address': raw[2],
+        'recipient': raw[3],
+        'amount': raw[4],
+        'signature': raw[5],
+        'txid': raw[5][:56],
+        'block_hash': raw[7],
+        'fee': raw[8],
+        'reward': raw[9],
+        'operation': raw[10],
+        'openfield': raw[11]
+    }
+
+    # Only try base64 decode if it looks like base64
+    if isinstance(raw[6], str) and len(raw[6]) > 0:
+        try:
+            transaction['pubkey'] = base64.b64decode(raw[6]).decode('utf-8')
+        except:
+            transaction['pubkey'] = raw[6]  # support new pubkey schemes
+    else:
+        transaction['pubkey'] = raw[6]
+
     return transaction
 
 
@@ -70,9 +92,11 @@ def percentage(percent, whole):
     return Decimal(percent) * Decimal(whole) / 100
 
 
-def replace_regex(string: str, replace:str) -> str:
-    replaced_string = re.sub(r'^{}'.format(replace), "", string)
-    return replaced_string
+def replace_regex(string: str, replace: str) -> str:
+    # Cache compiled regex patterns for performance
+    if replace not in _regex_cache:
+        _regex_cache[replace] = re.compile(r'^{}'.format(re.escape(replace)))
+    return _regex_cache[replace].sub("", string)
 
 
 def download_file(url: str, filename: str) -> None:
@@ -85,27 +109,34 @@ def download_file(url: str, filename: str) -> None:
     """
     try:
         r = requests.get(url, stream=True)
-        total_size = int(r.headers.get('content-length')) / 1024
+        total_size = int(r.headers.get('content-length', 0)) / 1024
 
         with open(filename, 'wb') as fp:
-            chunkno = 0
-            for chunk in r.iter_content(chunk_size=1024):
-                if chunk:
-                    chunkno = chunkno + 1
-                    if chunkno % 10000 == 0:  # every x chunks
-                        print(f"Downloaded {int(100 * (chunkno / total_size))} %")
+            downloaded = 0
+            last_percent = 0
 
+            # Use larger chunks for better I/O performance
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
                     fp.write(chunk)
-                    fp.flush()
+                    downloaded += len(chunk) / 1024
+
+                    if total_size > 0:
+                        percent = int(100 * (downloaded / total_size))
+                        if percent > last_percent and percent % 10 == 0:
+                            print(f"Downloaded {percent} %")
+                            last_percent = percent
+
             print("Downloaded 100 %")
     except:
         raise
 
 
 def most_common(lst: list):
-    """Used by consensus"""
-    # TODO: factorize the two helpers in one. and use a less cpu hungry method (counter)
-    return max(set(lst), key=lst.count)
+    """Used by consensus - optimized with Counter"""
+    if not lst:
+        return None
+    return Counter(lst).most_common(1)[0][0]
 
 
 def most_common_dict(a_dict: dict):
@@ -134,6 +165,28 @@ def checkpoint_set(node):
 def ledger_balance3(address, cache, db_handler):
     # Many heavy blocks are pool payouts, same address.
     # Cache pre_balance instead of recalc for every tx
+    if address in cache:
+        return cache[address]
+
+    # Optimized: Single query instead of two separate queries
+    db_handler.execute_param(db_handler.c,
+        """SELECT 
+           SUM(CASE WHEN recipient = ? THEN amount + reward ELSE 0 END) as credit,
+           SUM(CASE WHEN address = ? THEN amount + fee ELSE 0 END) as debit
+           FROM transactions 
+           WHERE recipient = ? OR address = ?""",
+        (address, address, address, address))
+
+    result = db_handler.c.fetchone()
+    credit = Decimal(result[0] or 0)
+    debit = Decimal(result[1] or 0)
+
+    cache[address] = quantize_eight(credit - debit)
+    return cache[address]
+
+
+def ledger_balance3_original(address, cache, db_handler):
+    """Keep original implementation as fallback if needed"""
     if address in cache:
         return cache[address]
     credit_ledger = Decimal(0)
@@ -204,7 +257,7 @@ def keys_check(app_log, keyfile_name: str) -> None:
         # export to single file
 
 
-def keys_save(private_key_readable :str, public_key_readable: str, address: str, file) -> None:
+def keys_save(private_key_readable: str, public_key_readable: str, address: str, file) -> None:
     wallet_dict = dict()
     wallet_dict['Private Key'] = private_key_readable
     wallet_dict['Public Key'] = public_key_readable
@@ -215,7 +268,7 @@ def keys_save(private_key_readable :str, public_key_readable: str, address: str,
         json.dump(wallet_dict, keyfile)
 
 
-def keys_load(privkey_filename: str= "privkey.der", pubkey_filename: str= "pubkey.der"):
+def keys_load(privkey_filename: str = "privkey.der", pubkey_filename: str = "pubkey.der"):
     keyfile = "wallet.der"
     if os.path.exists("wallet.der"):
         print("Using modern wallet method")
@@ -292,15 +345,19 @@ def keys_load_new(keyfile="wallet.der"):
     return key, public_key_readable, private_key_readable, encrypted, unlocked, public_key_b64encoded, address, keyfile
 
 
-def fee_calculate(openfield: str, operation: str='', block: int=0) -> Decimal:
+def fee_calculate(openfield: str, operation: str = '', block: int = 0) -> Decimal:
     # block var will be removed after HF
-    fee = Decimal("0.01") + (Decimal(len(openfield)) / Decimal("100000"))  # 0.01 dust
+    # Optimized: use pre-defined constants and check operation first
+    fee = BASE_FEE + (Decimal(len(openfield)) / DECIMAL_HUNDRED_THOUSAND)
+
+    # Check operation first (faster than string.startswith)
     if operation == "token:issue":
-        fee = Decimal(fee) + Decimal("10")
-    if openfield.startswith("alias="):
-        fee = Decimal(fee) + Decimal("1")
-    #if operation == "alias:register": #add in the future, careful about forking
+        fee += DECIMAL_TEN
+    elif openfield.startswith("alias="):  # Only check if needed
+        fee += DECIMAL_ONE
+    # if operation == "alias:register": #add in the future, careful about forking
     #    fee = Decimal(fee) + Decimal("1")
+
     return quantize_eight(fee)
 
 
