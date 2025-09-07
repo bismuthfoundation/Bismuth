@@ -1,5 +1,5 @@
 """
-Database handler module for Bismuth nodes
+Database handler module for Bismuth nodes - Optimized Version
 """
 
 import time
@@ -26,6 +26,13 @@ class DbHandler:
         self.trace_db_calls = trace_db_calls
         self.index_db = index_db
         self.ledger_path = ledger_path
+
+        # Initialize caches
+        self._pubkey_cache = {}
+        self._alias_cache = {}
+        self._address_cache = {}
+        self._max_cache = {}
+        self._max_cache_time = 0
 
         self.index = sqlite3.connect(self.index_db, timeout=1)
         if self.trace_db_calls:
@@ -63,22 +70,90 @@ class DbHandler:
         self.SQL_TO_TRANSACTIONS = "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
         self.SQL_TO_MISC = "INSERT INTO misc VALUES (?,?)"
 
+        # Apply performance optimizations to all connections
+        self._optimize_connections()
+
+    def _optimize_connections(self):
+        """Apply SQLite performance optimizations to all connections"""
+        for conn in [self.index, self.hdd, self.hdd2, self.conn]:
+            try:
+                conn.execute("PRAGMA synchronous = NORMAL")  # Faster than FULL
+                conn.execute("PRAGMA cache_size = -64000")  # 64MB cache
+                conn.execute("PRAGMA temp_store = MEMORY")
+                conn.execute("PRAGMA mmap_size = 536870912")  # 512MB memory-mapped I/O
+            except Exception as e:
+                self.logger.app_log.warning(f"Could not optimize connection: {e}")
+
+    def ensure_indexes(self):
+        """Create indexes for better performance - call this during setup/maintenance"""
+        index_queries = [
+            "CREATE INDEX IF NOT EXISTS idx_tx_block_height ON transactions(block_height)",
+            "CREATE INDEX IF NOT EXISTS idx_tx_address ON transactions(address)",
+            "CREATE INDEX IF NOT EXISTS idx_tx_recipient ON transactions(recipient)",
+            "CREATE INDEX IF NOT EXISTS idx_tx_reward ON transactions(reward)",
+            "CREATE INDEX IF NOT EXISTS idx_tx_block_hash ON transactions(block_hash)",
+            "CREATE INDEX IF NOT EXISTS idx_misc_block_height ON misc(block_height)",
+        ]
+
+        for query in index_queries:
+            try:
+                self.h.execute(query)
+                self.h2.execute(query)
+                self.c.execute(query)
+            except:
+                pass  # Index might already exist
+
+        try:
+            self.index_cursor.execute("CREATE INDEX IF NOT EXISTS idx_aliases_address ON aliases(address)")
+            self.index_cursor.execute("CREATE INDEX IF NOT EXISTS idx_aliases_alias ON aliases(alias)")
+            self.index_cursor.execute("CREATE INDEX IF NOT EXISTS idx_tokens_address ON tokens(address)")
+            self.index_cursor.execute("CREATE INDEX IF NOT EXISTS idx_tokens_recipient ON tokens(recipient)")
+        except:
+            pass
+
+        self.commit(self.hdd)
+        self.commit(self.hdd2)
+        self.commit(self.conn)
+        self.commit(self.index)
+
+    def clear_caches(self):
+        """Clear all internal caches - useful after rollbacks"""
+        self._pubkey_cache.clear()
+        self._alias_cache.clear()
+        self._address_cache.clear()
+        self._max_cache.clear()
+        self._max_cache_time = 0
+
     def last_block_hash(self):
         self.execute(self.c, "SELECT block_hash FROM transactions WHERE reward != 0 ORDER BY block_height DESC LIMIT 1;")
         result = self.c.fetchone()[0]
         return result
 
     def pubkeyget(self, address):
+        # Check cache first
+        if address in self._pubkey_cache:
+            return self._pubkey_cache[address]
+
         self.execute_param(self.c, "SELECT public_key FROM transactions WHERE address = ? and reward = 0 LIMIT 1", (address,))
         result = self.c.fetchone()[0]
+
+        # Cache the result
+        self._pubkey_cache[address] = result
         return result
 
     def addfromalias(self, alias):
+        # Check cache first
+        if alias in self._address_cache:
+            return self._address_cache[alias]
+
         self.execute_param(self.index_cursor, "SELECT address FROM aliases WHERE alias = ? ORDER BY block_height ASC LIMIT 1;", (alias,))
         try:
             address_fetch = self.index_cursor.fetchone()[0]
         except:
             address_fetch = "No alias"
+
+        # Cache the result
+        self._address_cache[alias] = address_fetch
         return address_fetch
 
     def tokens_user(self, tokens_address):
@@ -116,15 +191,29 @@ class DbHandler:
         return essentials.format_raw_tx(self.c.fetchone())
 
     def aliasget(self, alias_address):
+        # Check cache first
+        if alias_address in self._alias_cache:
+            return self._alias_cache[alias_address]
+
         self.execute_param(self.index_cursor, "SELECT alias FROM aliases WHERE address = ? ", (alias_address,))
         result = self.index_cursor.fetchall()
         if not result:
             result = [[alias_address]]
+
+        # Cache the result
+        self._alias_cache[alias_address] = result
         return result
 
     def aliasesget(self, aliases_request):
         results = []
         for alias_address in aliases_request:
+            # Try cache first for each address
+            if alias_address in self._alias_cache:
+                cached = self._alias_cache[alias_address]
+                if cached and cached != [[alias_address]]:
+                    results.append(cached[0][0])
+                    continue
+
             self.execute_param(self.index_cursor, (
                 "SELECT alias FROM aliases WHERE address = ? ORDER BY block_height ASC LIMIT 1"), (alias_address,))
             try:
@@ -147,7 +236,6 @@ class DbHandler:
         blocks_fetched = []
         while sys.getsizeof(
                 str(blocks_fetched)) < 500000:  # limited size based on txs in blocks
-            # db_handler.execute_param(db_handler.h, ("SELECT block_height, timestamp,address,recipient,amount,signature,public_key,keep,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),(str(int(client_block)),) + (str(int(client_block + 1)),))
             self.execute_param(self.h, (
                 "SELECT timestamp,address,recipient,amount,signature,public_key,operation,openfield FROM transactions WHERE block_height > ? AND block_height <= ?;"),
                                               (str(int(block)), str(int(block + 1)),))
@@ -159,8 +247,16 @@ class DbHandler:
         return blocks_fetched
 
     def block_height_max(self):
+        # Use caching with 1 second TTL
+        current_time = time.time()
+        if 'height_max' in self._max_cache and current_time - self._max_cache_time < 1:
+            return self._max_cache['height_max']
+
         self.h.execute("SELECT max(block_height) FROM transactions")
-        return self.h.fetchone()[0]
+        result = self.h.fetchone()[0]
+        self._max_cache['height_max'] = result
+        self._max_cache_time = current_time
+        return result
 
     def block_height_max_diff(self):
         self.h.execute("SELECT max(block_height) FROM misc")
@@ -179,11 +275,14 @@ class DbHandler:
         self.execute_param(self.c, "SELECT * FROM transactions WHERE block_height >= ?;", (block_height,))
         backup_data = self.c.fetchall()
 
-        self.execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height)) #this belongs to rollback_under
-        self.commit(self.conn) #this belongs to rollback_under
+        self.execute_param(self.c, "DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (block_height, -block_height))
+        self.commit(self.conn)
 
-        self.execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,)) #this belongs to rollback_under
-        self.commit(self.conn)  #this belongs to rollback_under
+        self.execute_param(self.c, "DELETE FROM misc WHERE block_height >= ?;", (block_height,))
+        self.commit(self.conn)
+
+        # Clear caches when data changes
+        self.clear_caches()
 
         return backup_data
 
@@ -200,8 +299,11 @@ class DbHandler:
         self.h2.execute("DELETE FROM misc WHERE block_height >= ?", (block_height,))
         self.commit(self.hdd2)
 
+        # Clear caches after rollback
+        self.clear_caches()
+
     def rollback_to(self, block_height):
-        # We don'tt need node to have the logger
+        # We don't need node to have the logger
         self.logger.app_log.error("rollback_to is deprecated, use rollback_under")
         self.rollback_under(block_height)
 
@@ -237,6 +339,10 @@ class DbHandler:
             self.execute_param(self.index_cursor, "DELETE FROM aliases WHERE block_height >= ?;", (height,))
             self.commit(self.index)
 
+            # Clear alias caches after rollback
+            self._alias_cache.clear()
+            self._address_cache.clear()
+
             node.logger.app_log.warning(f"Rolled back the alias index below {(height)}")
         except Exception as e:
             node.logger.app_log.warning(f"Failed to roll back the alias index below {(height)} due to {e}")
@@ -270,73 +376,69 @@ class DbHandler:
         self.commit(self.conn)
 
     def to_db(self, block_array, diff_save, block_transactions):
+        """Optimized version using batch operations"""
         self.execute_param(self.c, "INSERT INTO misc VALUES (?, ?)",
                                  (block_array.block_height_new, diff_save))
+
+        # Prepare all transactions for batch insert
+        prepared_transactions = []
+        for transaction2 in block_transactions:
+            prepared_transactions.append((
+                str(transaction2[0]), str(transaction2[1]), str(transaction2[2]),
+                str(transaction2[3]), str(transaction2[4]), str(transaction2[5]),
+                str(transaction2[6]), str(transaction2[7]), str(transaction2[8]),
+                str(transaction2[9]), str(transaction2[10]), str(transaction2[11])
+            ))
+
+        # Use executemany for batch insert - much faster
+        if prepared_transactions:
+            self.c.executemany(self.SQL_TO_TRANSACTIONS, prepared_transactions)
+
+        # Single commit for all operations
         self.commit(self.conn)
 
-        # db_handler.execute_many(db_handler.c, self.SQL_TO_TRANSACTIONS, block_transactions)
-
-        for transaction2 in block_transactions:
-            self.execute_param(self.c, self.SQL_TO_TRANSACTIONS,
-                                     (str(transaction2[0]), str(transaction2[1]), str(transaction2[2]),
-                                      str(transaction2[3]), str(transaction2[4]), str(transaction2[5]),
-                                      str(transaction2[6]), str(transaction2[7]), str(transaction2[8]),
-                                      str(transaction2[9]), str(transaction2[10]), str(transaction2[11])))
-            # secure commit for slow nodes
-            self.commit(self.conn)
-
     def db_to_drive(self, node):
-
-        def transactions_to_h(data):
-            for x in data:  # we want to save to ledger.db
-                self.execute_param(self.h, self.SQL_TO_TRANSACTIONS,
-                                   (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
-            self.commit(self.hdd)
-
-        def misc_to_h(data):
-            for x in data:  # we want to save to ledger.db from RAM/hyper.db depending on ram conf
-                self.execute_param(self.h, self.SQL_TO_MISC, (x[0], x[1]))
-            self.commit(self.hdd)
-
-        def transactions_to_h2(data):
-            for x in data:
-                self.execute_param(self.h2, self.SQL_TO_TRANSACTIONS,
-                                   (x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11]))
-            self.commit(self.hdd2)
-
-        def misc_to_h2(data):
-            for x in data:
-                self.execute_param(self.h2, self.SQL_TO_MISC, (x[0], x[1]))
-            self.commit(self.hdd2)
-
+        """Optimized version using batch operations"""
         try:
             if node.is_regnet:
                 node.hdd_block = node.last_block
                 node.hdd_hash = node.last_block_hash
                 self.logger.app_log.warning(f"Chain: Regnet simulated move to HDD")
                 return
+
             node.logger.app_log.warning(f"Chain: Moving new data to HDD, {node.hdd_block + 1} to {node.last_block} ")
 
+            # Fetch all transactions
             self.execute_param(self.c,
-                               "SELECT * FROM transactions "
-                               "WHERE block_height > ? OR block_height < ? "
-                               "ORDER BY block_height ASC",
-                               (node.hdd_block, -node.hdd_block))
-
+                              "SELECT * FROM transactions "
+                              "WHERE block_height > ? OR block_height < ? "
+                              "ORDER BY block_height ASC",
+                              (node.hdd_block, -node.hdd_block))
             result1 = self.c.fetchall()
 
-            transactions_to_h(result1)
-            if node.ram:  # we want to save to hyper.db from RAM/hyper.db depending on ram conf
-                transactions_to_h2(result1)
-
+            # Fetch all misc data
             self.execute_param(self.c,
-                               "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
-                               (node.hdd_block, ))
+                              "SELECT * FROM misc WHERE block_height > ? ORDER BY block_height ASC",
+                              (node.hdd_block, ))
             result2 = self.c.fetchall()
 
-            misc_to_h(result2)
-            if node.ram:  # we want to save to hyper.db from RAM
-                misc_to_h2(result2)
+            # Batch insert transactions
+            if result1:
+                self.h.executemany(self.SQL_TO_TRANSACTIONS, result1)
+                self.commit(self.hdd)
+
+                if node.ram:
+                    self.h2.executemany(self.SQL_TO_TRANSACTIONS, result1)
+                    self.commit(self.hdd2)
+
+            # Batch insert misc
+            if result2:
+                self.h.executemany(self.SQL_TO_MISC, result2)
+                self.commit(self.hdd)
+
+                if node.ram:
+                    self.h2.executemany(self.SQL_TO_MISC, result2)
+                    self.commit(self.hdd2)
 
             node.hdd_block = node.last_block
             node.hdd_hash = node.last_block_hash
@@ -344,7 +446,6 @@ class DbHandler:
             node.logger.app_log.warning(f"Chain: {len(result1)} txs moved to HDD")
         except Exception as e:
             node.logger.app_log.warning(f"Chain: Exception Moving new data to HDD: {e}")
-            # app_log.warning("Ledger digestion ended")  # dup with more informative digest_block notice.
 
     def commit(self, connection):
         """Secure commit for slow nodes"""
@@ -378,7 +479,6 @@ class DbHandler:
 
     def execute_param(self, cursor, query, param):
         """Secure execute w/ param for slow nodes"""
-
         while True:
             try:
                 cursor.execute(query, param)
