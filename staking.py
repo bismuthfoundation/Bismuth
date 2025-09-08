@@ -12,7 +12,7 @@ import mempool as mp
 from hashlib import blake2b
 import re
 from essentials import percentage
-
+from decimal import Decimal ## fixes the decimal not found error in this file where the Decimal() type is used.
 
 def execute_param(cursor, query, param):
     """Secure execute w/ param for slow nodes"""
