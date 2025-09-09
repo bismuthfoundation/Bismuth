@@ -1,5 +1,5 @@
 """
-Database handler module for Bismuth nodes - Optimized Version
+Database handler module for Bismuth nodes - Fixed Version with Proper Shutdown
 """
 
 import time
@@ -516,7 +516,34 @@ class DbHandler:
         return None
 
     def close(self):
-        self.index.close()
-        self.hdd.close()
-        self.hdd2.close()
-        self.conn.close()
+        """Properly close all database connections with commits and WAL checkpointing"""
+        self.logger.app_log.warning("Closing database connections...")
+
+        # First, commit any pending transactions
+        try:
+            self.commit(self.index)
+            self.commit(self.hdd)
+            self.commit(self.hdd2)
+            self.commit(self.conn)
+        except Exception as e:
+            self.logger.app_log.warning(f"Error during final commits: {e}")
+
+        # Force WAL checkpoint to flush all changes to main database files
+        try:
+            self.index.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            self.hdd.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            self.hdd2.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            self.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        except Exception as e:
+            self.logger.app_log.warning(f"Error during WAL checkpoint: {e}")
+
+        # Now close all connections
+        try:
+            self.index.close()
+            self.hdd.close()
+            self.hdd2.close()
+            self.conn.close()
+        except Exception as e:
+            self.logger.app_log.warning(f"Error closing connections: {e}")
+
+        self.logger.app_log.warning("Database connections closed successfully")
