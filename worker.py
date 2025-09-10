@@ -256,9 +256,7 @@ class MessageHandler:
 
     def _should_process_blocknf(self):
         """Check if blocknf should be processed based on consensus"""
-        # This needs the received_block_height from sync context
-        # You might want to store this in the handler state
-        return True  # Simplified - implement proper logic
+        return int(self.received_block_height) == self.node.peers.consensus_max
 
     def _handle_blocks_found(self):
         """Handle blocks found message"""
@@ -275,11 +273,8 @@ class MessageHandler:
         """Process blocks found logic"""
         block_req = self._determine_block_requirement()
 
-        # This needs received_block_height from sync context
-        # Simplified version:
-        received_block_height = 0  # Should be stored from sync
-
-        if received_block_height >= block_req and received_block_height > self.node.last_block:
+        # Use the stored received_block_height from the last sync
+        if self.received_block_height >= block_req and self.received_block_height > self.node.last_block:
             try:
                 self.node.logger.app_log.warning(f"Confirming to sync from {self.peer_ip}")
                 send(self.socket, "blockscf")
@@ -292,7 +287,7 @@ class MessageHandler:
         else:
             send(self.socket, "blocksrj")
             self.node.logger.app_log.warning(
-                f"Inbound: Distant peer {self.peer_ip} is at {received_block_height}, "
+                f"Inbound: Distant peer {self.peer_ip} is at {self.received_block_height}, "
                 f"should be at least {max(block_req, self.node.last_block + 1)}")
 
     def _determine_block_requirement(self):
