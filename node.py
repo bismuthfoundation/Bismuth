@@ -2063,15 +2063,37 @@ if __name__ == "__main__":
         node.logger.app_log.info(e)
         raise
 
-    node.logger.app_log.warning("Status: Bismuth loop running.")
+    import signal
 
-    while True:
-        if node.IS_STOPPING:
-            if node.db_lock.locked():
-                time.sleep(0.5)
-            else:
-                mining_heavy3.mining_close()
-                node.logger.app_log.warning("Status: Securely disconnected main processes, subprocess termination in progress.")
-                break
-        time.sleep(0.1)
+    try:
+        node.logger.app_log.warning("Status: Bismuth loop running.")
+
+
+        # Set up signal handler for graceful shutdown
+        def signal_handler(sig, frame):
+            node.logger.app_log.warning("Status: Received interrupt signal, shutting down...")
+            node.IS_STOPPING = True
+
+
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
+        while True:
+            if node.IS_STOPPING:
+                if node.db_lock.locked():
+                    time.sleep(0.5)
+                else:
+                    mining_heavy3.mining_close()
+                    node.logger.app_log.warning(
+                        "Status: Securely disconnected main processes, subprocess termination in progress.")
+                    break
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        node.logger.app_log.warning("Status: Interrupted by user")
+        node.IS_STOPPING = True
+        # Wait for clean shutdown
+        while node.db_lock.locked():
+            time.sleep(0.5)
+        mining_heavy3.mining_close()
+
     node.logger.app_log.warning("Status: Clean Stop")
