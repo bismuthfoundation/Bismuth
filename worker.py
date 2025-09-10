@@ -97,6 +97,9 @@ class SyncHandler:
             else:
                 self._handle_higher_or_equal_peer(remote_height)
 
+            # Return the received block height so it can be stored
+            return remote_height
+
         finally:
             if self.peer_ip in self.node.syncing:
                 self.node.syncing.remove(self.peer_ip)
@@ -200,6 +203,7 @@ class MessageHandler:
         self.peer_ip = peer_ip
         self.db = db_handler
         self.sync_handler = SyncHandler(node, socket, peer_ip, db_handler)
+        self.received_block_height = None  # Store received block height from sync
 
     def process_message(self, data):
         """Route message to appropriate handler"""
@@ -228,7 +232,8 @@ class MessageHandler:
 
     def _handle_sync(self):
         """Handle sync request"""
-        self.sync_handler.handle_sync()
+        # Store the received block height for later use in blocks_found
+        self.received_block_height = self.sync_handler.handle_sync()
 
     def _handle_block_not_found_hb(self):
         """Handle hyperblock not found"""
@@ -275,8 +280,15 @@ class MessageHandler:
         """Process blocks found logic"""
         block_req = self._determine_block_requirement()
 
+        # Check if we have a received_block_height from a previous sync
+        if self.received_block_height is None:
+            self.node.logger.app_log.warning(
+                f"Outbound: No block height received from {self.peer_ip} yet, cannot process blocks found")
+            send(self.socket, "blocksrj")
+            return
+
         # Use the stored received_block_height from the last sync
-        if self.received_block_height >= block_req and self.received_block_height > self.node.last_block:
+        if int(self.received_block_height) >= block_req and int(self.received_block_height) > self.node.last_block:
             try:
                 self.node.logger.app_log.warning(f"Confirming to sync from {self.peer_ip}")
                 send(self.socket, "blockscf")
@@ -397,6 +409,7 @@ def worker(host, port, node):
     client_instance_worker = client.Client()
     timeout_operation = 60
     timer_operation = time.time()
+    received_block_height = None  # Track this at the worker level too
 
     # Establish connection
     try:
@@ -445,7 +458,19 @@ def worker(host, port, node):
 
             # Receive and process message
             data = receive(s)
-            msg_handler.process_message(data)
+
+            # Handle the special case where we need to track received_block_height across messages
+            # This maintains compatibility with the original code's variable scope
+            if data == "sync":
+                msg_handler.process_message(data)
+                received_block_height = msg_handler.received_block_height
+            elif data in ["blocknf", "blocknfhb", "blocksfnd"]:
+                # These messages need the received_block_height from sync
+                if received_block_height is not None:
+                    msg_handler.received_block_height = received_block_height
+                msg_handler.process_message(data)
+            else:
+                msg_handler.process_message(data)
 
     except Exception as e:
         db_handler_instance.close()
