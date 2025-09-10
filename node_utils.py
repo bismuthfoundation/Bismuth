@@ -757,7 +757,7 @@ def initial_db_check(node):
             bootstrap(node)
 
 
-def load_keys(node):
+def load_keys(node, regnet=None):
     """Initial loading of crypto keys"""
     # TODO: candidate for single user mode
     essentials.keys_check(node.logger.app_log, "wallet.der")
