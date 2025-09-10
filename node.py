@@ -1,18 +1,14 @@
-from utils import blocknf, sequencing_check, sql_trace_callback, bootstrap, check_integrity, balanceget, \
-    ledger_check_heights, recompress_ledger
+from node_utils import blocknf, sequencing_check, check_integrity, balanceget, \
+    ledger_check_heights, recompress_ledger, setup_net_type, node_block_init
 
-from utils import add_indices, verify
-
+from node_utils import add_indices, verify
+from utils import ram_init, initial_db_check, load_keys
 
 VERSION = "4.5.0.1"
 
-import functools
-import glob
 import platform
 import shutil
 import socketserver
-import sqlite3
-import tarfile
 import threading
 from sys import version_info
 
@@ -31,7 +27,6 @@ import plugins
 import wallet_keys
 from connections import send, receive
 from digest import *
-from essentials import download_file
 from libs import node, logger, keys, client
 from fork import Fork
 
@@ -46,6 +41,8 @@ fork = Fork()
 
 appname = "Bismuth"
 appauthor = "Bismuth Foundation"
+
+regnet=None #hack
 
 # nodes_ban_reset=config.nodes_ban_reset
 
@@ -1136,216 +1133,6 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
 
 
-def just_int_from(s):
-    # TODO: move to essentials.py
-    return int(''.join(i for i in s if i.isdigit()))
-
-
-def setup_net_type(node, regnet):
-    """
-    Adjust globals depending on mainnet, testnet or regnet
-    """
-    # TODO: only deals with 'node' structure, candidate for single user mode.
-    # Defaults value, dup'd here for clarity sake.
-    node.is_mainnet = True
-    node.is_testnet = False
-    node.is_regnet = False
-
-    if "testnet" in node.version or node.is_testnet:
-        node.is_testnet = True
-        node.is_mainnet = False
-        node.version_allow = "testnet"
-
-    if "regnet" in node.version or node.is_regnet:
-        node.is_regnet = True
-        node.is_testnet = False
-        node.is_mainnet = False
-
-    node.logger.app_log.warning(f"Testnet: {node.is_testnet}")
-    node.logger.app_log.warning(f"Regnet : {node.is_regnet}")
-
-    # default mainnet config
-    node.peerfile = "peers.txt"
-    node.ledger_ram_file = "file:ledger?mode=memory&cache=shared"
-    node.index_db = "static/index.db"
-
-    if node.is_mainnet:
-        # Allow only 21 and up
-        if node.version != 'mainnet0022':
-            node.version = 'mainnet0022'  # Force in code.
-        if "mainnet0021" not in node.version_allow:
-            node.version_allow = ['mainnet0021', 'mainnet0022', 'mainnet0023']
-        # Do not allow bad configs.
-        if not 'mainnet' in node.version:
-            node.logger.app_log.error("Bad mainnet version, check config.txt")
-            sys.exit()
-        num_ver = just_int_from(node.version)
-        if num_ver <21:
-            node.logger.app_log.error("Too low mainnet version, check config.txt")
-            sys.exit()
-        for allowed in node.version_allow:
-            num_ver = just_int_from(allowed)
-            if num_ver < 20:
-                node.logger.app_log.error("Too low allowed version, check config.txt")
-                sys.exit()
-
-    if "testnet" in node.version or node.is_testnet:
-        node.port = 2829
-        node.hyper_path = "static/hyper_test.db"
-        node.ledger_path = "static/ledger_test.db"
-
-        node.ledger_ram_file = "file:ledger_testnet?mode=memory&cache=shared"
-        #node.hyper_recompress = False
-        node.peerfile = "peers_test.txt"
-        node.index_db = "static/index_test.db"
-        if not 'testnet' in node.version:
-            node.logger.app_log.error("Bad testnet version, check config.txt")
-            sys.exit()
-
-        redownload_test = input("Status: Welcome to the testnet. Redownload test ledger? y/n")
-        if redownload_test == "y":
-            types = ['static/ledger_test.db-wal', 'static/ledger_test.db-shm', 'static/index_test.db', 'static/hyper_test.db-wal', 'static/hyper_test.db-shm']
-            for type in types:
-                for file in glob.glob(type):
-                    os.remove(file)
-                    print(file, "deleted")
-            download_file("https://bismuth.cz/test.tar.gz", "static/test.tar.gz")
-            with tarfile.open("static/test.tar.gz") as tar:
-                tar.extractall("static/")  # NOT COMPATIBLE WITH CUSTOM PATH CONFS
-        else:
-            print("Not redownloading test db")
-
-    if "regnet" in node.version or node.is_regnet:
-        node.port = regnet.REGNET_PORT
-        node.hyper_path = regnet.REGNET_DB
-        node.ledger_path = regnet.REGNET_DB
-        node.ledger_ram_file = "file:ledger_regnet?mode=memory&cache=shared"
-        node.hyper_recompress = False
-        node.peerfile = regnet.REGNET_PEERS
-        node.index_db = regnet.REGNET_INDEX
-        if not 'regnet' in node.version:
-            node.logger.app_log.error("Bad regnet version, check config.txt")
-            sys.exit()
-        if not node.heavy:
-            node.logger.app_log.warning("Regnet with no heavy file...")
-            mining_heavy3.heavy = False
-        node.logger.app_log.warning("Regnet init...")
-        regnet.init(node.logger.app_log)
-        regnet.DIGEST_BLOCK = digest_block
-        mining_heavy3.is_regnet = True
-        """
-        node.logger.app_log.warning("Regnet still is WIP atm.")
-        sys.exit()
-        """
-
-
-def node_block_init(database, node):
-    # TODO: candidate for single user mode
-    node.hdd_block = database.block_height_max()
-    node.difficulty = difficulty(node, db_handler_initial)  # check diff for miner
-
-    node.last_block = node.hdd_block  # ram equals drive at this point
-
-    node.last_block_hash = database.last_block_hash()
-    node.hdd_hash = node.last_block_hash # ram equals drive at this point
-
-    node.last_block_timestamp = database.last_block_timestamp()
-
-    checkpoint_set(node)
-
-    node.logger.app_log.warning("Status: Indexing aliases")
-
-    aliases.aliases_update(node, database)
-
-
-def ram_init(database, node):
-    # TODO: candidate for single user mode
-    try:
-        if node.ram:
-            node.logger.app_log.warning("Status: Moving database to RAM")
-
-            if node.py_version >= 370:
-                temp_target = sqlite3.connect(node.ledger_ram_file, uri=True, isolation_level=None, timeout=1)
-                if node.trace_db_calls:
-                    temp_target.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "TEMP-TARGET"))
-
-                temp_source = sqlite3.connect(node.hyper_path, uri=True, isolation_level=None, timeout=1)
-                if node.trace_db_calls:
-                    temp_source.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "TEMP-SOURCE"))
-                temp_source.backup(temp_target)
-                temp_source.close()
-
-            else:
-                source_db = sqlite3.connect(node.hyper_path, timeout=1)
-                if node.trace_db_calls:
-                    source_db.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "SOURCE-DB"))
-                database.to_ram = sqlite3.connect(node.ledger_ram_file, uri=True, timeout=1, isolation_level=None)
-                if node.trace_db_calls:
-                    database.to_ram.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "DATABASE-TO-RAM"))
-                database.to_ram.text_factory = str
-                database.tr = database.to_ram.cursor()
-
-                query = "".join(line for line in source_db.iterdump())
-                database.to_ram.executescript(query)
-                source_db.close()
-
-            node.logger.app_log.warning("Status: Hyperblock ledger moved to RAM")
-
-            #source = sqlite3.connect('existing_db.db')
-            #dest = sqlite3.connect(':memory:')
-            #source.backup(dest)
-
-    except Exception as e:
-        node.logger.app_log.warning(e)
-        raise
-
-
-def initial_db_check(node):
-    """
-    Initial bootstrap check and chain validity control
-    """
-    # TODO: candidate for single user mode
-    # force bootstrap via adding an empty "fresh_sync" file in the dir.
-    if os.path.exists("fresh_sync") and node.is_mainnet:
-        node.logger.app_log.warning("Status: Fresh sync required, bootstrapping from the website")
-        os.remove("fresh_sync")
-        bootstrap(node)
-    # UPDATE mainnet DB if required
-    if node.is_mainnet:
-        upgrade = sqlite3.connect(node.ledger_path)
-        if node.trace_db_calls:
-            upgrade.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "INITIAL_DB_CHECK"))
-        u = upgrade.cursor()
-        try:
-            u.execute("PRAGMA table_info(transactions);")
-            result = u.fetchall()[10][2]
-            if result != "TEXT":
-                raise ValueError("Database column type outdated for Command field")
-            upgrade.close()
-        except Exception as e:
-            print(e)
-            upgrade.close()
-            print("Database needs upgrading, bootstrapping...")
-            bootstrap(node)
-
-
-def load_keys(node):
-    """Initial loading of crypto keys"""
-    # TODO: candidate for single user mode
-    essentials.keys_check(node.logger.app_log, "wallet.der")
-
-    node.keys.key, node.keys.public_key_readable, node.keys.private_key_readable, _, _, node.keys.public_key_b64encoded, node.keys.address, node.keys.keyfile = essentials.keys_load(
-        "privkey.der", "pubkey.der")
-
-    if node.is_regnet:
-        regnet.PRIVATE_KEY_READABLE = node.keys.private_key_readable
-        regnet.PUBLIC_KEY_B64ENCODED = node.keys.public_key_b64encoded
-        regnet.ADDRESS = node.keys.address
-        regnet.KEY = node.keys.key
-
-    node.logger.app_log.warning(f"Status: Local address: {node.keys.address}")
-
-
 if __name__ == "__main__":
     # classes
     node = node.Node()
@@ -1449,7 +1236,7 @@ if __name__ == "__main__":
 
             db_handler_initial = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
 
-            ledger_check_heights(node, db_handler_initial)
+            ledger_check_heights(node, db_handler_initial, db_handler_initial)
 
 
             if node.recompress:
@@ -1459,7 +1246,7 @@ if __name__ == "__main__":
                 db_handler_initial = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
 
             ram_init(db_handler_initial, node)
-            node_block_init(db_handler_initial, node)
+            node_block_init(db_handler_initial, node, db_handler_initial)
             initial_db_check(node)
 
             if not node.is_regnet:

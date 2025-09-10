@@ -1,5 +1,5 @@
 from node import digest_block
-from utils import blocknf
+from node_utils import blocknf
 import sys
 import threading
 from libs import node, logger, keys, client
