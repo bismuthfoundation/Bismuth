@@ -250,86 +250,49 @@ def bin_convert(string):
 
 
 def balanceget(balance_address, db_handler):
-    # TODO: To move in db_handler, call by db_handler.balance_get(address)
-    # verify balance
-
-    # node.logger.app_log.info("Mempool: Verifying balance")
-    # node.logger.app_log.info("Mempool: Received address: " + str(balance_address))
-
+    # Get mempool transactions for the address
     base_mempool = mp.MEMPOOL.mp_get(balance_address)
+    debit_mempool = Decimal("0")
 
-    # include mempool fees
-
-    debit_mempool = 0
+    # Calculate mempool fees and debit
     if base_mempool:
-        for x in base_mempool:
-            debit_tx = Decimal(x[0])
-            fee = fee_calculate(x[1], x[2], node.last_block)
-            debit_mempool = quantize_eight(debit_mempool + debit_tx + fee)
-    else:
-        debit_mempool = 0
-    # include mempool fees
+        for tx in base_mempool:
+            debit_tx = Decimal(tx[0])
+            fee = fee_calculate(tx[1], tx[2], node.last_block)
+            debit_mempool += quantize_eight(debit_tx + fee)
 
-    credit_ledger = Decimal("0")
-
-    try:
-        db_handler.execute_param(db_handler.h, "SELECT amount FROM transactions WHERE recipient = ?;", (balance_address,))
-        entries = db_handler.h.fetchall()
-    except:
-        entries = []
-
-    try:
-        for entry in entries:
-            credit_ledger = quantize_eight(credit_ledger) + quantize_eight(entry[0])
-            credit_ledger = 0 if credit_ledger is None else credit_ledger
-    except:
-        credit_ledger = 0
-
-    fees = Decimal("0")
-    debit_ledger = Decimal("0")
+    # Use a single query to get ledger balances
+    query = """
+        SELECT 
+            COALESCE(SUM(CASE WHEN recipient = ? THEN amount ELSE 0 END), 0) as credit,
+            COALESCE(SUM(CASE WHEN address = ? THEN amount ELSE 0 END), 0) as debit,
+            COALESCE(SUM(CASE WHEN address = ? THEN fee ELSE 0 END), 0) as fees,
+            COALESCE(SUM(CASE WHEN recipient = ? THEN reward ELSE 0 END), 0) as rewards
+        FROM transactions
+        WHERE recipient = ? OR address = ?
+    """
 
     try:
-        db_handler.execute_param(db_handler.h, "SELECT fee, amount FROM transactions WHERE address = ?;", (balance_address,))
-        entries = db_handler.h.fetchall()
-    except:
-        entries = []
+        db_handler.execute_param(db_handler.h, query,
+                                 (balance_address, balance_address, balance_address,
+                                  balance_address, balance_address, balance_address))
+        result = db_handler.h.fetchone()
+        credit_ledger, debit_ledger, fees, rewards = map(Decimal, result)
+    except Exception:
+        credit_ledger = debit_ledger = fees = rewards = Decimal("0")
 
-    try:
-        for entry in entries:
-            fees = quantize_eight(fees) + quantize_eight(entry[0])
-            fees = 0 if fees is None else fees
-    except:
-        fees = 0
+    # Calculate balances
+    balance = quantize_eight(credit_ledger - debit_ledger - fees + rewards - debit_mempool)
+    balance_no_mempool = quantize_eight(credit_ledger - debit_ledger - fees + rewards)
 
-    try:
-        for entry in entries:
-            debit_ledger = debit_ledger + Decimal(entry[1])
-            debit_ledger = 0 if debit_ledger is None else debit_ledger
-    except:
-        debit_ledger = 0
-
-    debit = quantize_eight(debit_ledger + debit_mempool)
-
-    rewards = Decimal("0")
-
-    try:
-        db_handler.execute_param(db_handler.h, "SELECT reward FROM transactions WHERE recipient = ?;", (balance_address,))
-        entries = db_handler.h.fetchall()
-    except:
-        entries = []
-
-    try:
-        for entry in entries:
-            rewards = quantize_eight(rewards) + quantize_eight(entry[0])
-            rewards = 0 if str(rewards) == "0E-8" else rewards
-            rewards = 0 if rewards is None else rewards
-    except:
-        rewards = 0
-
-    balance = quantize_eight(credit_ledger - debit - fees + rewards)
-    balance_no_mempool = float(credit_ledger) - float(debit_ledger) - float(fees) + float(rewards)
-    # node.logger.app_log.info("Mempool: Projected transction address balance: " + str(balance))
-    return str(balance), str(credit_ledger), str(debit), str(fees), str(rewards), str(balance_no_mempool)
+    return (
+        str(balance),
+        str(credit_ledger),
+        str(debit_ledger + debit_mempool),
+        str(fees),
+        str(rewards),
+        str(balance_no_mempool)
+    )
 
 
 def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
