@@ -13,6 +13,7 @@ from polysign.signerfactory import SignerFactory
 
 import aliases
 import dbhandler
+import essentials
 import mempool
 import mining_heavy3
 import tokensv2
@@ -683,3 +684,91 @@ def node_block_init(database, node, db_handler_initial):
     node.logger.app_log.warning("Status: Indexing aliases")
 
     aliases.aliases_update(node, database)
+
+
+def ram_init(database, node):
+    # TODO: candidate for single user mode
+    try:
+        if node.ram:
+            node.logger.app_log.warning("Status: Moving database to RAM")
+
+            if node.py_version >= 370:
+                temp_target = sqlite3.connect(node.ledger_ram_file, uri=True, isolation_level=None, timeout=1)
+                if node.trace_db_calls:
+                    temp_target.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "TEMP-TARGET"))
+
+                temp_source = sqlite3.connect(node.hyper_path, uri=True, isolation_level=None, timeout=1)
+                if node.trace_db_calls:
+                    temp_source.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "TEMP-SOURCE"))
+                temp_source.backup(temp_target)
+                temp_source.close()
+
+            else:
+                source_db = sqlite3.connect(node.hyper_path, timeout=1)
+                if node.trace_db_calls:
+                    source_db.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "SOURCE-DB"))
+                database.to_ram = sqlite3.connect(node.ledger_ram_file, uri=True, timeout=1, isolation_level=None)
+                if node.trace_db_calls:
+                    database.to_ram.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "DATABASE-TO-RAM"))
+                database.to_ram.text_factory = str
+                database.tr = database.to_ram.cursor()
+
+                query = "".join(line for line in source_db.iterdump())
+                database.to_ram.executescript(query)
+                source_db.close()
+
+            node.logger.app_log.warning("Status: Hyperblock ledger moved to RAM")
+
+            #source = sqlite3.connect('existing_db.db')
+            #dest = sqlite3.connect(':memory:')
+            #source.backup(dest)
+
+    except Exception as e:
+        node.logger.app_log.warning(e)
+        raise
+
+
+def initial_db_check(node):
+    """
+    Initial bootstrap check and chain validity control
+    """
+    # TODO: candidate for single user mode
+    # force bootstrap via adding an empty "fresh_sync" file in the dir.
+    if os.path.exists("fresh_sync") and node.is_mainnet:
+        node.logger.app_log.warning("Status: Fresh sync required, bootstrapping from the website")
+        os.remove("fresh_sync")
+        bootstrap(node)
+    # UPDATE mainnet DB if required
+    if node.is_mainnet:
+        upgrade = sqlite3.connect(node.ledger_path)
+        if node.trace_db_calls:
+            upgrade.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "INITIAL_DB_CHECK"))
+        u = upgrade.cursor()
+        try:
+            u.execute("PRAGMA table_info(transactions);")
+            result = u.fetchall()[10][2]
+            if result != "TEXT":
+                raise ValueError("Database column type outdated for Command field")
+            upgrade.close()
+        except Exception as e:
+            print(e)
+            upgrade.close()
+            print("Database needs upgrading, bootstrapping...")
+            bootstrap(node)
+
+
+def load_keys(node):
+    """Initial loading of crypto keys"""
+    # TODO: candidate for single user mode
+    essentials.keys_check(node.logger.app_log, "wallet.der")
+
+    node.keys.key, node.keys.public_key_readable, node.keys.private_key_readable, _, _, node.keys.public_key_b64encoded, node.keys.address, node.keys.keyfile = essentials.keys_load(
+        "privkey.der", "pubkey.der")
+
+    if node.is_regnet:
+        regnet.PRIVATE_KEY_READABLE = node.keys.private_key_readable
+        regnet.PUBLIC_KEY_B64ENCODED = node.keys.public_key_b64encoded
+        regnet.ADDRESS = node.keys.address
+        regnet.KEY = node.keys.key
+
+    node.logger.app_log.warning(f"Status: Local address: {node.keys.address}")

@@ -1,8 +1,7 @@
 from node_utils import blocknf, sequencing_check, check_integrity, balanceget, \
-    ledger_check_heights, recompress_ledger, setup_net_type, node_block_init
+    ledger_check_heights, recompress_ledger, setup_net_type, node_block_init, ram_init, initial_db_check, load_keys
 
 from node_utils import add_indices, verify
-from utils import ram_init, initial_db_check, load_keys
 
 VERSION = "4.5.0.1"
 
