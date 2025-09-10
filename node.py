@@ -1,6 +1,9 @@
 # c = hyperblock in ram OR hyperblock file when running only hyperblocks without ram mode on
+from utils import blocknf, sequencing_check, sql_trace_callback
+
 # h = ledger file or hyperblock clone in hyperblock mode
 # h2 = hyperblock file
+from utils import add_indices, verify
 
 # never remove the str() conversion in data evaluation or database inserts or you will debug for 14 days as signed types mismatch
 # if you raise in the server thread, the server will die and node will stop
@@ -41,7 +44,6 @@ from digest import *
 from essentials import fee_calculate, download_file
 from libs import node, logger, keys, client
 from fork import Fork
-from db_hashes import db_hashes
 
 # todo: migrate this to polysign\signer_crw.py
 from Cryptodome.Hash import SHA
@@ -56,11 +58,6 @@ appname = "Bismuth"
 appauthor = "Bismuth Foundation"
 
 # nodes_ban_reset=config.nodes_ban_reset
-
-
-def sql_trace_callback(log, id, statement):
-    line = f"SQL[{id}] {statement}"
-    log.warning(line)
 
 
 def bootstrap():
@@ -92,7 +89,7 @@ def check_integrity(database):
 
     with sqlite3.connect(database) as ledger_check:
         if node.trace_db_calls:
-            ledger_check.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"CHECK_INTEGRITY"))
+            ledger_check.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "CHECK_INTEGRITY"))
 
         ledger_check.text_factory = str
         l = ledger_check.cursor()
@@ -144,7 +141,7 @@ def recompress_ledger(node, rebuild=False, depth=15000):
         shutil.copy(node.hyper_path, node.ledger_path + '.temp')
         hyper = sqlite3.connect(node.ledger_path + '.temp')
     if node.trace_db_calls:
-       hyper.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"HYPER"))
+       hyper.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "HYPER"))
     hyper.text_factory = str
     hyp = hyper.cursor()
 
@@ -293,226 +290,6 @@ def balanceget(balance_address, db_handler):
         str(rewards),
         str(balance_no_mempool)
     )
-
-
-def blocknf(node, block_hash_delete, peer_ip, db_handler, hyperblocks=False):
-    """
-    Rolls back a single block, updates node object variables.
-    Rollback target must be above checkpoint.
-    Hash to rollback must match in case our ledger moved.
-    Not trusting hyperblock nodes for old blocks because of trimming,
-    they wouldn't find the hash and cause rollback.
-    """
-    node.logger.app_log.info(f"Rollback operation on {block_hash_delete} initiated by {peer_ip}")
-
-    my_time = time.time()
-
-    if not node.db_lock.locked():
-        node.db_lock.acquire()
-        node.logger.app_log.warning(f"Database lock acquired")
-        backup_data = None  # used in "finally" section
-        skip = False
-        reason = ""
-
-        try:
-            block_max_ram = db_handler.block_max_ram()
-            db_block_height = block_max_ram ['block_height']
-            db_block_hash = block_max_ram ['block_hash']
-
-            ip = {'ip': peer_ip}
-            node.plugin_manager.execute_filter_hook('filter_rollback_ip', ip)
-            if ip['ip'] == 'no':
-                reason = "Filter blocked this rollback"
-                skip = True
-
-            elif db_block_height < node.checkpoint:
-                reason = "Block is past checkpoint, will not be rolled back"
-                skip = True
-
-            elif db_block_hash != block_hash_delete:
-                # print db_block_hash
-                # print block_hash_delete
-                reason = "We moved away from the block to rollback, skipping"
-                skip = True
-
-            elif hyperblocks and node.last_block_ago > 30000: #more than 5000 minutes/target blocks away
-                reason = f"{peer_ip} is running on hyperblocks and our last block is too old, skipping"
-                skip = True
-
-            else:
-                backup_data = db_handler.backup_higher(db_block_height)
-
-                node.logger.app_log.warning(f"Node {peer_ip} didn't find block {db_block_height}({db_block_hash})")
-
-                # roll back hdd too
-                db_handler.rollback_under(db_block_height)
-                # /roll back hdd too
-
-                # rollback indices
-                db_handler.tokens_rollback(node, db_block_height)
-                db_handler.aliases_rollback(node, db_block_height)
-                # /rollback indices
-
-                node.last_block_timestamp = db_handler.last_block_timestamp()
-                node.last_block_hash = db_handler.last_block_hash()
-                node.last_block = db_block_height - 1
-                node.hdd_hash = db_handler.last_block_hash()
-                node.hdd_block = db_block_height - 1
-                tokens.tokens_update(node, db_handler)
-
-        except Exception as e:
-            node.logger.app_log.warning(e)
-
-        finally:
-            node.db_lock.release()
-
-            node.logger.app_log.warning(f"Database lock released")
-
-            if skip:
-                rollback = {"timestamp": my_time, "height": db_block_height, "ip": peer_ip,
-                            "hash": db_block_hash, "skipped": True, "reason": reason}
-                node.plugin_manager.execute_action_hook('rollback', rollback)
-                node.logger.app_log.info(f"Skipping rollback: {reason}")
-            else:
-                try:
-                    nb_tx = 0
-                    for tx in backup_data:
-                        tx_short = f"{tx[1]} - {tx[2]} to {tx[3]}: {tx[4]} ({tx[11]})"
-                        if tx[9] == 0:
-                            try:
-                                nb_tx += 1
-                                node.logger.app_log.info(
-                                    mp.MEMPOOL.merge((tx[1], tx[2], tx[3], tx[4], tx[5], tx[6], tx[10], tx[11]),
-                                                     peer_ip, db_handler.c, False, revert=True))  # will get stuck if you change it to respect node.db_lock
-                                node.logger.app_log.warning(f"Moved tx back to mempool: {tx_short}")
-                            except Exception as e:
-                                node.logger.app_log.warning(f"Error during moving tx back to mempool: {e}")
-                        else:
-                            # It's the coinbase tx, so we get the miner address
-                            miner = tx[3]
-                            height = tx[0]
-                    rollback = {"timestamp": my_time, "height": height, "ip": peer_ip, "miner": miner,
-                                "hash": db_block_hash, "tx_count": nb_tx, "skipped": False, "reason": ""}
-                    node.plugin_manager.execute_action_hook('rollback', rollback)
-
-                except Exception as e:
-                    node.logger.app_log.warning(f"Error during moving txs back to mempool: {e}")
-
-    else:
-        reason = "Skipping rollback, other ledger operation in progress"
-        rollback = {"timestamp": my_time, "ip": peer_ip, "skipped": True, "reason": reason}
-        node.plugin_manager.execute_action_hook('rollback', rollback)
-        node.logger.app_log.info(reason)
-
-
-def sequencing_check(db_handler):
-    # TODO: Candidate for single user mode
-    try:
-        with open("sequencing_last", 'r') as filename:
-            sequencing_last = int(filename.read())
-
-    except:
-        node.logger.app_log.warning("Sequencing anchor not found, going through the whole chain")
-        sequencing_last = 0
-
-    node.logger.app_log.warning(f"Status: Testing chain sequencing, starting with block {sequencing_last}")
-
-    chains_to_check = [node.ledger_path, node.hyper_path]
-
-    for chain in chains_to_check:
-        conn = sqlite3.connect(chain)
-        if node.trace_db_calls:
-            conn.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN"))
-        c = conn.cursor()
-
-        # perform test on transaction table
-        y = None
-        # Egg: not sure block_height != (0 OR 1)  gives the proper result, 0 or 1  = 1. not in (0, 1) could be better.
-        for row in c.execute(
-                "SELECT block_height FROM transactions WHERE reward != 0 AND block_height > 1 AND block_height >= ? ORDER BY block_height ASC",
-                (sequencing_last,)):
-            y_init = row[0]
-
-            if y is None:
-                y = y_init
-
-            if row[0] != y:
-
-                for chain2 in chains_to_check:
-                    conn2 = sqlite3.connect(chain2)
-                    if node.trace_db_calls:
-                        conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2"))
-                    c2 = conn2.cursor()
-                    node.logger.app_log.warning(f"Status: Chain {chain} transaction sequencing error at: {row[0]}. {row[0]} instead of {y}")
-                    c2.execute("DELETE FROM transactions WHERE block_height >= ? OR block_height <= ?", (row[0], -row[0],))
-                    conn2.commit()
-                    c2.execute("DELETE FROM misc WHERE block_height >= ?", (row[0],))
-                    conn2.commit()
-
-                    # rollback indices
-                    db_handler.tokens_rollback(node, y)
-                    db_handler.aliases_rollback(node, y)
-
-                    # rollback indices
-
-                    node.logger.app_log.warning(f"Status: Due to a sequencing issue at block {y}, {chain} has been rolled back and will be resynchronized")
-                break
-
-            y = y + 1
-
-        # perform test on misc table
-        y = None
-
-        for row in c.execute("SELECT block_height FROM misc WHERE block_height > ? ORDER BY block_height ASC",
-                             (300000,)):
-            y_init = row[0]
-
-            if y is None:
-                y = y_init
-                # print("assigned")
-                # print(row[0], y)
-
-            if row[0] != y:
-                # print(row[0], y)
-                for chain2 in chains_to_check:
-                    conn2 = sqlite3.connect(chain2)
-                    if node.trace_db_calls:
-                        conn2.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SEQUENCE-CHECK-CHAIN2B"))
-                    c2 = conn2.cursor()
-                    node.logger.app_log.warning(
-                        f"Status: Chain {chain} difficulty sequencing error at: {row[0]}. {row[0]} instead of {y}")
-                    c2.execute("DELETE FROM transactions WHERE block_height >= ?", (row[0],))
-                    conn2.commit()
-                    c2.execute("DELETE FROM misc WHERE block_height >= ?", (row[0],))
-                    conn2.commit()
-
-                    db_handler.execute_param(conn2, (
-                        'DELETE FROM transactions WHERE address = "Development Reward" AND block_height <= ?'),
-                                             (-row[0],))
-                    conn2.commit()
-
-                    db_handler.execute_param(conn2, (
-                        'DELETE FROM transactions WHERE address = "Hypernode Payouts" AND block_height <= ?'),
-                                             (-row[0],))
-                    conn2.commit()
-                    conn2.close()
-
-                    # rollback indices
-                    db_handler.tokens_rollback(node, y)
-                    db_handler.aliases_rollback(node, y)
-                    # rollback indices
-
-                    node.logger.app_log.warning(f"Status: Due to a sequencing issue at block {y}, {chain} has been rolled back and will be resynchronized")
-                break
-
-            y = y + 1
-
-        node.logger.app_log.warning(f"Status: Chain sequencing test complete for {chain}")
-        conn.close()
-
-        if y:
-            with open("sequencing_last", 'w') as filename:
-                filename.write(str(y - 1000))  # room for rollbacks
 
 
 # init
@@ -802,7 +579,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     block_hash_delete = receive(self.request)
                     # print peer_ip
                     if consensus_blockheight == node.peers.consensus_max:
-                        blocknf(node, block_hash_delete, peer_ip, db_handler_instance)
+                        blocknf(node, block_hash_delete, peer_ip, db_handler_instance, mp=mp)
                         if node.peers.warning(self.request, peer_ip, "Rollback", 2):
                             node.logger.app_log.info(f"{peer_ip} banned")
                             break
@@ -816,7 +593,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     block_hash_delete = receive(self.request)
                     # print peer_ip
                     if consensus_blockheight == node.peers.consensus_max:
-                        blocknf(node, block_hash_delete, peer_ip, db_handler_instance, hyperblocks=True)
+                        blocknf(node, block_hash_delete, peer_ip, db_handler_instance, hyperblocks=True, mp=mp)
                         if node.peers.warning(self.request, peer_ip, "Rollback", 2):
                             node.logger.app_log.info(f"{peer_ip} banned")
                             break
@@ -1608,7 +1385,7 @@ def just_int_from(s):
     return int(''.join(i for i in s if i.isdigit()))
 
 
-def setup_net_type():
+def setup_net_type(node, regnet):
     """
     Adjust globals depending on mainnet, testnet or regnet
     """
@@ -1706,7 +1483,7 @@ def setup_net_type():
         """
 
 
-def node_block_init(database):
+def node_block_init(database, node):
     # TODO: candidate for single user mode
     node.hdd_block = database.block_height_max()
     node.difficulty = difficulty(node, db_handler_initial)  # check diff for miner
@@ -1725,7 +1502,7 @@ def node_block_init(database):
     aliases.aliases_update(node, database)
 
 
-def ram_init(database):
+def ram_init(database, node):
     # TODO: candidate for single user mode
     try:
         if node.ram:
@@ -1734,21 +1511,21 @@ def ram_init(database):
             if node.py_version >= 370:
                 temp_target = sqlite3.connect(node.ledger_ram_file, uri=True, isolation_level=None, timeout=1)
                 if node.trace_db_calls:
-                    temp_target.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"TEMP-TARGET"))
+                    temp_target.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "TEMP-TARGET"))
 
                 temp_source = sqlite3.connect(node.hyper_path, uri=True, isolation_level=None, timeout=1)
                 if node.trace_db_calls:
-                    temp_source.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"TEMP-SOURCE"))
+                    temp_source.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "TEMP-SOURCE"))
                 temp_source.backup(temp_target)
                 temp_source.close()
 
             else:
                 source_db = sqlite3.connect(node.hyper_path, timeout=1)
                 if node.trace_db_calls:
-                    source_db.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"SOURCE-DB"))
+                    source_db.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "SOURCE-DB"))
                 database.to_ram = sqlite3.connect(node.ledger_ram_file, uri=True, timeout=1, isolation_level=None)
                 if node.trace_db_calls:
-                    database.to_ram.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"DATABASE-TO-RAM"))
+                    database.to_ram.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "DATABASE-TO-RAM"))
                 database.to_ram.text_factory = str
                 database.tr = database.to_ram.cursor()
 
@@ -1767,7 +1544,7 @@ def ram_init(database):
         raise
 
 
-def initial_db_check():
+def initial_db_check(node):
     """
     Initial bootstrap check and chain validity control
     """
@@ -1781,7 +1558,7 @@ def initial_db_check():
     if node.is_mainnet:
         upgrade = sqlite3.connect(node.ledger_path)
         if node.trace_db_calls:
-            upgrade.set_trace_callback(functools.partial(sql_trace_callback,node.logger.app_log,"INITIAL_DB_CHECK"))
+            upgrade.set_trace_callback(functools.partial(sql_trace_callback, node.logger.app_log, "INITIAL_DB_CHECK"))
         u = upgrade.cursor()
         try:
             u.execute("PRAGMA table_info(transactions);")
@@ -1796,7 +1573,7 @@ def initial_db_check():
             bootstrap()
 
 
-def load_keys():
+def load_keys(node):
     """Initial loading of crypto keys"""
     # TODO: candidate for single user mode
     essentials.keys_check(node.logger.app_log, "wallet.der")
@@ -1811,92 +1588,6 @@ def load_keys():
         regnet.KEY = node.keys.key
 
     node.logger.app_log.warning(f"Status: Local address: {node.keys.address}")
-
-
-def verify(db_handler):
-    # TODO: candidate for single user mode
-    try:
-        node.logger.app_log.warning("Blockchain verification started...")
-        # verify blockchain
-        db_handler.execute(db_handler.h, "SELECT Count(*) FROM transactions")
-        db_rows = db_handler.h.fetchone()[0]
-        node.logger.app_log.warning("Total steps: {}".format(db_rows))
-
-        # verify genesis
-        try:
-            db_handler.execute(db_handler.h, "SELECT block_height, recipient FROM transactions WHERE block_height = 1")
-            result = db_handler.h.fetchall()[0]
-            block_height = result[0]
-            genesis = result[1]
-            node.logger.app_log.warning(f"Genesis: {genesis}")
-            if str(genesis) != node.genesis and int(
-                    block_height) == 0:
-                node.logger.app_log.warning("Invalid genesis address")
-                sys.exit(1)
-        except:
-            node.logger.app_log.warning("Hyperblock mode in use")
-        # verify genesis
-
-        invalid = 0
-
-        for row in db_handler.h.execute('SELECT * FROM transactions WHERE block_height > 0 and reward = 0 ORDER BY block_height'):  # native sql fx to keep compatibility
-
-            db_block_height = str(row[0])
-            db_timestamp = '%.2f' % (quantize_two(row[1]))
-            db_address = str(row[2])[:56]
-            db_recipient = str(row[3])[:56]
-            db_amount = '%.8f' % (quantize_eight(row[4]))
-            db_signature_enc = str(row[5])[:684]
-            db_public_key_b64encoded = str(row[6])[:1068]
-            db_operation = str(row[10])[:30]
-            db_openfield = str(row[11])  # no limit for backward compatibility
-            db_transaction = str((db_timestamp, db_address, db_recipient, db_amount, db_operation, db_openfield)).encode("utf-8")
-
-            try:
-                # Signer factory is aware of the different tx schemes, and will b64 decode public_key once or twice as needed.
-                SignerFactory.verify_bis_signature(db_signature_enc, db_public_key_b64encoded, db_transaction, db_address)
-            except Exception as e:
-                sha_hash = SHA.new(db_transaction)
-                try:
-                    if sha_hash.hexdigest() != db_hashes[db_block_height + "-" + db_timestamp]:
-                        node.logger.app_log.warning("Signature validation problem: {} {}".format(db_block_height, db_transaction))
-                        invalid = invalid + 1
-                except Exception as e:
-                    node.logger.app_log.warning("Signature validation problem: {} {}".format(db_block_height, db_transaction))
-                    invalid = invalid + 1
-
-        if invalid == 0:
-            node.logger.app_log.warning("All transacitons in the local ledger are valid")
-
-    except Exception as e:
-        node.logger.app_log.warning("Error: {}".format(e))
-        raise
-
-
-def add_indices(db_handler: dbhandler.DbHandler):
-    CREATE_TXID4_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS TXID4_Index ON transactions(substr(signature,1,4))"
-    CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS = "CREATE INDEX IF NOT EXISTS 'Misc Block Height Index' on misc(block_height)"
-
-    node.logger.app_log.warning("Creating indices")
-
-    # ledger.db
-    if not node.old_sqlite:
-        db_handler.execute(db_handler.h, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
-    else:
-        node.logger.app_log.warning("Setting old_sqlite is True, lookups will be slower.")
-    db_handler.execute(db_handler.h, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
-
-    # hyper.db
-    if not node.old_sqlite:
-        db_handler.execute(db_handler.h2, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
-    db_handler.execute(db_handler.h2, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
-
-    # RAM or hyper.db
-    if not node.old_sqlite:
-        db_handler.execute(db_handler.c, CREATE_TXID4_INDEX_IF_NOT_EXISTS)
-    db_handler.execute(db_handler.c, CREATE_MISC_BLOCK_HEIGHT_INDEX_IF_NOT_EXISTS)
-
-    node.logger.app_log.warning("Finished creating indices")
 
 
 if __name__ == "__main__":
@@ -1971,8 +1662,8 @@ if __name__ == "__main__":
         extra_commands = node.plugin_manager.execute_filter_hook('extra_commands_prefixes', extra_commands)
         print("Extra prefixes: ", ",".join(extra_commands.keys()))
 
-        setup_net_type()
-        load_keys()
+        setup_net_type(node, regnet=False)
+        load_keys(node)
 
         # needed for docker logs
         node.logger.app_log.warning(f"Checking Heavy3 file, can take up to 5 minutes...")
@@ -2011,17 +1702,17 @@ if __name__ == "__main__":
                 recompress_ledger(node)
                 db_handler_initial = dbhandler.DbHandler(node.index_db, node.ledger_path, node.hyper_path, node.ram, node.ledger_ram_file, node.logger, trace_db_calls=node.trace_db_calls)
 
-            ram_init(db_handler_initial)
-            node_block_init(db_handler_initial)
-            initial_db_check()
+            ram_init(db_handler_initial, node)
+            node_block_init(db_handler_initial, node)
+            initial_db_check(node)
 
             if not node.is_regnet:
-                sequencing_check(db_handler_initial)
+                sequencing_check(db_handler_initial, node=node)
 
             if node.verify:
-                verify(db_handler_initial)
+                verify(db_handler_initial, node=node)
 
-            add_indices(db_handler_initial)
+            add_indices(db_handler_initial, node=node)
 
             # TODO: until here, we are in single user mode.
             # All the above goes into a "bootup" function, with methods from single_user module only.
