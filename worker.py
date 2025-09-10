@@ -256,6 +256,8 @@ class MessageHandler:
 
     def _should_process_blocknf(self):
         """Check if blocknf should be processed based on consensus"""
+        if self.received_block_height is None:
+            return False
         return int(self.received_block_height) == self.node.peers.consensus_max
 
     def _handle_blocks_found(self):
