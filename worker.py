@@ -228,7 +228,7 @@ def worker(host, port, node):
                 # if max(consensus_blockheight_list) == int(received_block_height):
                 if int(received_block_height) == node.peers.consensus_max:
 
-                    blocknf(node, block_hash_delete, peer_ip, db_handler_instance, hyperblocks=True)
+                    blocknf(node, block_hash_delete, peer_ip, db_handler_instance, hyperblocks=True, mp=mp)
 
                     if node.peers.warning(s, peer_ip, "Rollback", 2):
                         raise ValueError(f"{peer_ip} is banned")
