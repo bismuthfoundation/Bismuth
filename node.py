@@ -264,6 +264,31 @@ class CommandHandler:
             elif confirmation == "blocksrj":
                 self.logger.info("Inbound: Client rejected to sync from us")
 
+    def handle_addlistlimmir(self) -> None:
+        """Get mirrored limited address transaction list"""
+        if not self.is_allowed("addlistlimmir"):
+            return
+        address_tx_list = receive(self.request)
+        address_tx_list_limit = receive(self.request)
+        self.db.execute_param(self.db.h,
+                              "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) AND block_height < 1 ORDER BY block_height ASC LIMIT ?",
+                              (address_tx_list, address_tx_list, address_tx_list_limit))
+        result = self.db.h.fetchall()
+        send(self.request, result)
+
+    def handle_addlistlimmirjson(self) -> None:
+        """Get mirrored limited address transaction list as JSON"""
+        if not self.is_allowed("addlistlimmirjson"):
+            return
+        address_tx_list = receive(self.request)
+        address_tx_list_limit = receive(self.request)
+        self.db.execute_param(self.db.h,
+                              "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) AND block_height < 1 ORDER BY block_height ASC LIMIT ?",
+                              (address_tx_list, address_tx_list, address_tx_list_limit))
+        result = self.db.h.fetchall()
+        response_list = ResponseBuilder.transaction_list(result)
+        send(self.request, response_list)
+
     # Block Commands
     def handle_block(self) -> None:
         """Handle incoming mined block"""
@@ -879,44 +904,11 @@ class CommandDispatcher:
             'stop': handler.handle_stop,
         }
 
-    def handle_addlistlimmir(self) -> None:
-        """Get mirrored limited address transaction list"""
-        if not self.handler.is_allowed("addlistlimmir"):
-            return
-        address_tx_list = receive(self.handler.request)
-        address_tx_list_limit = receive(self.handler.request)
-        self.handler.db.execute_param(self.handler.db.h,
-                                      "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) AND block_height < 1 ORDER BY block_height ASC LIMIT ?",
-                                      (address_tx_list, address_tx_list, address_tx_list_limit))
-        result = self.handler.db.h.fetchall()
-        send(self.handler.request, result)
-
-    def handle_addlistlimmirjson(self) -> None:
-        """Get mirrored limited address transaction list as JSON"""
-        if not self.handler.is_allowed("addlistlimmirjson"):
-            return
-        address_tx_list = receive(self.handler.request)
-        address_tx_list_limit = receive(self.handler.request)
-        self.handler.db.execute_param(self.handler.db.h,
-                                      "SELECT * FROM transactions WHERE (address = ? OR recipient = ?) AND block_height < 1 ORDER BY block_height ASC LIMIT ?",
-                                      (address_tx_list, address_tx_list, address_tx_list_limit))
-        result = self.handler.db.h.fetchall()
-        response_list = ResponseBuilder.transaction_list(result)
-        send(self.handler.request, response_list)
-
     def dispatch(self, command: str) -> bool:
         """
         Dispatch command to handler
         Returns True if command was handled, False otherwise
         """
-        # Add mirror handlers
-        if command == 'addlistlimmir':
-            self.handle_addlistlimmir()
-            return True
-        elif command == 'addlistlimmirjson':
-            self.handle_addlistlimmirjson()
-            return True
-
         # Check regular commands
         handler_func = self.commands.get(command)
         if handler_func:
